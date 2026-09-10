@@ -36,10 +36,10 @@ const telasDe = m => m.telas.filter(podeVer);
    ACESSO — contas de teste, uma por nível
    ======================================================================= */
 const CONTAS=[
-  {papel:'brasil',   email:'brasil@remax.com.br',   senha:'remax2027', nome:'Marketing RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
-  {papel:'master',   email:'master@remax.com.br',   senha:'remax2027', nome:'Master SP Capital II',    desc:'Acompanha a regional · aprova projetos e evidências'},
-  {papel:'franquia', email:'loja@remax.com.br',     senha:'remax2027', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
-  {papel:'corretor', email:'corretor@remax.com.br', senha:'remax2027', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'}
+  {papel:'brasil',   email:'brasil@prontosemrede.test',   senha:'Rede@2026', nome:'Marketing RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
+  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital II',    desc:'Acompanha a regional · aprova projetos e evidências'},
+  {papel:'franquia', email:'loja@prontosemrede.test',     senha:'Rede@2026', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
+  {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'}
 ];
 function telaLogin(){
   document.body.style.overflow='hidden';
@@ -48,7 +48,7 @@ function telaLogin(){
     '<div class="fundo"><canvas></canvas></div>'+
     '<div class="lgtop"><button id="lgIdi">'+IDIOMAS[LANG].sig+'</button><button id="lgTema">'+(temaEfetivo()==='escuro'?'\u263e':'\u2600')+'</button></div>'+
     '<div class="box"><div class="lado">'+
-      '<img src="'+LOGO+'" alt="RE/MAX">'+marcaBrilho('lg')+
+      '<div class="lockup-lg"><span class="bl"><img src="'+BALAO+'" alt=""></span><img class="wm" src="'+WORD_BRANCO+'" alt="RE/MAX"></div>'+
       '<h2>Prontos<b>em Rede.</b></h2>'+
       '<p>'+esc(T('A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.'))+'</p>'+
       '<div class="mods">'+MODULOS.map(m=>'<span>'+esc(m.nome)+'</span>').join('')+'</div>'+
@@ -64,7 +64,7 @@ function telaLogin(){
       '</div>'+
       '<div id="lgErro"></div>'+
       '<button class="entrar" id="lgOk">'+esc(T('Entrar'))+'<span style="width:17px;height:17px;display:grid">'+ICO.seta+'</span></button>'+
-      '<div class="rod">'+(LANG==='en'?'Password for every test account':LANG==='es'?'Contraseña de todas las cuentas de prueba':'Senha de todas as contas de teste')+': <b>remax2027</b><br>'+
+      '<div class="rod">'+(LANG==='en'?'Password for every test account':LANG==='es'?'Contraseña de todas las cuentas de prueba':'Senha de todas as contas de teste')+': <b>'+esc(CONTAS[0].senha)+'</b><br>'+
       (LANG==='en'?'Platform developed by':LANG==='es'?'Plataforma desarrollada por':'Plataforma desenvolvida por')+' <b>BMAG SERVIÇOS DIGITAIS</b></div>'+
     '</div></div>';
   document.body.appendChild(el);
@@ -85,7 +85,7 @@ function telaLogin(){
   $('#lgIdi',el).addEventListener('click',()=>{ const k=Object.keys(IDIOMAS); trocaIdioma(k[(k.indexOf(LANG)+1)%k.length]); });
   $('#lgTema',el).addEventListener('click',()=>{ trocaTema(temaEfetivo()==='escuro'?'claro':'escuro'); $('#lgTema').textContent=temaEfetivo()==='escuro'?'\u263e':'\u2600'; });
   preencher(CONTAS[0]);
-  setTimeout(()=>{ const i=$('#lgEmail'); i&&i.focus(); },140);
+  if(!SEM_HOVER && window.innerWidth>920) setTimeout(()=>{ const i=$('#lgEmail'); i&&i.focus({preventScroll:true}); },140);
 }
 function sair(){
   LS.del('pr_sessao'); fechaModal(); esconderFly(); const pp=$('#pop'); if(pp) pp.remove();

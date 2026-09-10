@@ -11,14 +11,14 @@ usuário faz fica gravado no próprio navegador (`localStorage`).
 
 ## Contas de teste
 
-Senha de todas: `remax2027`
+E-mails fictícios, uma conta por nível. Senha de todas: `Rede@2026`
 
 | Acesso | E-mail |
 |---|---|
-| RE/MAX Brasil (visão nacional) | brasil@remax.com.br |
-| Master regional | master@remax.com.br |
-| Gestor da unidade | loja@remax.com.br |
-| Associado (corretor) | corretor@remax.com.br |
+| RE/MAX Brasil (visão nacional) | brasil@prontosemrede.test |
+| Master regional | master@prontosemrede.test |
+| Gestor da unidade | loja@prontosemrede.test |
+| Associado (corretor) | corretor@prontosemrede.test |
 
 ## Publicar na Hostinger
 

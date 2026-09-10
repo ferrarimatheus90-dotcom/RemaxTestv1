@@ -1,12 +1,29 @@
 <script>
 /* =======================================================================
-   MÓDULO 2 · ESTÚDIO DE PEÇAS  (personalização + geração + download)
+   MÓDULO 2 · ESTÚDIO DE PEÇAS  (foto do imóvel + personalização + download)
    ======================================================================= */
-const ST={tpl:'t01', tema:'azul', titulo:null, sub:null, nome:null, creci:'', tel:'', unidade:'', foto:'', fotoNome:''};
+const ST={tpl:'t01', tema:'azul', titulo:null, sub:null, nome:null, creci:'', tel:'', unidade:'', foto:'', fotoNome:'', imovel:'', imovelNome:''};
 function usuarioAtualParaPeca(){
   if(souCorretor()) return S.usuarios[euId()];
   const lid=escopoLoja()||'l18';
   return corretoresDe(lid)[0] || Object.values(S.usuarios)[0];
+}
+/* a foto do imóvel entra inteira na arte: reduz para no máximo 1600 px e fica só nesta sessão */
+function lerFotoImovel(arq, pronto){
+  if(!arq || !/^image\//.test(arq.type||'')){ toast('Escolha uma imagem em JPG ou PNG.'); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{
+    const im=new Image();
+    im.onload=()=>{
+      const s=Math.min(1, 1600/Math.max(im.width, im.height));
+      const c=document.createElement('canvas'); c.width=Math.round(im.width*s); c.height=Math.round(im.height*s);
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      pronto(c.toDataURL('image/jpeg',0.86), arq.name+' · '+kb(arq.size));
+    };
+    im.onerror=()=>toast('Não consegui ler essa imagem.');
+    im.src=fr.result;
+  };
+  fr.readAsDataURL(arq);
 }
 VIEWS.estudio=function(v,arg){
   const u=usuarioAtualParaPeca(), l=lojaDe(u.loja);
@@ -16,29 +33,41 @@ VIEWS.estudio=function(v,arg){
   if(ST.titulo===null) ST.titulo=t.txt||t.nome;
   if(ST.sub===null) ST.sub=t.sub||'Fale com o seu consultor RE/MAX';
   const minhas=S.pecas.filter(p=>p.uid===u.id);
+  const aceitaImovel = t.fmt!=='cartao' && t.fmt!=='email';
 
   v.innerHTML =
-    ph('Estúdio de peças','Escolha o modelo, preencha os seus dados e baixe pronto — PNG para publicar, PDF para a gráfica. Sem Canva, sem Photoshop, e sem sair do padrão da marca: logotipo, cores e proporções são travados pelo modelo.',
+    ph('Estúdio de peças', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
       '<a class="btn" href="#/biblioteca">Ver biblioteca</a>','estudio')+
     '<div class="studio">'+
-      '<div class="card pad">'+
+      '<div class="card pad st-form">'+
+        (aceitaImovel?
+          '<div class="sec">'+esc(T('Foto do imóvel'))+'</div>'+
+          '<label class="foto-im'+(ST.imovel?' tem':'')+'" id="fImZona">'+
+            (ST.imovel?'<img src="'+ST.imovel+'" alt="">':'<span class="mais">+</span>')+
+            '<span class="fi-tx"><b>'+esc(T(ST.imovel?'Trocar a foto':'Adicionar a foto do imóvel'))+'</b>'+
+            '<span>'+esc(ST.imovel? ST.imovelNome : T('Arraste aqui ou clique para escolher. Ela entra no lugar do fundo.'))+'</span></span>'+
+            '<input type="file" accept="image/*" id="fImArq" hidden>'+
+          '</label>'+
+          (ST.imovel?'<button class="btn sm" id="fImTirar" style="margin-top:10px">'+esc(T('Remover foto'))+'</button>':'')+
+          '<div class="divider"></div>' : '')+
+        '<div class="sec">'+esc(T('Peça'))+'</div>'+
         '<div class="field"><label>Modelo</label><select id="fTpl">'+TPLS().map(x=>'<option value="'+x.id+'"'+(x.id===t.id?' selected':'')+'>'+esc(x.nome)+' · '+esc(x.dim)+'</option>').join('')+'</select></div>'+
         '<div class="field"><label>Variação de cor</label><div class="chips" id="fTema">'+
           [['azul','Azul'],['claro','Claro'],['vermelho','Vermelho']].map(x=>'<button class="chip '+(ST.tema===x[0]?'on':'')+'" data-t="'+x[0]+'">'+x[1]+'</button>').join('')+'</div></div>'+
-        '<div class="divider"></div>'+
         '<div class="field"><label>Título</label><input id="fTit" value="'+esc(ST.titulo)+'" maxlength="42"></div>'+
         '<div class="field"><label>Linha de apoio</label><input id="fSub" value="'+esc(ST.sub)+'" maxlength="90"></div>'+
         '<div class="divider"></div>'+
+        '<div class="sec">'+esc(T('Seus dados'))+'</div>'+
         '<div class="field"><label>Nome</label><input id="fNome" value="'+esc(ST.nome)+'"></div>'+
         '<div class="grid g2" style="gap:10px"><div class="field"><label>CRECI</label><input id="fCreci" value="'+esc(ST.creci)+'"></div>'+
         '<div class="field"><label>Telefone</label><input id="fTel" value="'+esc(ST.tel)+'"></div></div>'+
         '<div class="field"><label>Unidade</label><input id="fUni" value="'+esc(ST.unidade)+'"></div>'+
-        '<div class="field"><label>Foto</label><div style="display:flex;gap:8px"><button class="btn" id="fFoto" style="flex:1">'+(ST.foto?'Trocar foto':'Enviar do computador')+'</button>'+(ST.foto?'<button class="btn" id="fSemFoto">Sem foto</button>':'')+'</div>'+
+        '<div class="field"><label>'+esc(T('Sua foto'))+'</label><div style="display:flex;gap:8px"><button class="btn" id="fFoto" style="flex:1">'+(ST.foto?'Trocar foto':'Enviar do computador')+'</button>'+(ST.foto?'<button class="btn" id="fSemFoto">Sem foto</button>':'')+'</div>'+
           (ST.fotoNome?'<div class="mini" style="margin-top:5px">'+esc(ST.fotoNome)+'</div>':'')+'</div>'+
         '<div class="hint" style="margin-top:4px">Os dados vêm do seu cadastro e podem ser ajustados aqui. O arquivo sai no tamanho certo: '+esc(t.dim)+'.</div>'+
       '</div>'+
-      '<div>'+
-        '<div class="canvasWrap"><canvas class="prev" id="cvPeca" style="max-height:440px;width:auto"></canvas></div>'+
+      '<div class="st-prev">'+
+        '<div class="canvasWrap"><canvas class="prev" id="cvPeca" style="max-height:540px"></canvas></div>'+
         '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
           '<button class="btn pri" id="dPng">↓ Baixar PNG</button>'+
           '<button class="btn" id="dPdf">↓ PDF para impressão</button>'+
@@ -51,10 +80,12 @@ VIEWS.estudio=function(v,arg){
       '</div>'+
     '</div>';
 
-  const dados=()=>({fmt:t.fmt, tema:ST.tema, titulo:ST.titulo, sub:ST.sub, nome:ST.nome, creci:ST.creci, tel:ST.tel, unidade:ST.unidade, foto:ST.foto});
-  let cvAtual=null;
+  const dados=()=>({fmt:t.fmt, tema:ST.tema, titulo:ST.titulo, sub:ST.sub, nome:ST.nome, creci:ST.creci, tel:ST.tel, unidade:ST.unidade, foto:ST.foto, imovel:aceitaImovel?ST.imovel:''});
+  let cvAtual=null, vez=0;
   function pinta(){
+    const esta=++vez;
     montarPeca(dados()).then(cv=>{
+      if(esta!==vez) return;                    // digitação rápida: só a última versão chega na tela
       cvAtual=cv; const alvo=$('#cvPeca'); if(!alvo) return;
       alvo.width=cv.width; alvo.height=cv.height; alvo.getContext('2d').drawImage(cv,0,0);
     });
@@ -64,6 +95,19 @@ VIEWS.estudio=function(v,arg){
   liga('#fTit','titulo'); liga('#fSub','sub'); liga('#fNome','nome'); liga('#fCreci','creci'); liga('#fTel','tel'); liga('#fUni','unidade');
   $('#fTpl').addEventListener('change',e=>{ ST.titulo=null; ST.sub=null; location.hash='#/estudio/'+e.target.value; });
   $$('#fTema .chip').forEach(b=>b.addEventListener('click',()=>{ST.tema=b.dataset.t;$$('#fTema .chip').forEach(x=>x.classList.toggle('on',x===b));pinta();}));
+
+  // foto do imóvel: clique ou arraste
+  const zona=$('#fImZona');
+  if(zona){
+    const aplica=(url,nome)=>{ ST.imovel=url; ST.imovelNome=nome; route(); toast('<b>Foto aplicada.</b> Ela entrou no lugar do fundo da peça.',1); };
+    $('#fImArq').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(f) lerFotoImovel(f,aplica); });
+    zona.addEventListener('dragover',e=>{ e.preventDefault(); zona.classList.add('arrasta'); });
+    zona.addEventListener('dragleave',()=>zona.classList.remove('arrasta'));
+    zona.addEventListener('drop',e=>{ e.preventDefault(); zona.classList.remove('arrasta');
+      const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) lerFotoImovel(f,aplica); });
+  }
+  $('#fImTirar')&&$('#fImTirar').addEventListener('click',()=>{ ST.imovel=''; ST.imovelNome=''; route(); });
+
   $('#fFoto').addEventListener('click',()=>pedirArquivos('image/*',false,as=>{
     const a=as[0]; if(!a||!a.thumb) return toast('Não consegui ler essa imagem.');
     ST.foto=a.thumb; ST.fotoNome=a.nome+' · '+kb(a.tam); route();

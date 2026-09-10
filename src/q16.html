@@ -141,6 +141,8 @@ en:{
 'Agendada':'Scheduled','Publicada':'Published','Planejada':'Planned','Ouro':'Gold','Prata':'Silver','Bronze':'Bronze',
 'Recomendado':'Recommended','2ª onda':'Wave 2','Aguardando':'Awaiting','Validado':'Validated','sua faixa':'your tier',
 'Nunca acessou':'Never signed in','Saudável':'Healthy','Atenção do CS':'Needs CS attention','sem faixa ainda':'no tier yet',
+'Foto do imóvel':'Property photo','Adicionar a foto do imóvel':'Add the property photo','Arraste aqui ou clique para escolher. Ela entra no lugar do fundo.':'Drag it here or click to choose. It replaces the background.','Trocar a foto':'Change photo','Remover foto':'Remove photo','Peça':'Piece','Seus dados':'Your details','Sua foto':'Your photo',
+'Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.':'Upload the property photo, pick the template and download it ready — PNG to post, PDF for print. Logo, colors and proportions stay locked to the brand standard.',
 'Provedor em uso':'Provider in use','Usar este provedor':'Use this provider','Você já agendou':'You already scheduled',
 /* seções */
 'Precisa de atenção':'Needs attention','Publicações da rede por semana':'Network posts per week','Adesão por unidade':'Adoption by office',
@@ -287,6 +289,8 @@ es:{
 'Agendada':'Programada','Publicada':'Publicada','Planejada':'Planificada','Ouro':'Oro','Prata':'Plata','Bronze':'Bronce',
 'Recomendado':'Recomendado','2ª onda':'2ª ola','Aguardando':'Esperando','Validado':'Validado','sua faixa':'su nivel',
 'Nunca acessou':'Nunca ingresó','Saudável':'Saludable','Atenção do CS':'Atención de CS','sem faixa ainda':'sin nivel aún',
+'Foto do imóvel':'Foto del inmueble','Adicionar a foto do imóvel':'Agregar la foto del inmueble','Arraste aqui ou clique para escolher. Ela entra no lugar do fundo.':'Arrástrela aquí o haga clic para elegir. Reemplaza el fondo.','Trocar a foto':'Cambiar foto','Remover foto':'Quitar foto','Peça':'Pieza','Seus dados':'Sus datos','Sua foto':'Su foto',
+'Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.':'Suba la foto del inmueble, elija el modelo y descárguelo listo — PNG para publicar, PDF para la imprenta. Logotipo, colores y proporciones quedan fijados al estándar de la marca.',
 'Provedor em uso':'Proveedor en uso','Usar este provedor':'Usar este proveedor','Você já agendou':'Ya programó',
 'Precisa de atenção':'Necesita atención','Publicações da rede por semana':'Publicaciones de la red por semana','Adesão por unidade':'Adopción por oficina',
 'Progresso por etapa':'Progreso por etapa','Situação por unidade':'Situación por oficina','Alertas desta unidade':'Alertas de esta oficina',
@@ -421,40 +425,14 @@ function animaNumeros(root){
   });
 }
 /* =======================================================================
-   MARCA LUMINOSA — o balão da RE/MAX desenhado em luz (abertura, acesso, início)
+   MARCA — o balão da RE/MAX com luz (acesso e banner da home)
    ======================================================================= */
-let _mb=0;
 function marcaBrilho(cls){
-  const id='mb'+(++_mb);
-  const P='M100 14C147 14 184 50 184 97C184 136 158 162 136 181C128 188 123 193 122 198H78C77 193 72 188 64 181C42 162 16 136 16 97C16 50 53 14 100 14Z';
-  const G='M100 14C76 36 64 70 66 104C68 140 80 170 88 198M100 14C124 36 136 70 134 104C132 140 120 170 112 198M18 112C60 124 140 124 182 112';
-  const C='M80 200L88 222M120 200L112 222M90 222H110Q114 222 114 226V238Q114 242 110 242H90Q86 242 86 238V226Q86 222 90 222Z';
-  return '<div class="marca '+(cls||'')+'" aria-hidden="true"><div class="halo"></div>'+
-    '<svg viewBox="0 0 200 260">'+
-      '<defs>'+
-        '<radialGradient id="'+id+'f" cx="50%" cy="40%" r="62%">'+
-          '<stop offset="0" stop-color="#fff" stop-opacity=".95"/>'+
-          '<stop offset=".32" stop-color="#EEF5FF" stop-opacity=".6"/>'+
-          '<stop offset=".72" stop-color="#C4DCFF" stop-opacity=".16"/>'+
-          '<stop offset="1" stop-color="#A9CBFF" stop-opacity="0"/>'+
-        '</radialGradient>'+
-        '<linearGradient id="'+id+'s" x1="0" y1="0" x2="1" y2="1">'+
-          '<stop offset="0" stop-color="#FFFFFF"/><stop offset=".22" stop-color="#FFC9E7"/>'+
-          '<stop offset=".48" stop-color="#B6EEFF"/><stop offset=".72" stop-color="#FFF0B5"/><stop offset="1" stop-color="#FFFFFF"/>'+
-          '<animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="10s" repeatCount="indefinite"/>'+
-        '</linearGradient>'+
-        '<filter id="'+id+'b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>'+
-      '</defs>'+
-      '<path class="gl" d="'+P+'" fill="none" stroke="#fff" stroke-width="12" filter="url(#'+id+'b)"/>'+
-      '<path class="fi" d="'+P+'" fill="url(#'+id+'f)"/>'+
-      '<path class="go" d="'+G+'" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.2"/>'+
-      '<path class="ri" d="'+P+'" fill="none" stroke="url(#'+id+'s)" stroke-width="3.2" stroke-linejoin="round" pathLength="1"/>'+
-      '<path class="ces" d="'+C+'" fill="none" stroke="url(#'+id+'s)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'+
-    '</svg></div>';
+  return '<div class="marca '+(cls||'')+'" aria-hidden="true"><div class="halo"></div><span class="bl"><img src="'+BALAO+'" alt=""></span></div>';
 }
 
 /* =======================================================================
-   ABERTURA — o balão se desenha em luz, o céu acende, o nome aparece
+   ABERTURA — o balão sobe no céu, pousa, e o nome RE/MAX sai de dentro dele
    ======================================================================= */
 function abertura(depois){
   const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -465,25 +443,30 @@ function abertura(depois){
            : LANG==='es'?'20 oficinas. 200 usuarios. Una sola red.'
            : '20 unidades. 200 usuários. Uma só rede.';
   el.innerHTML='<div class="ceu"></div>'+
-    '<div class="palco">'+marcaBrilho('ab')+
+    '<div class="palco">'+
+      '<div class="lockup"><span class="bl"><span class="aura"></span><img src="'+BALAO+'" alt=""></span>'+
+      '<span class="nome"><img src="'+WORD_BRANCO+'" alt="RE/MAX"></span></div>'+
       '<h1 class="t1">'+esc(t1)+'</h1>'+
       '<p class="t2">'+esc(t2)+'</p>'+
-      '<div class="lg"><img src="'+LOGO+'" alt="RE/MAX"></div>'+
     '</div>'+
     '<button class="pular">'+(LANG==='en'?'Skip':LANG==='es'?'Saltar':'Pular')+'</button>';
   document.body.appendChild(el);
   document.body.style.overflow='hidden';
+  const nome=el.querySelector('.nome'), imgN=nome.querySelector('img');
+  const mede=()=>{ const r=(WORD_BRANCO_IMG.naturalWidth/WORD_BRANCO_IMG.naturalHeight)||5.2;
+    nome.style.setProperty('--wn', (imgN.getBoundingClientRect().height*r).toFixed(1)+'px'); };
+  mede(); window.addEventListener('resize', mede);
   const ets=[
-    setTimeout(()=>el.classList.add('f1'),120),
-    setTimeout(()=>el.classList.add('f2'),1250),
-    setTimeout(()=>el.classList.add('f3'),2250),
-    setTimeout(()=>el.classList.add('f4'),2950),
-    setTimeout(()=>fim(),5700)
+    setTimeout(()=>el.classList.add('f1'),150),
+    setTimeout(()=>{ mede(); el.classList.add('f2'); },2350),
+    setTimeout(()=>el.classList.add('f3'),3550),
+    setTimeout(()=>el.classList.add('f4'),4250),
+    setTimeout(()=>fim(),6500)
   ];
   let acabou=false;
   function fim(){
     if(acabou) return; acabou=true;
-    ets.forEach(clearTimeout);
+    ets.forEach(clearTimeout); window.removeEventListener('resize', mede);
     el.classList.add('sai');
     depois();                                   // o que vem depois já nasce por baixo: a troca é um cruzamento, sem corte
     setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);

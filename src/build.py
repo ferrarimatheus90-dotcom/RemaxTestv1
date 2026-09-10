@@ -45,7 +45,9 @@ def main():
     html = ''.join(ler(p) for p in PARTES)
     html = html.replace('__LOGO__', 'data:image/png;base64,' + ler('logo.b64').strip())
     html = html.replace('__BASE__', ler('base.json').strip())
-    if '__LOGO__' in html or '__BASE__' in html:
+    for marca, arq in (('__BALAO__', 'balao.b64'), ('__WORD_BRANCO__', 'wordmark-branco.b64'), ('__WORD_COR__', 'wordmark-cor.b64')):
+        html = html.replace(marca, 'data:image/png;base64,' + ler(arq).strip())
+    if any(m in html for m in ('__LOGO__', '__BASE__', '__BALAO__', '__WORD_BRANCO__', '__WORD_COR__')):
         raise SystemExit('placeholder nao substituido')
     io.open(saida, 'w', encoding='utf-8').write(html)
     print('gerado:', saida, str(len(html) // 1024) + ' KB')

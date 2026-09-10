@@ -26,7 +26,20 @@
 /* ---------- estúdio ---------- */
 .studio{display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start}
 @media(max-width:960px){.studio{grid-template-columns:1fr;gap:22px}}
-.canvasWrap{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh-1);padding:40px;display:grid;place-items:center;min-height:460px}
+.canvasWrap{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh-1);padding:36px;display:grid;place-items:center;min-height:520px}
+.st-form .sec{font-size:12.5px;font-weight:600;color:var(--muted);margin:0 0 12px;letter-spacing:-.005em}
+.foto-im{
+  display:flex;align-items:center;gap:14px;padding:12px;border:1.5px dashed var(--line-2);border-radius:16px;cursor:pointer;
+  background:var(--surface);transition:border-color .2s var(--e2), background .2s var(--e2)
+}
+.foto-im:hover,.foto-im.arrasta{border-color:var(--azul);background:var(--azul-soft)}
+.foto-im img,.foto-im .mais{width:76px;height:76px;border-radius:12px;flex:none}
+.foto-im img{object-fit:cover}
+.foto-im .mais{display:grid;place-items:center;background:var(--fill-2);color:var(--azul);font-size:30px;font-weight:300;line-height:1}
+.foto-im.tem{border-style:solid;border-color:var(--line)}
+.foto-im .fi-tx{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted);line-height:1.4;min-width:0}
+.foto-im .fi-tx b{color:var(--ink);font-weight:600;font-size:14px}
+.foto-im .fi-tx span{overflow:hidden;text-overflow:ellipsis}
 canvas.prev{max-width:100%;height:auto;display:block;border-radius:8px;box-shadow:0 22px 50px -22px rgba(0,0,0,.4)}
 
 /* ---------- linha do tempo ---------- */

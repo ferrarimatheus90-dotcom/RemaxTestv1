@@ -1,12 +1,18 @@
 <script>
 /* =======================================================================
    MOTOR DE ARTE — desenha a peça de verdade em canvas e exporta
+   Com foto do imóvel: a foto vira o fundo, com véu escuro para o texto.
+   Sem foto: gradiente da variação de cor e o balão da marca com luz.
    ======================================================================= */
 const TEMAS = {
-  azul:     {a:'#062E45', b:'#0B6FB4', c:'#2EA3F2', tinta:'#FFFFFF', apoio:'rgba(255,255,255,.86)', balao:'#DC1C2E', faixa:'#DC1C2E', logo:'branco'},
-  claro:    {a:'#F4F7FA', b:'#E7EEF5', c:'#DDE7F0', tinta:'#08405F', apoio:'#55697A', balao:'#DC1C2E', faixa:'#0B6FB4', logo:'navy'},
-  vermelho: {a:'#8F0F1C', b:'#DC1C2E', c:'#F0575F', tinta:'#FFFFFF', apoio:'rgba(255,255,255,.9)', balao:'#0B3F94', faixa:'#08405F', logo:'branco'}
+  azul:     {a:'#082C66', b:'#1352B8', tinta:'#FFFFFF', apoio:'rgba(255,255,255,.84)', pil:'#FFFFFF', pilTxt:'#0B3F94',
+             card:'#FFFFFF', cardTxt:'#0B1E3F', cardApoio:'#5A6A80', luz:'rgba(255,255,255,.26)', logo:'branco'},
+  claro:    {a:'#F6F8FB', b:'#DCE4EE', tinta:'#0B1E3F', apoio:'#45566E', pil:'#0B3F94', pilTxt:'#FFFFFF',
+             card:'#0B3F94', cardTxt:'#FFFFFF', cardApoio:'rgba(255,255,255,.8)', luz:'rgba(255,255,255,.95)', logo:'cor'},
+  vermelho: {a:'#8E0C18', b:'#DC1C2E', tinta:'#FFFFFF', apoio:'rgba(255,255,255,.88)', pil:'#FFFFFF', pilTxt:'#B5121F',
+             card:'#FFFFFF', cardTxt:'#0B1E3F', cardApoio:'#5A6A80', luz:'rgba(255,255,255,.22)', logo:'branco'}
 };
+const FONTE = 'Inter, -apple-system, "Segoe UI", Arial, sans-serif';
 let LOGO_NAVY=null;
 function logoTintado(){
   if(LOGO_NAVY) return LOGO_NAVY;
@@ -24,6 +30,12 @@ function carregaImg(src){
     i.onload=()=>res(i); i.onerror=()=>res(null); i.src=src;
   });
 }
+function pronta(img){
+  if(!img) return Promise.resolve(null);
+  if(img.complete && img.naturalWidth) return Promise.resolve(img);
+  return new Promise(r=>{ img.addEventListener('load',()=>r(img),{once:true}); img.addEventListener('error',()=>r(null),{once:true}); });
+}
+const imgOk = i => !!(i && (i.naturalWidth||i.width));
 function quebra(ctx, texto, larg){
   const ps=String(texto||'').split(/\s+/); const linhas=[]; let l='';
   ps.forEach(p=>{ const teste=l?l+' '+p:p;
@@ -31,99 +43,145 @@ function quebra(ctx, texto, larg){
   if(l) linhas.push(l); return linhas;
 }
 function arredondado(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function corta(ctx, txt, larg){
+  txt=String(txt||''); if(ctx.measureText(txt).width<=larg) return txt;
+  while(txt.length>1 && ctx.measureText(txt+'…').width>larg) txt=txt.slice(0,-1);
+  return txt+'…';
+}
+function capa(g, img, x, y, w, h){
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height, s=Math.max(w/iw, h/ih);
+  g.drawImage(img, x+(w-iw*s)/2, y+(h-ih*s)/2, iw*s, ih*s);
+}
+function espacamento(g, px){ if('letterSpacing' in g) g.letterSpacing=px+'px'; }
+function avatarPeca(g, d, x, y, s, fundo, cor){
+  g.save(); g.beginPath(); g.arc(x+s/2, y+s/2, s/2, 0, Math.PI*2); g.closePath(); g.clip();
+  if(imgOk(d.foto)) capa(g, d.foto, x, y, s, s);
+  else { g.fillStyle=fundo; g.fillRect(x,y,s,s); g.fillStyle=cor; g.textAlign='center'; g.textBaseline='middle';
+    g.font='600 '+Math.round(s*0.36)+'px '+FONTE; g.fillText(iniciais(d.nome||'RE MAX'), x+s/2, y+s/2+1); g.textAlign='left'; }
+  g.restore(); g.textBaseline='top';
+}
+function logoPeca(g, cor, x, y, larg){
+  const src = cor ? (imgOk(WORD_COR_IMG)? WORD_COR_IMG : logoTintado()) : (imgOk(WORD_BRANCO_IMG)? WORD_BRANCO_IMG : LOGO_IMG);
+  if(!imgOk(src)) return 0;
+  const alt = larg*((src.naturalHeight||src.height)/(src.naturalWidth||src.width));
+  g.drawImage(src, x, y, larg, alt); return alt;
+}
+function balaoPeca(g, cx, cy, alt, luz, k){
+  if(luz){ const r=alt*0.95, rg=g.createRadialGradient(cx,cy,0,cx,cy,r);
+    rg.addColorStop(0,luz); rg.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle=rg; g.fillRect(cx-r,cy-r,r*2,r*2); }
+  if(!imgOk(BALAO_IMG)) return;
+  const larg=alt*BALAO_IMG.naturalWidth/BALAO_IMG.naturalHeight;
+  g.save(); g.shadowColor='rgba(6,24,70,.32)'; g.shadowBlur=38*k; g.shadowOffsetY=18*k;
+  g.drawImage(BALAO_IMG, cx-larg/2, cy-alt/2, larg, alt); g.restore();
+}
 
-/* desenha a peça; d = {fmt,tema,titulo,sub,nome,creci,tel,unidade,foto(Image|null)} */
+/* desenha a peça; d = {fmt,tema,titulo,sub,nome,creci,tel,unidade,foto(Image|null),imovel(Image|null)} */
 function desenharPeca(cv, d){
   const [W,H]=DIMS[d.fmt]||DIMS.feed;
   cv.width=W; cv.height=H;
   const g=cv.getContext('2d'), T=TEMAS[d.tema]||TEMAS.azul;
-  const k=Math.min(W,H)/1080;                       // escala tipográfica
-  const pad=Math.round(64*k*(d.fmt==='cartao'?1.1:1));
+  const k=Math.min(W,H)/1080;
+  g.textBaseline='top'; espacamento(g,0);
+  if(d.fmt==='cartao' || d.fmt==='email') return desenharCartao(g, d, T, W, H);
 
-  const grad=g.createLinearGradient(0,0,W*0.35,H);
-  grad.addColorStop(0,T.a); grad.addColorStop(.62,T.b); grad.addColorStop(1,T.c);
-  g.fillStyle=grad; g.fillRect(0,0,W,H);
+  const foto = imgOk(d.imovel) ? d.imovel : null;
+  const story = d.fmt==='story', deitado = W>H*1.15;
+  const pad=Math.round(64*k), topo=story? Math.round(170*k) : pad;
+  const chao = H-(story? Math.round(240*k) : pad);
 
-  g.strokeStyle = d.tema==='claro'? 'rgba(8,64,95,.07)' : 'rgba(255,255,255,.075)';
-  g.lineWidth=Math.max(1,2*k);
-  const passo=Math.round(96*k);
-  for(let x=passo;x<W;x+=passo){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,H); g.stroke(); }
-  for(let y=passo;y<H;y+=passo){ g.beginPath(); g.moveTo(0,y); g.lineTo(W,y); g.stroke(); }
-
-  // balão
-  const bx=W*0.86, by=H*0.16, br=Math.min(W,H)*0.33;
-  const rg=g.createRadialGradient(bx-br*0.3,by-br*0.3,br*0.1,bx,by,br);
-  rg.addColorStop(0,T.balao); rg.addColorStop(1,'rgba(255,255,255,0)');
-  g.save(); g.globalAlpha=d.tema==='claro'?0.85:0.92; g.fillStyle=rg;
-  g.beginPath(); g.arc(bx,by,br,0,Math.PI*2); g.fill(); g.restore();
+  // fundo: a foto do imóvel ou o gradiente com o balão
+  if(foto){
+    capa(g, foto, 0, 0, W, H);
+    let gr=g.createLinearGradient(0,0,0,H*0.4); gr.addColorStop(0,'rgba(0,0,0,.55)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr; g.fillRect(0,0,W,H*0.4);
+    gr=g.createLinearGradient(0,H*0.36,0,H); gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(.5,'rgba(0,0,0,.42)'); gr.addColorStop(1,'rgba(0,0,0,.82)');
+    g.fillStyle=gr; g.fillRect(0,H*0.36,W,H*0.64);
+  } else {
+    const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,T.a); gr.addColorStop(1,T.b);
+    g.fillStyle=gr; g.fillRect(0,0,W,H);
+    const alt=Math.min(W,H)*(deitado?0.62:0.4);
+    balaoPeca(g, deitado? W*0.8 : W*0.76, deitado? H*0.42 : (story? H*0.3 : H*0.29), alt, T.luz, k);
+  }
+  const tinta = foto? '#FFFFFF' : T.tinta, apoio = foto? 'rgba(255,255,255,.9)' : T.apoio;
 
   // logotipo
-  const src = T.logo==='navy'? logoTintado() : LOGO_IMG;
-  if(src && (src.width||src.naturalWidth)){
-    const lw=Math.round((d.fmt==='cartao'?280:340)*k), lh=lw*( (src.naturalHeight||src.height)/(src.naturalWidth||src.width) );
-    g.drawImage(src, pad, pad, lw, lh);
-    var yBase = pad+lh;
-  } else var yBase = pad+60*k;
+  logoPeca(g, !foto && T.logo==='cor', pad, topo, Math.round(300*k));
 
-  // título
-  g.fillStyle=T.tinta; g.textBaseline='top';
-  const tTam=Math.round((d.fmt==='cartao'?58:d.fmt==='story'?96:86)*k);
-  g.font='700 '+tTam+'px Inter, -apple-system, "Segoe UI", Arial, sans-serif';
-  if('letterSpacing' in g) g.letterSpacing=Math.round(-tTam*0.02)+'px';
-  const linhas=quebra(g,(d.titulo||'').toUpperCase(), W-pad*2);
-  let y=yBase+Math.round(56*k);
-  linhas.slice(0,4).forEach(l=>{ g.fillText(l,pad,y); y+=tTam*1.06; });
-  if('letterSpacing' in g) g.letterSpacing='0px';
+  // cartão do corretor
+  const ch=Math.round(156*k), cw=deitado? Math.min(W-pad*2, Math.round(980*k)) : W-pad*2, cx=pad, cy=chao-ch, cr=Math.round(30*k);
+  g.save(); g.shadowColor='rgba(0,0,0,.22)'; g.shadowBlur=32*k; g.shadowOffsetY=12*k;
+  g.fillStyle=T.card; arredondado(g,cx,cy,cw,ch,cr); g.fill(); g.restore();
+  const av=Math.round(104*k), ax=cx+Math.round(26*k), ay=cy+(ch-av)/2;
+  avatarPeca(g, d, ax, ay, av, T.card==='#FFFFFF'?'#E6ECF4':'rgba(255,255,255,.18)', T.cardTxt);
+  const bAlt=ch*0.64, bLarg=imgOk(BALAO_IMG)? bAlt*BALAO_IMG.naturalWidth/BALAO_IMG.naturalHeight : 0;
+  const tx=ax+av+Math.round(24*k), txMax=cx+cw-tx-bLarg-Math.round(52*k);
+  g.fillStyle=T.cardTxt; g.font='600 '+Math.round(36*k)+'px '+FONTE; g.fillText(corta(g,d.nome||'',txMax), tx, cy+Math.round(30*k));
+  g.fillStyle=T.cardApoio; g.font='400 '+Math.round(26*k)+'px '+FONTE;
+  g.fillText(corta(g,[d.creci?'CRECI '+d.creci:'', d.tel].filter(Boolean).join('  ·  '),txMax), tx, cy+Math.round(78*k));
+  g.fillText(corta(g,d.unidade||'',txMax), tx, cy+Math.round(112*k));
+  if(bLarg) g.drawImage(BALAO_IMG, cx+cw-bLarg-Math.round(30*k), cy+(ch-bAlt)/2, bLarg, bAlt);
 
-  // apoio
+  // apoio e título, de baixo para cima, acima do cartão
+  const largTxt = (!foto && deitado) ? W*0.6 : W-pad*2;
+  let yb = cy-Math.round(40*k);
   if(d.sub){
-    const sTam=Math.round(34*k);
-    g.font='400 '+sTam+'px Inter, Arial, sans-serif';
-    g.fillStyle=T.apoio;
-    quebra(g,d.sub,W-pad*2-Math.round(120*k)).slice(0,3).forEach(l=>{ y+=Math.round(16*k); g.fillText(l,pad,y); y+=sTam; });
+    const fs=Math.round(30*k); g.font='600 '+fs+'px '+FONTE;
+    const px=Math.round(26*k), py=Math.round(15*k), pw=g.measureText(d.sub).width+px*2, phh=fs+py*2;
+    if(pw<=largTxt){
+      yb-=phh; g.fillStyle=T.pil; arredondado(g,pad,yb,pw,phh,phh/2); g.fill();
+      g.fillStyle=T.pilTxt; g.textBaseline='middle'; g.fillText(d.sub, pad+px, yb+phh/2+1); g.textBaseline='top';
+    } else {
+      g.font='500 '+fs+'px '+FONTE; g.fillStyle=apoio;
+      const ls=quebra(g,d.sub,largTxt).slice(0,2); yb-=ls.length*fs*1.3;
+      ls.forEach((l,i)=>g.fillText(l,pad,yb+i*fs*1.3));
+    }
+    yb-=Math.round(24*k);
   }
-
-  // rodapé
-  const fh=Math.round((d.fmt==='cartao'?150:190)*k);
-  const fy=H-fh-Math.round((d.fmt==='cartao'?36:48)*k);
-  g.strokeStyle = d.tema==='claro'? 'rgba(8,64,95,.18)':'rgba(255,255,255,.28)';
-  g.lineWidth=Math.max(1,2*k); g.beginPath(); g.moveTo(pad,fy); g.lineTo(W-pad,fy); g.stroke();
-
-  const av=Math.round(112*k), ax=pad, ay=fy+Math.round(30*k);
-  g.save(); g.beginPath(); g.arc(ax+av/2, ay+av/2, av/2, 0, Math.PI*2); g.closePath(); g.clip();
-  if(d.foto){ const s=Math.max(av/d.foto.width, av/d.foto.height);
-    g.drawImage(d.foto, ax+av/2-d.foto.width*s/2, ay+av/2-d.foto.height*s/2, d.foto.width*s, d.foto.height*s);
-  } else {
-    g.fillStyle = d.tema==='claro'? '#DCE6EE':'rgba(255,255,255,.2)'; g.fillRect(ax,ay,av,av);
-    g.fillStyle=T.tinta; g.textAlign='center'; g.textBaseline='middle';
-    g.font='600 '+Math.round(36*k)+'px Inter, Arial, sans-serif';
-    g.fillText(iniciais(d.nome||'RE MAX'), ax+av/2, ay+av/2+2);
-    g.textAlign='left'; g.textBaseline='top';
+  if(d.titulo){
+    const tTam=Math.round((story?112:deitado?118:92)*k);
+    g.font='700 '+tTam+'px '+FONTE; espacamento(g, Math.round(-tTam*0.025));
+    const ls=quebra(g,String(d.titulo).toUpperCase(),largTxt).slice(0,3), lh=tTam*1.02;
+    yb-=lh*ls.length; g.fillStyle=tinta;
+    if(foto){ g.save(); g.shadowColor='rgba(0,0,0,.35)'; g.shadowBlur=24*k; }
+    ls.forEach((l,i)=>g.fillText(l,pad,yb+i*lh));
+    if(foto) g.restore();
+    espacamento(g,0);
   }
-  g.restore();
-  g.strokeStyle = d.tema==='claro'? 'rgba(8,64,95,.35)':'rgba(255,255,255,.75)';
-  g.lineWidth=Math.max(2,4*k); g.beginPath(); g.arc(ax+av/2,ay+av/2,av/2,0,Math.PI*2); g.stroke();
-
-  const tx=ax+av+Math.round(30*k);
-  g.fillStyle=T.tinta; g.font='600 '+Math.round(34*k)+'px Inter, Arial, sans-serif';
-  g.fillText(d.nome||'', tx, ay+Math.round(6*k));
-  g.fillStyle=T.apoio; g.font='400 '+Math.round(26*k)+'px Inter, Arial, sans-serif';
-  const l2=[d.creci?'CRECI '+d.creci:'', d.tel].filter(Boolean).join('  ·  ');
-  g.fillText(l2, tx, ay+Math.round(52*k));
-  g.fillText(d.unidade||'', tx, ay+Math.round(88*k));
-
-  // faixa inferior
-  const fg=g.createLinearGradient(0,0,W,0);
-  fg.addColorStop(0,T.faixa); fg.addColorStop(1, d.tema==='claro'?'rgba(11,111,180,0)':'rgba(220,28,46,0)');
-  g.fillStyle=fg; g.fillRect(0,H-Math.round(26*k),W,Math.round(26*k));
   return cv;
 }
 
+/* cartão de visita e assinatura de e-mail: faixa horizontal, sem foto do imóvel */
+function desenharCartao(g, d, T, W, H){
+  const u=H/591, email=d.fmt==='email', cor=T.logo==='cor';
+  const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,T.a); gr.addColorStop(1,T.b); g.fillStyle=gr; g.fillRect(0,0,W,H);
+  const pad=Math.round((email?44:60)*u);
+  balaoPeca(g, W-pad-H*(email?0.3:0.26), H*0.5, H*(email?0.7:0.72), T.luz, u);
+  let x=pad, y;
+  const fsN=Math.round((email?54:46)*u), fsA=Math.round((email?34:30)*u);
+  if(email){
+    const s=Math.round(H*0.56), ay=(H-s)/2;
+    avatarPeca(g, d, pad, ay, s, cor?'#E6ECF4':'rgba(255,255,255,.2)', T.tinta);
+    x=pad+s+Math.round(44*u);
+    y=ay+logoPeca(g, cor, x, ay, Math.round(360*u))+Math.round(22*u);
+  } else {
+    logoPeca(g, cor, x, pad, Math.round(420*u));
+    y=H-pad-fsA*1.35*2-fsN*1.2;
+  }
+  g.textBaseline='top';
+  const larg=W-x-H*0.62-pad;
+  g.fillStyle=T.tinta; g.font='600 '+fsN+'px '+FONTE; g.fillText(corta(g,d.nome||'',larg), x, y); y+=fsN*1.2+Math.round(6*u);
+  g.fillStyle=T.apoio; g.font='400 '+fsA+'px '+FONTE;
+  g.fillText(corta(g,[d.creci?'CRECI '+d.creci:'', d.tel].filter(Boolean).join('  ·  '),larg), x, y); y+=fsA*1.35;
+  g.fillText(corta(g,d.unidade||'',larg), x, y);
+  return g.canvas;
+}
+
 async function montarPeca(d){
-  const foto = await carregaImg(d.foto);
-  if(document.fonts && document.fonts.ready) { try{ await document.fonts.ready; }catch(e){} }
+  const [foto, imovel] = await Promise.all([carregaImg(d.foto), carregaImg(d.imovel)]);
+  await Promise.all([pronta(BALAO_IMG), pronta(WORD_BRANCO_IMG), pronta(WORD_COR_IMG), pronta(LOGO_IMG)]);
+  if(document.fonts){ try{ await Promise.all([document.fonts.load('700 40px Inter'), document.fonts.load('600 30px Inter'), document.fonts.load('400 26px Inter')]); }catch(e){} }
   const cv=document.createElement('canvas');
-  desenharPeca(cv, Object.assign({},d,{foto}));
+  desenharPeca(cv, Object.assign({},d,{foto, imovel}));
   return cv;
 }
 function canvasBlob(cv, tipo, q){

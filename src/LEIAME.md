@@ -6,8 +6,9 @@ Versão **6** (10/09/2026) — **linguagem Apple**: tipografia **SF Pro** nos ap
 sem borda; botões em pílula (azul para a ação principal, cinza translúcido para as demais);
 indicadores no jeito do app Saúde; controles segmentados; chat em bolhas; calendário com o
 dia de hoje num círculo vermelho; avisos no formato de notificação do macOS.
-A **marca luminosa** — o balão da RE/MAX desenhado em luz, em SVG — aparece na abertura, no
-acesso e no banner da home. Menu lateral só em texto, com contadores vermelhos; ao passar o
+O **balão da RE/MAX**, recortado do logo oficial, abre o site: sobe no céu azul, pousa e o nome
+RE/MAX sai de dentro dele. O mesmo balão aparece no acesso e no banner da home. No Estúdio, o
+corretor sobe a **foto do imóvel**, que entra no lugar do fundo da peça. Menu lateral só em texto, com contadores vermelhos; ao passar o
 mouse num módulo abre um painel com as telas em letra grande e a tela de trás desfoca.
 Da v4: tema claro e escuro, três idiomas (pt/en/es). Da v3: redes sociais com provedor,
 indicadores de marketing unificados, login por nível, Programa de Excelência e assinatura
@@ -48,7 +49,7 @@ Grand Champion).
 - `q1.html` — menu lateral, painel do módulo, menus do topo, marca luminosa, abertura,
   acesso, banner da home e telas específicas (arquivos, provas, filtros, abas, faixas).
 - `q16.html` — ícones SVG, dicionário de idiomas, controle de tema, contadores que sobem,
-  **`marcaBrilho()`** (o balão em SVG, com halo e contorno iridescente) e a abertura.
+  **`marcaBrilho()`** (o balão da RE/MAX com luz, no acesso e no banner) e a abertura.
 - `q2.html` — `<body>`, utilidades, **camada de estado** (`localStorage`,
   chave `pr_state_v4`), personas e upload de anexos.
 - `q3.html` — conteúdo do produto: modelos de peça, comunicados, campanhas,
@@ -64,6 +65,9 @@ Grand Champion).
 - `base.json` — 20 lojas e 180 associados **reais** da capital de São Paulo
   (dados públicos de remax.com.br, coleta de 27/07/2026) + 3 regionais de
   demonstração. Com os 20 gestores, dá os 200 usuários.
+- `balao.b64`, `wordmark-branco.b64`, `wordmark-cor.b64` — o balão recortado do logo oficial e a
+  escrita RE/MAX em alta (branca com a barra vermelha, e a colorida). Usados na abertura, no acesso
+  e no motor de arte.
 - `logo.b64` — wordmark RE/MAX branco em base64, embutido no HTML. No tema claro o menu
   inverte as cores por filtro (`invert + hue-rotate`), o que mantém a barra vermelha.
 
@@ -79,8 +83,8 @@ isso ao usuário e permite recarregar a demonstração ou exportar os dados.
 
 ## Acesso
 
-A plataforma abre em uma tela de login. Quatro contas de teste, senha `remax2027`:
-`brasil@remax.com.br`, `master@remax.com.br`, `loja@remax.com.br`, `corretor@remax.com.br`.
+A plataforma abre em uma tela de login. Quatro contas de teste, com e-mails fictícios e senha `Rede@2026`:
+`brasil@prontosemrede.test`, `master@prontosemrede.test`, `loja@prontosemrede.test`, `corretor@prontosemrede.test`.
 Clicar no cartão da conta preenche os campos. O botão de perfil no topo troca de acesso
 sem sair, e "Sair da conta" volta ao login.
 
@@ -100,9 +104,9 @@ sem sair, e "Sair da conta" volta ao login.
   pede a fonte do sistema primeiro (`-apple-system` — é a SF Pro em iPhone e Mac) e cai
   na **Inter** do Google Fonts no Windows e no Android. A Inter vem com o eixo óptico
   (`opsz`), que aperta o desenho nos títulos grandes, como a SF Pro Display.
-- **Abertura**: o balão se desenha em luz, o céu azul acende e o nome aparece saindo do
-  desfoque; ao terminar, a tela de acesso já está por baixo e as duas se cruzam. Roda uma
-  vez por navegador (chave `pr_abertura_v6`) e pode ser revista pelo menu da engrenagem,
+- **Abertura**: o céu azul acende, o balão da RE/MAX sobe e pousa, e o nome sai de dentro dele
+  formando o logo completo; depois vem o título. Ao terminar, a tela de acesso já está por baixo e
+  as duas se cruzam. Roda uma vez por navegador (chave `pr_abertura_v7`) e pode ser revista pelo menu da engrenagem,
   em "Ver a abertura". Respeita `prefers-reduced-motion`.
 
 ## Notas de manutenção
