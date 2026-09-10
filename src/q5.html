@@ -99,13 +99,13 @@ function desenharPeca(cv, d){
   } else {
     const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,T.a); gr.addColorStop(1,T.b);
     g.fillStyle=gr; g.fillRect(0,0,W,H);
-    const alt=Math.min(W,H)*(deitado?0.62:0.4);
+    const alt=Math.min(W,H)*(deitado?0.56:0.36);
     balaoPeca(g, deitado? W*0.8 : W*0.76, deitado? H*0.42 : (story? H*0.3 : H*0.29), alt, T.luz, k);
   }
   const tinta = foto? '#FFFFFF' : T.tinta, apoio = foto? 'rgba(255,255,255,.9)' : T.apoio;
 
   // logotipo
-  logoPeca(g, !foto && T.logo==='cor', pad, topo, Math.round(300*k));
+  logoPeca(g, !foto && T.logo==='cor', pad, topo, Math.round(250*k));
 
   // cartão do corretor
   const ch=Math.round(156*k), cw=deitado? Math.min(W-pad*2, Math.round(980*k)) : W-pad*2, cx=pad, cy=chao-ch, cr=Math.round(30*k);
@@ -155,16 +155,16 @@ function desenharCartao(g, d, T, W, H){
   const u=H/591, email=d.fmt==='email', cor=T.logo==='cor';
   const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,T.a); gr.addColorStop(1,T.b); g.fillStyle=gr; g.fillRect(0,0,W,H);
   const pad=Math.round((email?44:60)*u);
-  balaoPeca(g, W-pad-H*(email?0.3:0.26), H*0.5, H*(email?0.7:0.72), T.luz, u);
+  balaoPeca(g, W-pad-H*(email?0.32:0.3), H*0.5, H*(email?0.62:0.64), T.luz, u);
   let x=pad, y;
   const fsN=Math.round((email?54:46)*u), fsA=Math.round((email?34:30)*u);
   if(email){
     const s=Math.round(H*0.56), ay=(H-s)/2;
     avatarPeca(g, d, pad, ay, s, cor?'#E6ECF4':'rgba(255,255,255,.2)', T.tinta);
     x=pad+s+Math.round(44*u);
-    y=ay+logoPeca(g, cor, x, ay, Math.round(360*u))+Math.round(22*u);
+    y=ay+logoPeca(g, cor, x, ay, Math.round(300*u))+Math.round(22*u);
   } else {
-    logoPeca(g, cor, x, pad, Math.round(420*u));
+    logoPeca(g, cor, x, pad, Math.round(360*u));
     y=H-pad-fsA*1.35*2-fsN*1.2;
   }
   g.textBaseline='top';

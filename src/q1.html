@@ -123,28 +123,27 @@
 }
 #abertura.f1 .ceu{opacity:1}
 #abertura .palco{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 24px}
-#abertura .lockup{--H:min(clamp(118px,19vh,168px),27vw);display:flex;align-items:flex-end;justify-content:center;height:var(--H)}
+#abertura .lockup{--H:min(clamp(120px,21vh,186px),38vw);display:inline-flex;flex-direction:column;align-items:center}
 #abertura .bl{
-  position:relative;display:block;height:100%;flex:none;transform-origin:50% 100%;
+  position:relative;display:block;height:var(--H);flex:none;transform-origin:50% 100%;
   opacity:0;transform:translateY(62vh) scale(1.14);transition:transform 2.1s var(--e), opacity .9s var(--e2)
 }
 #abertura.f1 .bl{opacity:1;transform:translateY(0) scale(1.14)}
 #abertura.f2 .bl{transform:none;transition:transform 1.3s var(--e)}
 #abertura .bl img{display:block;height:100%;width:auto;filter:drop-shadow(0 18px 30px rgba(8,28,80,.35));animation:flutua 6s ease-in-out infinite}
 #abertura .bl .aura{
-  position:absolute;inset:-35% -80% -20%;z-index:-1;pointer-events:none;
+  position:absolute;inset:-38% -62% -26%;z-index:-1;pointer-events:none;
   background:radial-gradient(closest-side, rgba(255,255,255,.6), rgba(255,255,255,.16) 52%, rgba(255,255,255,0))
 }
-#abertura .nome{display:block;flex:none;width:0;overflow:hidden;margin-bottom:calc(var(--H)*.04);transition:width 1.3s var(--e), margin-left 1.3s var(--e)}
+#abertura .nome{display:block;flex:none;width:0;min-width:92%;margin-top:calc(var(--H)*.07)}
 #abertura .nome img{
-  display:block;height:calc(var(--H)*.42);width:auto;max-width:none;
-  clip-path:inset(0 100% 0 0);filter:blur(10px);opacity:0;
-  transition:clip-path 1.25s var(--e) .08s, filter 1s var(--e) .2s, opacity .6s var(--e2) .08s
+  display:block;width:100%;height:auto;
+  clip-path:inset(0 0 100% 0);transform:translateY(-45%);filter:blur(10px);opacity:0;
+  transition:clip-path 1.2s var(--e) .1s, transform 1.3s var(--e) .1s, filter 1s var(--e) .25s, opacity .6s var(--e2) .1s
 }
-#abertura.f2 .nome{width:var(--wn);margin-left:calc(var(--H)*.07)}
-#abertura.f2 .nome img{clip-path:inset(0 0 0 0);filter:blur(0);opacity:1}
+#abertura.f2 .nome img{clip-path:inset(0 0 0 0);transform:none;filter:blur(0);opacity:1}
 #abertura .t1{
-  font-size:clamp(38px,6.4vw,78px);font-weight:600;letter-spacing:-.036em;line-height:1.02;margin-top:46px;
+  font-size:clamp(38px,6.4vw,78px);font-weight:600;letter-spacing:-.036em;line-height:1.02;margin-top:40px;
   opacity:0;filter:blur(14px);transform:translateY(16px) scale(.985);
   transition:opacity 1.1s var(--e), filter 1.2s var(--e), transform 1.4s var(--e)
 }
@@ -184,14 +183,14 @@
 }
 @keyframes loginin{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 .login .lado{display:flex;flex-direction:column;align-items:flex-start;min-width:0}
-.login .lockup-lg{position:relative;display:flex;align-items:flex-end;height:84px}
+.login .lockup-lg{position:relative;display:inline-flex;flex-direction:column;align-items:center}
 .login .lockup-lg::before{
-  content:"";position:absolute;left:-80px;top:-70px;width:280px;height:240px;pointer-events:none;
+  content:"";position:absolute;left:-104px;top:-80px;width:280px;height:240px;pointer-events:none;
   background:radial-gradient(closest-side, rgba(255,255,255,.42), rgba(255,255,255,0))
 }
-.login .lockup-lg .bl{position:relative;display:block;height:100%;animation:sobeBalao 1.3s var(--e) both, flutua 7s ease-in-out 1.3s infinite}
+.login .lockup-lg .bl{position:relative;display:block;height:80px;animation:sobeBalao 1.3s var(--e) both, flutua 7s ease-in-out 1.3s infinite}
 .login .lockup-lg .bl img{display:block;height:100%;width:auto;filter:drop-shadow(0 14px 22px rgba(8,28,80,.3))}
-.login .lockup-lg .wm{position:relative;height:35px;width:auto;margin:0 0 3px 6px}
+.login .lockup-lg .wm{position:relative;display:block;width:0;min-width:92%;height:auto;margin-top:6px}
 .login .lado h2{font-size:clamp(44px,5.4vw,72px);font-weight:600;letter-spacing:-.037em;line-height:1.02;margin-top:34px}
 .login .lado h2 b{display:block;font-weight:600;color:rgba(255,255,255,.62)}
 .login .lado p{font-size:17px;line-height:1.5;color:rgba(255,255,255,.82);margin:20px 0 0;max-width:34ch;letter-spacing:-.016em}
@@ -243,8 +242,7 @@
   .login{padding:70px 16px 28px}
   .login .box{grid-template-columns:minmax(0,1fr);gap:24px;max-width:480px}
   .login .lado{align-items:center;text-align:center}
-  .login .lockup-lg{height:64px}
-  .login .lockup-lg .wm{height:27px;margin:0 0 3px 5px}
+  .login .lockup-lg .bl{height:62px}
   .login .lado h2{font-size:40px;margin-top:16px}
   .login .lado p,.login .lado .mods{display:none}
   .login .form{padding:28px 20px 22px;border-radius:24px}

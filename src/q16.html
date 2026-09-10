@@ -425,14 +425,14 @@ function animaNumeros(root){
   });
 }
 /* =======================================================================
-   MARCA — o balão da RE/MAX com luz (acesso e banner da home)
+   MARCA — o pino da RE/MAX com luz (banner da home)
    ======================================================================= */
 function marcaBrilho(cls){
   return '<div class="marca '+(cls||'')+'" aria-hidden="true"><div class="halo"></div><span class="bl"><img src="'+BALAO+'" alt=""></span></div>';
 }
 
 /* =======================================================================
-   ABERTURA — o balão sobe no céu, pousa, e o nome RE/MAX sai de dentro dele
+   ABERTURA — o pino da RE/MAX sobe no céu, pousa, e a escrita REMAX desce de baixo dele
    ======================================================================= */
 function abertura(depois){
   const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -452,21 +452,17 @@ function abertura(depois){
     '<button class="pular">'+(LANG==='en'?'Skip':LANG==='es'?'Saltar':'Pular')+'</button>';
   document.body.appendChild(el);
   document.body.style.overflow='hidden';
-  const nome=el.querySelector('.nome'), imgN=nome.querySelector('img');
-  const mede=()=>{ const r=(WORD_BRANCO_IMG.naturalWidth/WORD_BRANCO_IMG.naturalHeight)||5.2;
-    nome.style.setProperty('--wn', (imgN.getBoundingClientRect().height*r).toFixed(1)+'px'); };
-  mede(); window.addEventListener('resize', mede);
   const ets=[
     setTimeout(()=>el.classList.add('f1'),150),
-    setTimeout(()=>{ mede(); el.classList.add('f2'); },2350),
-    setTimeout(()=>el.classList.add('f3'),3550),
-    setTimeout(()=>el.classList.add('f4'),4250),
-    setTimeout(()=>fim(),6500)
+    setTimeout(()=>el.classList.add('f2'),2350),
+    setTimeout(()=>el.classList.add('f3'),3450),
+    setTimeout(()=>el.classList.add('f4'),4150),
+    setTimeout(()=>fim(),6400)
   ];
   let acabou=false;
   function fim(){
     if(acabou) return; acabou=true;
-    ets.forEach(clearTimeout); window.removeEventListener('resize', mede);
+    ets.forEach(clearTimeout);
     el.classList.add('sai');
     depois();                                   // o que vem depois já nasce por baixo: a troca é um cruzamento, sem corte
     setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);
