@@ -1,0 +1,189 @@
+<script>
+/* =======================================================================
+   MÓDULO 5 · SUPPORT & SUCCESS
+   ======================================================================= */
+function abrirTicket(o){
+  const n='#'+(4822+S.tickets.filter(t=>/^#48/.test(t.id)).length);
+  const t=Object.assign({id:n, canal:'Plataforma', prio:'Média', sla:'8h', st:'Aberto', resp:'Fila N1',
+    loja:escopoLoja()||'l18', autor:eu().nome, abertura:agora(), ia:false, msgs:[]}, o);
+  commit('Abriu chamado', t.id+' · '+t.assunto, s=>{ s.tickets.unshift(t); }, o.canal||'Plataforma');
+  return t;
+}
+VIEWS.suporte=function(v){
+  const ls=lojasVisiveis();
+  const meus = ROLE==='corretor'||ROLE==='franquia';
+  const lista = ROLE==='brasil'? S.tickets : S.tickets.filter(t=>ls.some(l=>l.id===t.loja));
+  const abertos=lista.filter(t=>!/Resolvido/.test(t.st));
+  v.innerHTML =
+    ph('Central de atendimento','Suporte de verdade, não só chatbot. O assistente resolve a dúvida recorrente na hora; quando não resolve, vira chamado com responsável, prazo e histórico — e uma pessoa da operação assume.',
+      '<button class="btn pri" id="novoT">+ Abrir chamado</button><button class="btn" id="zap">Simular WhatsApp</button>','suporte')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Chamados abertos', abertos.length, meus?'seus e da sua unidade':'na rede', abertos.length>4?'k-warn':'')+
+      kpi('Resolvidos pelo assistente', pct(lista.filter(t=>t.ia).length/Math.max(1,lista.length)*100), 'sem passar por pessoa','k-ok')+
+      kpi('Tempo médio de resposta','1h48','dentro do SLA em 94% dos casos','k-ok')+
+      kpi('Entrada por WhatsApp', pct(lista.filter(t=>t.canal==='WhatsApp').length/Math.max(1,lista.length)*100), 'canal preferido do corretor')+
+    '</div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Assistente da marca</h3><div class="r"><span class="tag ok">N1 · resposta imediata</span></div></div>'+
+        '<div class="chat"><div class="msgs" id="msgs"></div>'+
+        '<div class="inp"><input id="chatIn" placeholder="Pergunte sobre marca, materiais, prazos, fachada…"><button class="btn pri" id="chatGo">Enviar</button></div></div></div>'+
+      '<div><div class="card" style="margin-bottom:16px"><div class="ch"><h3>Como o atendimento funciona</h3></div><div class="cb"><div class="tl">'+
+        [['Corretor manda mensagem no WhatsApp ou abre pela plataforma','done'],
+         ['Assistente responde na hora com base no Brand Center','done'],
+         ['Não resolveu? Vira chamado com responsável e SLA','now'],
+         ['N1 responde; N2 assume o que é complexo','pendente'],
+         ['Resolução registrada e usada para treinar o assistente','pendente']]
+        .map(p=>'<div class="it '+(p[1]==='done'?'done':p[1]==='now'?'now':'')+'"><div class="t" style="font-size:12.9px">'+p[0]+'</div></div>').join('')+
+      '</div></div></div>'+
+      '<div class="card"><div class="ch"><h3>SLA por tipo</h3></div><div class="cb">'+
+        [['Marca fora do padrão em peça pública','2h','bad'],['Fachada e prazos da jornada','4h',''],
+         ['Erro na plataforma','8h',''],['Dúvida sobre material','24h','mut'],['Arte fora do padrão','3 dias úteis','mut']]
+        .map(s=>'<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="font-size:12.8px;flex:1">'+s[0]+'</span><span class="tag '+s[2]+'">'+s[1]+'</span></div>').join('')+
+      '</div></div></div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:16px"><div class="ch"><h3>Chamados</h3><div class="r"><span class="mini">'+lista.length+' no seu escopo</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>#</th><th>Assunto</th><th>Unidade</th><th>Canal</th><th>Prioridade</th><th>SLA</th><th>Responsável</th><th>Situação</th><th></th></tr></thead><tbody id="tks"></tbody></table></div></div>';
+
+  const pintaT=()=>{
+    $('#tks').innerHTML=lista.map(t=>'<tr><td class="num mini">'+t.id+'</td>'+
+      '<td style="font-weight:600">'+esc(t.assunto)+'<div class="mini">aberto '+(t.abertura.length>10?quando(t.abertura):t.abertura)+' por '+esc(t.autor||'—')+(t.msgs&&t.msgs.length?' · '+t.msgs.length+' interações':'')+'</div></td>'+
+      '<td class="mini">'+esc((lojaDe(t.loja)||{}).nome||'—')+'</td>'+
+      '<td>'+(t.canal==='WhatsApp'?'<span class="tag ok">WhatsApp</span>':'<span class="tag mut">'+esc(t.canal)+'</span>')+'</td>'+
+      '<td>'+(t.prio==='Alta'?'<span class="tag bad">Alta</span>':'<span class="tag mut">'+esc(t.prio)+'</span>')+'</td>'+
+      '<td class="num">'+esc(t.sla)+'</td><td class="mini">'+esc(t.resp)+'</td>'+
+      '<td>'+(/Resolvido/.test(t.st)?'<span class="tag ok">'+esc(t.st)+'</span>':t.st==='Escalado · N2'?'<span class="tag warn">'+esc(t.st)+'</span>':'<span class="tag">'+esc(t.st)+'</span>')+'</td>'+
+      '<td><button class="btn sm" data-t="'+t.id+'">Abrir</button></td></tr>').join('')||'<tr><td colspan="9"><div class="empty">Nenhum chamado.</div></td></tr>';
+    $$('[data-t]').forEach(b=>b.addEventListener('click',()=>detalheTicket(b.dataset.t, pintaT)));
+  };
+  pintaT();
+
+  const msgs=$('#msgs');
+  const addMsg=(txt,quem,fonte)=>{ const d=document.createElement('div'); d.className='msg '+quem;
+    d.innerHTML=txt+(fonte?'<div class="src">Fonte: <b>'+esc(fonte)+'</b></div>':''); msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; };
+  addMsg('Oi, '+esc(primeiro(eu().nome))+'. Sou o assistente do Prontos em Rede. Respondo sobre uso da marca, materiais, prazos da adequação e fachada — e, quando não sei, abro um chamado com uma pessoa da equipe.','bot');
+  const responder=(t)=>{
+    const r=respostaIA(t);
+    if(r.fonte){ addMsg(esc(r.tx),'bot',r.fonte); return; }
+    const d=addMsg('Não encontrei essa resposta no Brand Center. Quer que eu abra um chamado para uma pessoa da operação?','bot');
+    const b=document.createElement('button'); b.className='btn sm pri'; b.style.marginTop='8px'; b.textContent='Abrir chamado';
+    b.addEventListener('click',()=>{ const tk=abrirTicket({assunto:t.slice(0,70), canal:'Plataforma', prio:'Média'});
+      b.remove(); addMsg('Chamado <b>'+tk.id+'</b> criado · responsável: Fila N1 · SLA 8h. Você acompanha na lista abaixo.','bot','Escalonamento humano'); pintaT(); renderNav(); });
+    d.appendChild(b);
+  };
+  const enviar=()=>{ const t=$('#chatIn').value.trim(); if(!t) return; addMsg(esc(t),'me'); $('#chatIn').value=''; setTimeout(()=>responder(t),380); };
+  $('#chatGo').addEventListener('click',enviar);
+  $('#chatIn').addEventListener('keydown',e=>{ if(e.key==='Enter') enviar(); });
+
+  $('#novoT').addEventListener('click',()=>{
+    const ov=modal('Abrir chamado',
+      '<div class="field"><label>Assunto</label><input id="tA" placeholder="Resuma em uma linha"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Tipo</label><select id="tT">'+
+        ['Dúvida sobre material','Marca fora do padrão','Fachada e prazos','Erro na plataforma','Arte fora do padrão'].map(x=>'<option>'+x+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>Prioridade</label><select id="tP"><option>Baixa</option><option selected>Média</option><option>Alta</option></select></div></div>'+
+      '<div class="field"><label>Descrição</label><textarea id="tD" rows="3"></textarea></div>'+
+      '<div class="hint">O assistente tenta responder antes de abrir. Se resolver, o chamado nem chega à fila.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="tOk">Abrir chamado</button>');
+    $('#tOk',ov).addEventListener('click',()=>{
+      const a=$('#tA',ov).value.trim(); if(!a) return toast('Descreva o assunto.');
+      const sla={'Marca fora do padrão':'2h','Fachada e prazos':'4h','Erro na plataforma':'8h','Dúvida sobre material':'24h','Arte fora do padrão':'3 dias úteis'}[$('#tT',ov).value];
+      const t=abrirTicket({assunto:a, prio:$('#tP',ov).value, sla, msgs:[{quem:eu().nome, txt:$('#tD',ov).value.trim(), q:agora()}]});
+      fechaModal(); pintaT(); renderNav(); toast('<b>Chamado '+t.id+' aberto.</b> SLA de '+sla+'.',1);
+    });
+  });
+  $('#zap').addEventListener('click',()=>{
+    const ov=modal('Atendimento por WhatsApp',
+      '<p style="margin:0 0 14px;font-size:13.4px;color:var(--ink-2)">O corretor não precisa entrar na plataforma para pedir ajuda: manda mensagem no número oficial e a conversa vira chamado, com histórico, responsável e SLA.</p>'+
+      '<div style="background:#E9F5EC;border-radius:14px;padding:16px">'+
+      '<div style="background:#fff;border-radius:10px;padding:10px 13px;font-size:13px;max-width:80%;margin-bottom:9px">Oi, preciso do cartão de visita novo com meu CRECI</div>'+
+      '<div style="background:#D4F0D8;border-radius:10px;padding:10px 13px;font-size:13px;max-width:88%;margin-left:auto">Claro! Abri o modelo para você: preencha nome, CRECI e telefone que o arquivo sai pronto para impressão.<br><br>Se preferir, um analista faz para você — respondo aqui mesmo.</div></div>'+
+      '<div class="field" style="margin-top:14px"><label>Escreva como se fosse o corretor</label><input id="zTxt" value="Minha placa saiu com o CRECI errado, preciso de ajuda"></div>',
+      '<button class="btn" onclick="fechaModal()">Fechar</button><button class="btn pri" id="zOk">Enviar como WhatsApp</button>');
+    $('#zOk',ov).addEventListener('click',()=>{
+      const t=abrirTicket({assunto:$('#zTxt',ov).value.trim().slice(0,70)||'Mensagem via WhatsApp', canal:'WhatsApp', prio:'Alta', sla:'2h'});
+      fechaModal(); pintaT(); renderNav(); toast('<b>'+t.id+'</b> criado a partir do WhatsApp, com SLA de 2h.',1);
+    });
+  });
+};
+
+function detalheTicket(id, apos){
+  const t=S.tickets.find(x=>x.id===id);
+  const podeAgir = ROLE==='brasil'||ROLE==='master'||ROLE==='franquia';
+  const ov=modal('Chamado '+t.id,
+    '<div class="kv"><span class="k">Assunto</span><span class="v"><b>'+esc(t.assunto)+'</b></span></div>'+
+    '<div class="kv"><span class="k">Unidade</span><span class="v">'+esc((lojaDe(t.loja)||{}).nome||'—')+' · aberto por '+esc(t.autor||'—')+'</span></div>'+
+    '<div class="kv"><span class="k">Canal / SLA</span><span class="v">'+esc(t.canal)+' · '+esc(t.sla)+' · prioridade '+esc(t.prio)+'</span></div>'+
+    '<div class="kv"><span class="k">Situação</span><span class="v">'+esc(t.st)+' · responsável '+esc(t.resp)+'</span></div>'+
+    '<div style="margin-top:14px" id="hist">'+((t.msgs||[]).map(m=>'<div style="border-left:2px solid var(--line);padding:6px 0 6px 12px;margin-bottom:8px"><div style="font-size:13px">'+esc(m.txt)+'</div><div class="mini">'+esc(m.quem)+' · '+quando(m.q)+'</div></div>').join('')||'<div class="mini">Sem interações registradas.</div>')+'</div>'+
+    (podeAgir?'<div class="field" style="margin-top:12px"><label>Responder</label><textarea id="resp" rows="2" placeholder="Resposta ao usuário…"></textarea></div>':''),
+    podeAgir? '<button class="btn" id="esc">Escalar N2</button><button class="btn" id="respBtn">Responder</button><button class="btn pri" id="res">Resolver</button>'
+            : '<button class="btn pri" onclick="fechaModal()">Fechar</button>');
+  if(!podeAgir) return;
+  $('#respBtn',ov).addEventListener('click',()=>{
+    const txt=$('#resp',ov).value.trim(); if(!txt) return toast('Escreva a resposta.');
+    commit('Respondeu chamado', t.id, s=>{ const x=s.tickets.find(y=>y.id===id); x.msgs=(x.msgs||[]).concat([{quem:eu().nome,txt,q:agora()}]); x.st='Em atendimento'; x.resp=eu().nome; });
+    fechaModal(); apos&&apos(); renderNav(); toast('Resposta registrada e enviada ao usuário.',1);
+  });
+  $('#esc',ov).addEventListener('click',()=>{
+    commit('Escalou chamado', t.id, s=>{ const x=s.tickets.find(y=>y.id===id); x.st='Escalado · N2'; x.resp='Coordenação · N2'; });
+    fechaModal(); apos&&apos(); renderNav(); toast('Chamado escalado para o N2.');
+  });
+  $('#res',ov).addEventListener('click',()=>{
+    commit('Resolveu chamado', t.id, s=>{ const x=s.tickets.find(y=>y.id===id); x.st='Resolvido'; });
+    fechaModal(); apos&&apos(); renderNav(); toast('Chamado resolvido.',1);
+  });
+}
+
+/* ---------- Implantação e CS ---------- */
+const ONBOARD=['agendada','em ativação','ativa'];
+VIEWS.implantacao=function(v){
+  const ls=lojasVisiveis();
+  const ativas=ls.filter(l=>S.unidades[l.id].onboard==='ativa').length;
+  const saude=Math.round(ls.reduce((a,l)=>a+(ativosDe(l.id)/Math.max(1,corretoresDe(l.id).length)*50 + adesao(l.id)*0.5),0)/ls.length);
+  v.innerHTML =
+    ph('Implantação e Customer Success','A entrada de cada unidade é conduzida, não torcida: onboarding com data, responsável e meta de ativação — e acompanhamento de uso até a unidade andar sozinha.',
+      '','implantacao')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Unidades ativas', ativas+'/'+ls.length, 'com uso real nos últimos 30 dias', ativas/ls.length>.6?'k-ok':'k-warn')+
+      kpi('Em ativação', ls.filter(l=>S.unidades[l.id].onboard==='em ativação').length, 'onboarding em andamento')+
+      kpi('Tempo médio de ativação','9 dias','do convite ao primeiro uso')+
+      kpi('Saúde da carteira', pct(saude), 'uso e adesão combinados', saude>65?'k-ok':'k-warn')+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Expansão por ondas</h3><div class="r"><span class="mini">cada onda repete o mesmo kit de implantação</span></div></div><div class="cb">'+
+      '<div class="grid g4" style="gap:12px">'+
+      [['Primeira onda','20 unidades · 200 usuários','em execução','ok'],['Onda 1','primeiras regionais completas','planejada',''],
+       ['Onda 2','novas Masters','planejada',''],['Rede','~600 unidades','projetada','mut']].map(o=>
+      '<div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;'+(o[3]==='ok'?'border-top:3px solid var(--ok)':'')+'">'+
+      '<div class="tag '+(o[3]||'mut')+'">'+o[2]+'</div><div style="font-family:var(--font-d);font-weight:800;font-size:16px;margin-top:8px">'+o[0]+'</div>'+
+      '<div class="mini" style="margin-top:4px">'+o[1]+'</div></div>').join('')+'</div>'+
+      '<div class="hint" style="margin-top:16px">Cada onda repete o mesmo kit de onboarding. Sem kit templatizado, subir 20 unidades consome semanas que a operação não tem.</div>'+
+    '</div></div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Carteira de unidades</h3><div class="r"><span class="mini">avance o onboarding pelo botão</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>Unidade</th><th>Onboarding</th><th>Ativos</th><th>Adesão</th><th>Risco</th><th></th></tr></thead><tbody id="tbo"></tbody></table></div></div>'+
+      '<div class="card"><div class="ch"><h3>Kit de onboarding</h3></div><div class="cb"><div class="tl">'+
+        [['Reunião de abertura com o gestor','done'],['Importação da base e criação dos acessos','done'],
+         ['Treinamento de 40 minutos com a equipe','now'],['Primeira peça publicada por cada associado','pendente'],
+         ['Checklist da jornada iniciado','pendente'],['Revisão de 30 dias com o CS','pendente']]
+        .map(p=>'<div class="it '+(p[1]==='done'?'done':p[1]==='now'?'now':'')+'"><div class="t" style="font-size:12.9px">'+p[0]+'</div></div>').join('')+
+      '</div><div class="hint">Meta de ativação: 80% dos associados com pelo menos uma peça gerada em 15 dias.</div></div></div>'+
+    '</div>';
+  const pinta=()=>{
+    $('#tbo').innerHTML=ls.map(l=>{
+      const U=S.unidades[l.id], risco=(ativosDe(l.id)/Math.max(1,corretoresDe(l.id).length)<.5)||U.ultima>6;
+      return '<tr><td style="font-weight:600">'+esc(l.nome)+'</td>'+
+      '<td>'+(U.onboard==='ativa'?'<span class="tag ok">Ativa</span>':U.onboard==='em ativação'?'<span class="tag">Em ativação</span>':'<span class="tag mut">Agendada</span>')+'</td>'+
+      '<td class="num">'+ativosDe(l.id)+'/'+corretoresDe(l.id).length+'</td>'+
+      '<td style="min-width:100px">'+barra(adesao(l.id))+'</td>'+
+      '<td>'+(risco?'<span class="tag bad">Atenção do CS</span>':'<span class="tag ok">Saudável</span>')+'</td>'+
+      '<td>'+(U.onboard!=='ativa'?'<button class="btn sm" data-ob="'+l.id+'">Avançar</button>':'<button class="btn sm" data-ob="'+l.id+'">Reabrir</button>')+'</td></tr>';
+    }).join('');
+    $$('[data-ob]').forEach(b=>b.addEventListener('click',()=>{
+      const l=lojaDe(b.dataset.ob), U=S.unidades[l.id];
+      const i=ONBOARD.indexOf(U.onboard), novo=ONBOARD[(i+1)%ONBOARD.length];
+      commit('Moveu onboarding', l.nome+': '+U.onboard+' → '+novo, s=>{ s.unidades[l.id].onboard=novo; s.unidades[l.id].ultima=0; });
+      pinta(); toast(l.nome+' agora está '+novo+'.',1);
+    }));
+  };
+  pinta();
+};
+</script>

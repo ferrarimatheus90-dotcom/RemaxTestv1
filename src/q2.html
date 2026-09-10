@@ -1,0 +1,368 @@
+<body>
+<div class="app">
+  <aside class="side" id="side">
+    <div class="brand">
+      <img id="logoSide" alt="RE/MAX">
+      <div class="pn">Prontos em Rede</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="op">
+      Plataforma desenvolvida por<br><b>BMAG SERVIÇOS DIGITAIS</b>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <button class="iconbtn burger" id="burger" aria-label="Menu"></button>
+      <div class="search">
+        <span class="si" id="siBusca"></span>
+        <input id="q" type="search" autocomplete="off" placeholder="Buscar: cartão de visita, fachada, comunicado, regra de logo…" aria-label="Busca inteligente">
+        <div id="srBox"></div>
+      </div>
+      <div class="sp"></div>
+      <button class="iconbtn" id="btnIdioma" title="Idioma" aria-label="Idioma"></button>
+      <button class="iconbtn" id="btnTema" title="Tema" aria-label="Tema"></button>
+      <button class="iconbtn" id="btnAlert" title="Alertas" aria-label="Alertas"><span class="dot" id="alertDot"></span></button>
+      <button class="iconbtn" id="btnCfg" title="Dados da plataforma" aria-label="Configurações"></button>
+      <button class="who" id="whoBtn" title="Trocar de perfil de acesso">
+        <span class="av" id="whoAv"></span>
+        <span><span class="nm" id="whoNm"></span><br><span class="rl" id="whoRl"></span></span>
+        <span style="color:var(--muted);font-size:11px">▾</span>
+      </button>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="modalRoot"></div>
+<input type="file" id="filePicker" style="display:none" multiple>
+
+<script>
+/* =======================================================================
+   PRONTOS EM REDE — plataforma RE/MAX · protótipo funcional
+   Guia-se Jardins
+
+   Seis módulos: Brand Center · Content & Social Hub · Compliance &
+   Governance · Communication Center · Support & Success · Intelligence
+   & Gamification.
+
+   Tudo o que se faz aqui é gravado no navegador (localStorage) e
+   recalculado nas demais telas: aprovar uma evidência move a adesão da
+   unidade, o painel da rede e o ranking.
+
+   Base de unidades e associados: dados públicos de remax.com.br
+   (capital de SP). O estado inicial de adesão, chamados e campanhas é
+   uma carga de demonstração.
+
+   Desenvolvido por BMAG SERVIÇOS DIGITAIS.
+   ======================================================================= */
+const LOGO = "__LOGO__";
+document.getElementById('logoSide').src = LOGO;
+const BASE = __BASE__;
+const LOGO_IMG = new Image(); LOGO_IMG.src = LOGO;
+
+/* ---------- utilidades ---------- */
+const $ = (s,r)=> (r||document).querySelector(s);
+const $$ = (s,r)=> Array.from((r||document).querySelectorAll(s));
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pct = n => Math.round(n) + '%';
+function seed(str){let h=1779033703^str.length;for(let i=0;i<str.length;i++){h=Math.imul(h^str.charCodeAt(i),3432918353);h=h<<13|h>>>19;}
+  return function(){h=Math.imul(h^h>>>16,2246822507);h=Math.imul(h^h>>>13,3266489909);return ((h^=h>>>16)>>>0)/4294967296;};}
+const rint=(r,a,b)=>a+Math.floor(r()*(b-a+1));
+const iniciais = n => String(n).split(/\s+/).filter(w=>w.length>2).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const primeiro = n => String(n).split(/\s+/)[0];
+const HOJE = new Date(2026,8,9);
+const DEADLINE = new Date(2027,2,31);
+const CONVENCAO = new Date(2027,4,12);
+const dias = d => Math.round((d.getTime()-HOJE.getTime())/86400000);
+const dt = s => new Date(s+'T12:00:00');
+const dataBR = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+const dataLonga = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+const agora = ()=> new Date().toISOString();
+function quando(iso){
+  const d=new Date(iso), hj=new Date();
+  const mesmoDia = d.toDateString()===hj.toDateString();
+  return (mesmoDia?'hoje':d.toLocaleDateString('pt-BR'))+', '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+const uid = p => p+'-'+Math.random().toString(36).slice(2,8);
+/* armazenamento tolerante: em file:// alguns navegadores bloqueiam o localStorage */
+let SEM_STORAGE=false;
+const LS={
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ SEM_STORAGE=true; return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ SEM_STORAGE=true; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){ SEM_STORAGE=true; } }
+};
+const kb = n => n<1024? n+' B' : n<1048576? (n/1024).toFixed(0)+' KB' : (n/1048576).toFixed(1)+' MB';
+
+function toast(msg, ok){
+  const t=document.createElement('div'); t.className='toast'+(ok?' ok':''); t.innerHTML=msg;
+  $('#toast').appendChild(t); if(typeof aplicarIdioma==='function') aplicarIdioma(t); setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),420);},3000);
+}
+function modal(title, body, footer){
+  const ov=document.createElement('div'); ov.className='ov';
+  ov.innerHTML='<div class="modal" role="dialog" aria-modal="true"><div class="mh"><h3>'+title+'</h3><button class="x" aria-label="Fechar">×</button></div><div class="mb">'+body+'</div>'+(footer?'<div class="mf">'+footer+'</div>':'')+'</div>';
+  ov.addEventListener('click',e=>{if(e.target===ov||e.target.classList.contains('x'))ov.remove();});
+  document.addEventListener('keydown',function k(e){if(e.key==='Escape'){ov.remove();document.removeEventListener('keydown',k);}});
+  $('#modalRoot').appendChild(ov);
+  if(typeof aplicarIdioma==='function') aplicarIdioma(ov);
+  return ov;
+}
+const fechaModal = ()=> $$('.ov').forEach(o=>o.remove());
+function abrirLupa(src){
+  const d=document.createElement('div'); d.className='lupa'; d.innerHTML='<img src="'+src+'" alt="">';
+  d.addEventListener('click',()=>d.remove()); document.body.appendChild(d);
+}
+document.addEventListener('click',e=>{ const im=e.target.closest('[data-lupa]'); if(im) abrirLupa(im.getAttribute('src')); });
+
+/* ---------- parâmetros do programa (editáveis pela RE/MAX Brasil) ---------- */
+const ETAPAS = [
+  {id:'e1', nome:'Cadastro da unidade e dos usuários',            prazo:'2026-08-15', peso:10},
+  {id:'e2', nome:'Digital — perfis sociais e assinatura de e-mail',prazo:'2026-09-05', peso:15},
+  {id:'e3', nome:'Papelaria e cartões de visita',                  prazo:'2026-10-31', peso:10},
+  {id:'e4', nome:'Placas, faixas e materiais de campo',            prazo:'2026-12-19', peso:15},
+  {id:'e5', nome:'Fachada — projeto enviado e aprovado',           prazo:'2027-01-30', peso:20},
+  {id:'e6', nome:'Fachada — produção e instalação',                prazo:'2027-03-15', peso:20},
+  {id:'e7', nome:'Interior da loja e sinalização',                 prazo:'2027-03-31', peso:10}
+];
+const etapaDef = id => ETAPAS.find(e=>e.id===id);
+const AREAS = ['Marketing','Financeiro','Universidade RE/MAX','Tecnologia','Jurídico','Expansão'];
+const PONTOS = {etapa:50, etapaAtraso:20, evidencia:15, campanha:30, leitura:5, peca:3, fachada:150};
+
+/* =======================================================================
+   ESTADO PERSISTENTE
+   ======================================================================= */
+const KEY='pr_state_v4';
+let S=null;
+
+function fotoSimulada(chave, tipo){
+  const r=seed('foto:'+chave), c=document.createElement('canvas'); c.width=320; c.height=240;
+  const g=c.getContext('2d');
+  const ceu=g.createLinearGradient(0,0,0,150); ceu.addColorStop(0,'#BCD6E8'); ceu.addColorStop(1,'#E9F1F6');
+  g.fillStyle=ceu; g.fillRect(0,0,320,240);
+  g.fillStyle='#C7D2DA'; g.fillRect(0,196,320,44);
+  if(tipo==='fachada'){
+    g.fillStyle='#F2F5F8'; g.fillRect(34,74,252,122);
+    g.fillStyle='#08405F'; g.fillRect(34,74,252,34);
+    g.fillStyle='#DC1C2E'; g.fillRect(150,78,7,26);
+    g.fillStyle='#fff'; g.font='600 15px Sora, Arial'; g.textAlign='center'; g.fillText('RE  MAX',160,96);
+    g.fillStyle='#D8E2EA'; for(let i=0;i<3;i++) g.fillRect(52+i*74,124,54,46);
+    g.fillStyle='#0B3F94'; g.globalAlpha=.75; g.fillRect(140,150,40,46); g.globalAlpha=1;
+  } else if(tipo==='papelaria'){
+    g.fillStyle='#EEF3F7'; g.fillRect(0,0,320,240);
+    for(let i=0;i<3;i++){ g.save(); g.translate(52+i*74, 70+r()*40); g.rotate((r()-.5)*.32);
+      g.fillStyle='#fff'; g.shadowColor='rgba(8,64,95,.25)'; g.shadowBlur=12; g.fillRect(0,0,96,58); g.shadowBlur=0;
+      g.fillStyle='#08405F'; g.fillRect(0,0,96,15); g.fillStyle='#DC1C2E'; g.fillRect(44,2,4,11);
+      g.fillStyle='#8CA0B0'; g.fillRect(8,26,60,4); g.fillRect(8,36,44,4); g.restore(); }
+  } else {
+    g.fillStyle='#EAF1F6'; g.fillRect(0,0,320,240);
+    g.fillStyle='#0B6FB4'; g.globalAlpha=.16; g.beginPath(); g.arc(250,60,90,0,Math.PI*2); g.fill(); g.globalAlpha=1;
+    g.fillStyle='#fff'; g.fillRect(30,60,170,130);
+    g.fillStyle='#08405F'; g.fillRect(30,60,170,26);
+    g.fillStyle='#D8E2EA'; g.fillRect(44,100,142,10); g.fillRect(44,120,110,10); g.fillRect(44,140,128,10);
+    g.fillStyle='#DC1C2E'; g.fillRect(44,164,60,14);
+  }
+  try{ return c.toDataURL('image/jpeg',0.72); }catch(e){ return null; }
+}
+
+function seedState(){
+  const st={v:4, criado:agora(), unidades:{}, usuarios:{}, comunicados:[], leituras:{},
+            campanhas:[], tickets:[], aprovacoes:[], pecas:[], audit:[], convites:0,
+            social:{provedor:'bundle', conectadoEm:'2026-08-12', fila:[], v6:1},
+            excelencia:{ciclo:'4º trimestre de 2026', encerra:'2026-12-20', provas:[],
+              faixas:[{id:'ouro',nome:'Ouro',min:800,premio:'Bônus máximo do trimestre + destaque na convenção'},
+                      {id:'prata',nome:'Prata',min:500,premio:'Bônus intermediário + selo de destaque na plataforma'},
+                      {id:'bronze',nome:'Bronze',min:300,premio:'Bônus de entrada + reconhecimento na regional'}]},
+            permissoes:null, templatesExtra:[]};
+
+  BASE.lojas.forEach(l=>{
+    const r=seed('u3:'+l.id+l.nome), grau=r();
+    const feitas = grau>.82?6:grau>.62?4:grau>.4?3:grau>.2?2:1;
+    const et={};
+    ETAPAS.forEach((e,i)=>{ et[e.id]={ok:i<feitas, em:i<feitas?'2026-0'+(7+Math.min(2,i))+'-1'+rint(r,0,9):null, evid:[], enviado:false}; });
+    const fach = feitas>=6?'instalada':feitas>=5?'producao':feitas>=4?'em_analise':'nao_iniciada';
+    st.unidades[l.id]={id:l.id, etapas:et, fachada:{st:fach, projeto:null, foto:null},
+      onboard: grau>.72?'ativa':grau>.4?'em ativação':'agendada', leitura:0, ultima:rint(r,0,9)};
+  });
+  BASE.corretores.forEach(c=>{
+    const r=seed('c3:'+c.id+c.nome);
+    st.usuarios[c.id]={id:c.id, nome:c.nome, creci:c.creci, tel:c.tel||'', foto:c.foto||'', loja:c.loja,
+      nivel:'associado', ativo:r()>0.16, ig:r()>0.3, criado:'2026-07-20', pecasFeitas:rint(r,0,9)};
+  });
+  BASE.lojas.forEach(l=>{
+    st.usuarios['g-'+l.id]={id:'g-'+l.id, nome:'Gestor · '+l.nome, creci:'', tel:'', foto:'', loja:l.id,
+      nivel:'franquia', ativo:true, ig:false, criado:'2026-07-18', pecasFeitas:0};
+  });
+
+  st.comunicados = SEED_COMUNICADOS.map(k=>Object.assign({autor:'RE/MAX Brasil'},k));
+  st.comunicados.forEach(k=>{
+    st.leituras[k.id]=[];
+    Object.values(st.usuarios).forEach(u=>{ if(seed('l3:'+k.id+u.id)()< (k.obr?0.72:0.45)) st.leituras[k.id].push(u.id); });
+  });
+  st.campanhas = SEED_CAMPANHAS.map(c=>{
+    const ag={};
+    if(c.st!=='planejada') Object.values(st.usuarios).forEach(u=>{ if(u.ig && seed('a3:'+c.id+u.id)()<(c.st==='publicada'?0.78:0.38)) ag[u.id]=c.dt; });
+    return Object.assign({}, c, {ag});
+  });
+  st.tickets = SEED_TICKETS.map(t=>Object.assign({msgs:[]},t));
+  [['l18','x1','fachada','aprovado','Fachada instalada em 28/08, foto frontal.'],
+   ['l02','x2','papelaria','aprovado','Cartões e papelaria entregues pela gráfica.'],
+   ['l19','x7','evento','aprovado','Feirão de bairro com materiais oficiais.'],
+   ['l06','x3','outro','pendente','Vitrine adequada e sinalização interna trocada.'],
+   ['l11','x1','fachada','pendente','Segunda foto, agora sem obstrução.'],
+   ['l14','x4','outro','recusado','Print do perfil com publicações do mês.']]
+  .forEach((p,i)=>{
+    const c=CRITERIOS_EXC.find(x=>x.id===p[1]);
+    st.excelencia.provas.push({id:'x-seed'+i, criterio:p[1], criterioNome:c.nome, pts:c.pts, loja:p[0], uid:null,
+      autor:'Gestor · '+lojaDe(p[0]).nome, q:new Date(2026,8,2+i,10,20).toISOString(), st:p[3], obs:p[4],
+      motivo: p[3]==='recusado'?'Print não mostra a data das publicações.':'',
+      validador: p[3]==='pendente'?null:'Marketing RE/MAX Brasil',
+      arq:{nome:'comprovacao-'+p[1]+'.jpg', tam:180000+i*9000, tipo:'image/jpeg',
+           quando:new Date(2026,8,2+i,10,20).toISOString(), quem:'Gestor da unidade', thumb:fotoSimulada(p[0]+p[1],p[2])}});
+  });
+  st.aprovacoes = SEED_APROV.slice();
+  return st;
+}
+function migra(){
+  // v6: a bundle.social passa a ser o provedor recomendado; quem estava no padrão antigo vai junto
+  if(S.social && !S.social.v6){
+    if(S.social.provedor==='mlabs'||S.social.provedor==='ayrshare') S.social.provedor='bundle';
+    S.social.v6=1; saveState();
+  }
+}
+function loadState(){
+  try{ const raw=LS.get(KEY); if(raw){ const p=JSON.parse(raw); if(p && p.v===4){ S=p; migra(); return; } } }catch(e){}
+  S=seedState(); saveState();
+}
+let avisouArmazenamento=false;
+function saveState(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){
+    SEM_STORAGE=true;
+    if(!avisouArmazenamento){ avisouArmazenamento=true;
+      toast('<b>Sem gravação neste navegador.</b><br>O protótipo continua funcionando, mas o que você fizer não sobrevive a um recarregamento.'); }
+  }
+}
+function commit(acao, objeto, fn, origem){
+  if(fn) fn(S);
+  S.audit.unshift({q:agora(), quem:eu().nome, papel:eu().papel, acao, objeto, origem:origem||'plataforma'});
+  S.audit = S.audit.slice(0,400);
+  saveState();
+}
+function resetState(){ LS.del(KEY); S=seedState(); saveState(); }
+
+/* ---------- leitura derivada do estado ---------- */
+const lojaDe = id => BASE.lojas.find(l=>l.id===id);
+const masterDe = id => BASE.masters.find(m=>m.id===id);
+const corretoresDe = lid => Object.values(S.usuarios).filter(u=>u.loja===lid && u.nivel==='associado');
+const TOTAL_USUARIOS = ()=> Object.keys(S.usuarios).length;
+
+function statusEtapa(uid_, eid){
+  const u=S.unidades[uid_], e=u.etapas[eid], def=etapaDef(eid);
+  if(e.ok) return 'concluida';
+  if(e.enviado) return 'aprovacao';
+  const anterior = ETAPAS.slice(0, ETAPAS.indexOf(def)).every(x=>u.etapas[x.id].ok);
+  if(dias(dt(def.prazo))<0) return 'atrasada';
+  return anterior ? 'andamento' : 'pendente';
+}
+function adesao(uid_){
+  const u=S.unidades[uid_]; let p=0;
+  ETAPAS.forEach(e=>{ const s=statusEtapa(uid_,e.id);
+    p += s==='concluida'? e.peso : s==='aprovacao'? e.peso*0.6 : s==='andamento'? e.peso*0.25 : s==='atrasada'? e.peso*0.1 : 0; });
+  return Math.round(p);
+}
+function etapasOk(uid_){ return ETAPAS.filter(e=>S.unidades[uid_].etapas[e.id].ok).length; }
+function proximaEtapa(uid_){
+  const e = ETAPAS.find(x=>!S.unidades[uid_].etapas[x.id].ok);
+  return e || ETAPAS[ETAPAS.length-1];
+}
+function ativosDe(lid){ return corretoresDe(lid).filter(u=>u.ativo).length; }
+function leituraDe(lid){
+  const us=corretoresDe(lid), obr=S.comunicados.filter(k=>k.obr);
+  if(!us.length||!obr.length) return 0;
+  let n=0; obr.forEach(k=>{ us.forEach(u=>{ if((S.leituras[k.id]||[]).indexOf(u.id)>=0) n++; }); });
+  return Math.round(n/(us.length*obr.length)*100);
+}
+function postsDe(lid){
+  let n=0; S.campanhas.forEach(c=> Object.keys(c.ag||{}).forEach(u=>{ const us=S.usuarios[u]; if(us&&us.loja===lid) n++; }));
+  return n + S.pecas.filter(p=>{const u=S.usuarios[p.uid]; return u&&u.loja===lid;}).length;
+}
+function ticketsDe(lid){ return S.tickets.filter(t=>t.loja===lid && !/Resolvido/.test(t.st)).length; }
+function pontosU(lid){
+  const u=S.unidades[lid]; let p=0;
+  ETAPAS.forEach(e=>{ if(u.etapas[e.id].ok) p += dias(dt(e.prazo))>=0? PONTOS.etapa : PONTOS.etapaAtraso;
+                      p += (u.etapas[e.id].evid.length?PONTOS.evidencia:0); });
+  if(u.fachada.st==='instalada') p += PONTOS.fachada;
+  p += postsDe(lid)*PONTOS.peca + leituraDe(lid)*PONTOS.leitura/5;
+  p += (S.excelencia?S.excelencia.provas.filter(x=>x.loja===lid&&x.st==='aprovado').reduce((a,x)=>a+x.pts,0):0);
+  return Math.round(p);
+}
+function pontosC(uidc){
+  const u=S.usuarios[uidc]; let p=0;
+  S.campanhas.forEach(c=>{ if(c.ag && c.ag[uidc]) p+=PONTOS.campanha; });
+  S.comunicados.forEach(k=>{ if((S.leituras[k.id]||[]).indexOf(uidc)>=0) p+=PONTOS.leitura; });
+  p += (S.pecas.filter(x=>x.uid===uidc).length + (u.pecasFeitas||0))*PONTOS.peca;
+  if(u.ig) p+=25;
+  p += (S.excelencia?S.excelencia.provas.filter(x=>x.uid===uidc&&x.st==='aprovado').reduce((a,x)=>a+x.pts,0):0);
+  return p;
+}
+function naoLidos(){ const id=euId(); return S.comunicados.filter(k=>(S.leituras[k.id]||[]).indexOf(id)<0); }
+function pendentesAprov(){ return S.aprovacoes.filter(a=>a.st==='pendente' && (ROLE==='brasil'||ROLE==='master'? true : a.loja===escopoLoja())); }
+
+/* ---------- personas ---------- */
+let ROLE = LS.get('pr_role') || 'brasil';
+let DEMO_ID = null;
+function personas(){
+  if(!DEMO_ID){
+    const c = Object.values(S.usuarios).find(u=>u.nivel==='associado' && u.foto && u.ativo && u.ig && /\s/.test(u.nome) && u.nome.length<30)
+            || Object.values(S.usuarios).find(u=>u.nivel==='associado' && /\s/.test(u.nome)) || Object.values(S.usuarios)[0];
+    DEMO_ID = c.id;
+  }
+  const c = S.usuarios[DEMO_ID];
+  return {
+    brasil:  {id:'brasil', nome:'Marketing RE/MAX Brasil', papel:'RE/MAX Brasil · nacional', escopo:'nacional'},
+    master:  {id:'m2', nome:'Master SP Capital II', papel:'Master Regional', escopo:'m2'},
+    franquia:{id:'g-l18', nome:'Gestor · '+lojaDe('l18').nome, papel:'Franquia · broker', escopo:'l18'},
+    corretor:{id:c.id, nome:c.nome, papel:'Associado · '+lojaDe(c.loja).nome, escopo:c.loja, foto:c.foto}
+  };
+}
+let P = null;
+const eu = ()=> P[ROLE];
+const euId = ()=> P[ROLE].id;
+const escopoLoja = ()=> ROLE==='franquia'? 'l18' : ROLE==='corretor'? S.usuarios[DEMO_ID].loja : null;
+function lojasVisiveis(){
+  if(ROLE==='brasil') return BASE.lojas;
+  if(ROLE==='master') return BASE.lojas.filter(l=>l.master==='m2');
+  return BASE.lojas.filter(l=>l.id===escopoLoja());
+}
+const minhaLoja = ()=> escopoLoja()? lojaDe(escopoLoja()) : null;
+const souCorretor = ()=> ROLE==='corretor';
+
+/* ---------- anexos (upload real, com miniatura) ---------- */
+function pedirArquivos(accept, multiplo, cb){
+  const inp=$('#filePicker'); inp.value=''; inp.accept=accept||'image/*,application/pdf'; inp.multiple=!!multiplo;
+  inp.onchange=()=>{ const fs=Array.from(inp.files||[]); if(!fs.length) return;
+    Promise.all(fs.map(processarArquivo)).then(cb); };
+  inp.click();
+}
+function processarArquivo(f){
+  return new Promise(res=>{
+    const meta={nome:f.name, tam:f.size, tipo:f.type, quando:agora(), quem:eu().nome, thumb:null};
+    if(!/^image\//.test(f.type)) return res(meta);
+    const fr=new FileReader();
+    fr.onload=()=>{ const im=new Image(); im.onload=()=>{
+        const m=420, k=Math.min(1,m/Math.max(im.width,im.height));
+        const cv=document.createElement('canvas'); cv.width=Math.round(im.width*k); cv.height=Math.round(im.height*k);
+        cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);
+        try{ meta.thumb=cv.toDataURL('image/jpeg',0.72); }catch(e){}
+        res(meta);
+      }; im.onerror=()=>res(meta); im.src=fr.result; };
+    fr.onerror=()=>res(meta);
+    fr.readAsDataURL(f);
+  });
+}
+function fileRow(a, onDel){
+  return '<div class="file">'+(a.thumb?'<img src="'+a.thumb+'" alt="">':'<span class="fi">'+(/pdf/.test(a.tipo||'')?'PDF':'DOC')+'</span>')+
+    '<div class="fn"><b>'+esc(a.nome)+'</b><span>'+kb(a.tam)+' · enviado por '+esc(a.quem)+' em '+quando(a.quando)+'</span></div>'+
+    (onDel?'<button class="btn sm" data-del="'+onDel+'">Remover</button>':'')+'</div>';
+}
+</script>

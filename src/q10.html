@@ -1,0 +1,258 @@
+<script>
+/* =======================================================================
+   MÓDULO 3 · COMPLIANCE & GOVERNANCE
+   ======================================================================= */
+function novaAprovacao(o){
+  S.aprovacoes.unshift(Object.assign({id:uid('a'), dt:agora(), st:'pendente', quem:eu().nome}, o));
+}
+function aplicarAprovacao(a, ok, motivo){
+  const u=S.unidades[a.loja];
+  if(ok){
+    if(a.alvo.tipo==='etapa'){ u.etapas[a.alvo.etapa].ok=true; u.etapas[a.alvo.etapa].enviado=false; u.etapas[a.alvo.etapa].em=agora(); }
+    if(a.alvo.tipo==='fachada_projeto'){ u.fachada.st='producao'; u.etapas.e5.ok=true; u.etapas.e5.enviado=false; }
+    if(a.alvo.tipo==='fachada_foto'){ u.fachada.st='instalada'; u.etapas.e6.ok=true; u.etapas.e6.enviado=false; }
+  } else {
+    if(a.alvo.tipo==='etapa') u.etapas[a.alvo.etapa].enviado=false;
+    if(a.alvo.tipo==='fachada_projeto'){ u.fachada.st='nao_iniciada'; u.etapas.e5.enviado=false; }
+    if(a.alvo.tipo==='fachada_foto'){ u.etapas.e6.enviado=false; }
+    a.motivo=motivo||'';
+  }
+  a.st = ok?'aprovado':'reprovado'; a.decisor=eu().nome; a.decidido=agora();
+}
+
+function enviarEvidencia(lid, eid, contexto){
+  const def=etapaDef(eid), l=lojaDe(lid);
+  let anexos=[];
+  const ov=modal('Enviar evidência · '+esc(def?def.nome:contexto.titulo||''),
+    '<div class="mini" style="margin-bottom:12px">'+esc(l.nome)+(def?' · prazo '+dataLonga(dt(def.prazo)):'')+'</div>'+
+    '<div class="drop" id="drop"><div class="ic">⇪</div><div class="t">Selecionar fotos, notas fiscais ou documentos</div>'+
+    '<div class="mini">JPG, PNG ou PDF · a imagem é reduzida e anexada ao registro da etapa</div></div>'+
+    '<div id="lista"></div>'+
+    '<div class="field" style="margin-top:14px"><label>Observação para o aprovador</label><textarea id="obs" rows="2" placeholder="Ex.: cartões entregues pela gráfica em 05/09, nota anexa."></textarea></div>'+
+    '<div class="hint">Toda evidência guarda autor, data e hora. É o que sustenta o relatório de compliance da RE/MAX Brasil.</div>',
+    '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="okUp" disabled>Enviar para aprovação</button>');
+  const pinta=()=>{ $('#lista',ov).innerHTML=anexos.map(a=>fileRow(a)).join(''); $('#okUp',ov).disabled=!anexos.length; };
+  $('#drop',ov).addEventListener('click',()=>pedirArquivos('image/*,application/pdf',true,as=>{ anexos=anexos.concat(as); pinta(); }));
+  $('#okUp',ov).addEventListener('click',()=>{
+    const obs=$('#obs',ov).value.trim();
+    commit('Enviou evidência', (def?def.nome:contexto.titulo)+' · '+l.nome, s=>{
+      const alvo = contexto&&contexto.alvo ? contexto.alvo : {tipo:'etapa', etapa:eid};
+      if(alvo.tipo==='etapa'){ const e=s.unidades[lid].etapas[eid]; e.evid=e.evid.concat(anexos); e.enviado=true; }
+      if(alvo.tipo==='fachada_projeto') s.unidades[lid].fachada={...s.unidades[lid].fachada, st:'em_analise', projeto:anexos[0]};
+      if(alvo.tipo==='fachada_foto'){ s.unidades[lid].fachada.foto=anexos[0]; s.unidades[lid].etapas.e6.enviado=true; }
+      novaAprovacao({tipo: alvo.tipo==='etapa'?'Evidência':'Fachada',
+        item:(contexto&&contexto.titulo? contexto.titulo : def.nome)+' — '+l.nome, loja:lid, obs:obs||'Sem observação.', alvo, anexos});
+    });
+    fechaModal(); route();
+    toast('<b>Evidência enviada.</b><br>A etapa fica em aprovação até a Master validar.',1);
+  });
+}
+
+VIEWS.jornada=function(v,arg){
+  const ls=lojasVisiveis();
+  const alvo = arg? lojaDe(arg) : (ls.length===1? ls[0] : null);
+  if(alvo) return jornadaUnidade(v, alvo);
+  const porEtapa=ETAPAS.map(e=>{
+    const c=ls.filter(l=>S.unidades[l.id].etapas[e.id].ok).length;
+    const a=ls.filter(l=>statusEtapa(l.id,e.id)==='atrasada').length;
+    return {e,c,a,p:Math.round(c/ls.length*100)};
+  });
+  const emAtraso=ls.filter(l=>ETAPAS.some(e=>statusEtapa(l.id,e.id)==='atrasada')).length;
+  v.innerHTML =
+    ph('Jornada de adequação','Sete etapas, prazo por etapa, evidência anexada, aprovação e alerta automático. É o que transforma “todo mundo precisa se adequar” em uma linha por unidade, com data e responsável.',
+      '<button class="btn" id="btnAl">🔔 Alertas</button><button class="btn pri" id="btnRel2">↓ Relatório</button>','jornada')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Adesão média', pct(mediaAdesao(ls)), ls.length+' unidades acompanhadas')+
+      kpi('Etapas concluídas', porEtapa.reduce((a,x)=>a+x.c,0)+'/'+(ls.length*7), 'no conjunto da rede')+
+      kpi('Unidades em atraso', emAtraso, 'com pelo menos uma etapa vencida', emAtraso?'k-bad':'k-ok')+
+      kpi('Encerramento', DEADLINE.toLocaleDateString('pt-BR'), dias(DEADLINE)+' dias · prazo a confirmar com a RE/MAX','k-warn')+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Progresso por etapa</h3><div class="r"><span class="mini">clique na etapa para ver quem falta</span></div></div><div class="cb">'+
+      porEtapa.map(x=>'<div style="display:grid;grid-template-columns:1fr 130px 96px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer" data-e="'+x.e.id+'">'+
+        '<div><div style="font-size:13.2px;font-weight:600">'+esc(x.e.nome)+'</div><div class="mini">Prazo '+dataLonga(dt(x.e.prazo))+(x.a?' · <span style="color:var(--bad)">'+x.a+' em atraso</span>':'')+'</div></div>'+
+        barra(x.p)+'<div class="mini num" style="text-align:right">'+x.c+'/'+ls.length+' unidades</div></div>').join('')+
+    '</div></div>'+
+    '<div class="card"><div class="ch"><h3>Situação por unidade</h3><div class="r"><input id="fU" placeholder="Filtrar…" style="border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px"></div></div>'+
+      '<div class="tw"><table><thead><tr><th>Unidade</th><th>Regional</th>'+ETAPAS.map((e,i)=>'<th title="'+esc(e.nome)+'">E'+(i+1)+'</th>').join('')+'<th>Adesão</th><th></th></tr></thead><tbody id="tb"></tbody></table></div></div>';
+  const cor={concluida:'var(--ok)',aprovacao:'var(--brand-2)',andamento:'var(--brand-3)',atrasada:'var(--red)',pendente:'var(--surface-3)'};
+  const pinta=(f)=>{
+    $('#tb').innerHTML=ls.filter(l=>!f||(l.nome+l.bairro).toLowerCase().includes(f.toLowerCase()))
+      .sort((a,b)=>adesao(b.id)-adesao(a.id)).map(l=>
+      '<tr><td style="font-weight:600">'+esc(l.nome)+'<div class="mini">'+esc(l.bairro)+'</div></td>'+
+      '<td class="mini">'+esc(masterDe(l.master).nome.replace('Master ',''))+'</td>'+
+      ETAPAS.map(e=>{ const s=statusEtapa(l.id,e.id);
+        return '<td title="'+esc(e.nome)+' — '+s+'"><span style="display:inline-block;width:13px;height:13px;border-radius:4px;background:'+cor[s]+'"></span></td>';}).join('')+
+      '<td style="min-width:110px">'+barra(adesao(l.id))+'<span class="mini num">'+adesao(l.id)+'%</span></td>'+
+      '<td><a class="btn sm" href="#/jornada/'+l.id+'">Abrir</a></td></tr>').join('');
+  };
+  pinta();
+  $('#fU').addEventListener('input',e=>pinta(e.target.value));
+  $('#btnAl').addEventListener('click',viewAlertas);
+  $('#btnRel2').addEventListener('click',()=>relatorioModal(ls));
+  $$('[data-e]',v).forEach(el=>el.addEventListener('click',()=>{
+    const e=etapaDef(el.dataset.e);
+    const faltam=ls.filter(l=>!S.unidades[l.id].etapas[e.id].ok);
+    modal('Quem falta · '+esc(e.nome),
+      '<div class="mini" style="margin-bottom:10px">Prazo '+dataLonga(dt(e.prazo))+' · '+faltam.length+' unidades pendentes</div>'+
+      '<div class="lst" style="border:1px solid var(--line);border-radius:12px;max-height:46vh;overflow:auto">'+
+      (faltam.map(l=>'<div class="li" style="cursor:default"><span class="ico">'+adesao(l.id)+'</span><div class="bd"><div class="t">'+esc(l.nome)+'</div>'+
+        '<div class="s">'+esc(masterDe(l.master).nome)+' · '+stTag(statusEtapa(l.id,e.id))+'</div></div></div>').join('')||'<div class="empty">Todas concluíram.</div>')+'</div>',
+      '<button class="btn" onclick="fechaModal()">Fechar</button><button class="btn pri" id="cobrar">Cobrar as pendentes</button>');
+    $('#cobrar').addEventListener('click',()=>{ commit('Cobrou etapa pendente', e.nome+' · '+faltam.length+' unidades'); fechaModal(); toast('Cobrança enviada por e-mail e WhatsApp a '+faltam.length+' unidades.',1); });
+  }));
+};
+
+function jornadaUnidade(v,l){
+  const U=S.unidades[l.id], e=proximaEtapa(l.id), d=dias(dt(e.prazo));
+  const podeEnviar = ROLE==='franquia' || ROLE==='brasil' || ROLE==='master';
+  v.innerHTML =
+    (lojasVisiveis().length>1?'<a class="btn sm" href="#/jornada" style="margin-bottom:14px">← Todas as unidades</a>':'')+
+    ph('Jornada · '+esc(l.nome), esc(l.bairro)+' · '+esc(masterDe(l.master).nome)+' · '+corretoresDe(l.id).length+' associados',
+      '<a class="btn" href="#/fachadas">Fachada</a>'+(podeEnviar?'<button class="btn pri" id="up2">⇪ Enviar evidência</button>':''),'jornada')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Adesão', pct(adesao(l.id)), etapasOk(l.id)+' de 7 etapas concluídas', adesao(l.id)>=70?'k-ok':'k-warn')+
+      kpi('Próxima etapa', d<0? Math.abs(d)+' <small>dias em atraso</small>' : d+' <small>dias</small>', esc(e.nome.slice(0,42)), d<0?'k-bad':d<30?'k-warn':'')+
+      kpi('Evidências', ETAPAS.reduce((a,x)=>a+U.etapas[x.id].evid.length,0), 'fotos, notas e documentos anexados')+
+      kpi('Pontos', pontosU(l.id), 'na régua da rede','k-ok')+
+    '</div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Etapas</h3><div class="r"><span class="mini">prazos definidos pela RE/MAX Brasil</span></div></div><div class="cb"><div class="tl">'+
+        ETAPAS.map(x=>{ const s=statusEtapa(l.id,x.id), dd=dias(dt(x.prazo)), ev=U.etapas[x.id].evid;
+          return '<div class="it '+(s==='concluida'?'done':s==='atrasada'?'late':(s==='andamento'||s==='aprovacao')?'now':'')+'">'+
+          '<div class="t">'+esc(x.nome)+'</div>'+
+          '<div class="d">Prazo '+dataLonga(dt(x.prazo))+' · '+(s==='concluida'?'concluída':dd<0?'vencida há '+Math.abs(dd)+' dias':'faltam '+dd+' dias')+'</div>'+
+          (ev.length?'<div style="margin-top:6px">'+ev.slice(0,2).map(a=>fileRow(a)).join('')+'</div>':'')+
+          '<div class="r">'+stTag(s)+
+            (s==='concluida'? '' : s==='aprovacao'? '<span class="mini">aguardando a Master</span>' :
+             podeEnviar? '<button class="btn sm" data-up="'+x.id+'">Enviar evidência</button>':'')+
+          '</div></div>';
+        }).join('')+'</div></div></div>'+
+      '<div><div class="card" style="margin-bottom:16px"><div class="ch"><h3>Linha do tempo</h3></div><div class="cb">'+
+        ETAPAS.map(x=>{
+          const p=Math.max(0,Math.min(100,Math.round((dt(x.prazo)-new Date(2026,7,1))/(DEADLINE-new Date(2026,7,1))*100)));
+          const ok=U.etapas[x.id].ok;
+          return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:9px"><span class="mini" style="width:46px">'+dataBR(dt(x.prazo))+'</span>'+
+          '<div style="flex:1;height:8px;background:var(--surface-2);border-radius:99px;position:relative">'+
+          '<span style="position:absolute;left:'+p+'%;top:-3px;width:14px;height:14px;border-radius:50%;background:'+(ok?'var(--ok)':'var(--brand-2)')+';transform:translateX(-50%)"></span></div></div>';
+        }).join('')+
+        '<div class="hint" style="margin-top:8px">Prazos são <b>parâmetros</b>: a RE/MAX Brasil ajusta pelo painel, sem depender de desenvolvimento.</div>'+
+      '</div></div>'+
+      '<div class="card"><div class="ch"><h3>Alertas desta unidade</h3></div><div class="cb">'+
+        (ETAPAS.filter(x=>!U.etapas[x.id].ok).slice(0,4).map(x=>{ const dd=dias(dt(x.prazo));
+          return '<div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:10px"><span class="tag '+(dd<0?'bad':dd<45?'warn':'mut')+'">'+(dd<0?'vencida':'faltam '+dd+'d')+'</span><div style="font-size:12.7px">'+esc(x.nome)+'</div></div>';
+        }).join('')||'<div class="mini">Nenhuma pendência. Unidade em dia.</div>')+
+        '<div class="mini">Enviados por e-mail, WhatsApp e no painel — a 60, 30 e 7 dias do prazo.</div>'+
+      '</div></div></div>'+
+    '</div>';
+  $$('[data-up]',v).forEach(b=>b.addEventListener('click',()=>enviarEvidencia(l.id,b.dataset.up)));
+  $('#up2')&&$('#up2').addEventListener('click',()=>enviarEvidencia(l.id, proximaEtapa(l.id).id));
+}
+
+/* ---------- Fachadas ---------- */
+const FACH_LABEL={nao_iniciada:'Não iniciada', em_analise:'Projeto em análise', producao:'Em produção', instalada:'Instalada'};
+function fachadaCard(l){
+  const F=S.unidades[l.id].fachada, nova=F.st==='instalada';
+  const corpo = F.foto&&F.foto.thumb
+    ? '<img src="'+F.foto.thumb+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="">'
+    : '<div class="sky"></div><div class="bld"></div><div class="band'+(nova?'':' old')+'"><img src="'+LOGO+'" alt=""></div><div class="door"></div><div class="grd"></div>';
+  return '<div><div class="fach">'+corpo+'<span class="st">'+(nova?'<span class="tag ok">Nova identidade</span>':'<span class="tag warn">'+FACH_LABEL[F.st]+'</span>')+'</span></div>'+
+    '<div style="font-size:12.6px;font-weight:600;margin-top:7px">'+esc(l.nome)+'</div><div class="mini">'+esc(l.bairro)+'</div></div>';
+}
+VIEWS.fachadas=function(v){
+  const ls=lojasVisiveis(), l0=minhaLoja()||ls[0], F=S.unidades[l0.id].fachada;
+  const inst=ls.filter(l=>S.unidades[l.id].fachada.st==='instalada').length;
+  const podeEnviar = ROLE!=='corretor';
+  v.innerHTML =
+    ph('Fachadas','Passo a passo, submissão do projeto, aprovação, produção e foto final — mais o acervo nacional com a fachada atualizada de cada unidade. É a etapa mais cara e mais visível da adequação.',
+      '<button class="btn" id="dlProj">↓ Projeto padrão</button>'+(podeEnviar&&F.st==='nao_iniciada'?'<button class="btn pri" id="subm">Enviar projeto</button>':''),'fachadas')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Fachadas instaladas', inst+'/'+ls.length, pct(inst/ls.length*100)+' da base visível', inst/ls.length>.5?'k-ok':'k-warn')+
+      kpi('Projetos em análise', ls.filter(l=>S.unidades[l.id].fachada.st==='em_analise').length, 'aguardando aprovação')+
+      kpi('Em produção', ls.filter(l=>S.unidades[l.id].fachada.st==='producao').length, 'com fornecedor homologado')+
+      kpi('Prazo de instalação', dt('2027-03-15').toLocaleDateString('pt-BR'), 'etapa 6 da jornada','k-warn')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Fluxo da unidade</h3><div class="r"><span class="mini">'+esc(l0.nome)+'</span></div></div><div class="cb"><div class="tl">'+
+        (function(){
+          const et=['nao_iniciada','em_analise','producao','instalada'].indexOf(F.st);
+          const passos=[['Baixar o projeto padrão e medir a fachada',0],['Enviar o projeto adaptado (PDF, DWG ou foto)',0],
+            ['Aprovação da Master Regional',1],['Orçamento com fornecedor homologado',2],['Produção e instalação',2],
+            ['Enviar a foto final para o acervo nacional',3]];
+          return passos.map((p,i)=>{
+            const cls = p[1]<et? 'done' : p[1]===et? 'now':'';
+            let extra='';
+            if(i===1 && F.projeto) extra='<div style="margin-top:6px">'+fileRow(F.projeto)+'</div>';
+            if(i===1 && !F.projeto && podeEnviar && F.st==='nao_iniciada') extra='<div class="r"><button class="btn sm" id="subm2">Enviar projeto</button></div>';
+            if(i===5 && F.foto) extra='<div style="margin-top:6px">'+fileRow(F.foto)+'</div>';
+            if(i===5 && !F.foto && podeEnviar && F.st==='producao') extra='<div class="r"><button class="btn sm" id="foto">Enviar foto final</button></div>';
+            return '<div class="it '+cls+'"><div class="t">'+p[0]+'</div>'+extra+'</div>';
+          }).join('');
+        })()+
+      '</div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Antes e depois</h3></div><div class="cb"><div class="grid g2" style="gap:12px">'+
+        '<div><div class="fach"><div class="sky"></div><div class="bld"></div><div class="band old"><img src="'+LOGO+'" style="opacity:.75" alt=""></div><div class="door"></div><div class="grd"></div></div><div class="mini" style="margin-top:6px">Identidade anterior</div></div>'+
+        '<div><div class="fach">'+(F.foto&&F.foto.thumb?'<img src="'+F.foto.thumb+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" alt="">':'<div class="sky"></div><div class="bld"></div><div class="band"><img src="'+LOGO+'" alt=""></div><div class="door"></div><div class="grd"></div>')+'</div>'+
+        '<div class="mini" style="margin-top:6px">'+(F.foto?'Foto enviada pela unidade':'Nova identidade')+'</div></div>'+
+      '</div></div></div>'+
+    '</div>'+
+    '<div class="card"><div class="ch"><h3>Acervo nacional de fachadas</h3><div class="r"><span class="mini">'+ls.length+' unidades ativas · previsto para ~600 na rede</span></div></div>'+
+      '<div class="cb"><div class="grid" style="grid-template-columns:repeat(5,1fr);gap:14px">'+ls.slice(0,10).map(fachadaCard).join('')+'</div>'+
+      '<div class="hint" style="margin-top:16px">O acervo alimenta materiais institucionais, o relatório de compliance e a checagem visual da adequação — sem pedir foto por WhatsApp.</div></div></div>';
+  const enviarProjeto=()=>enviarEvidencia(l0.id,'e5',{titulo:'Projeto de fachada', alvo:{tipo:'fachada_projeto'}});
+  $('#subm')&&$('#subm').addEventListener('click',enviarProjeto);
+  $('#subm2')&&$('#subm2').addEventListener('click',enviarProjeto);
+  $('#foto')&&$('#foto').addEventListener('click',()=>enviarEvidencia(l0.id,'e6',{titulo:'Foto da fachada instalada', alvo:{tipo:'fachada_foto'}}));
+  $('#dlProj').addEventListener('click',()=>{
+    const t=TEMPLATES.find(x=>x.id==='t15');
+    montarPeca({fmt:'slide',tema:'claro',titulo:t.txt,sub:'Especificação de letreiro, cores e materiais · '+dataLonga(HOJE),nome:'RE/MAX Brasil',creci:'',tel:'',unidade:'Padrão nacional de fachada'})
+      .then(cv=>pecaPDF(cv,'remax-projeto-padrao-fachada.pdf'));
+    commit('Baixou o projeto padrão de fachada','Fachadas'); toast('Projeto padrão baixado em PDF.',1);
+  });
+};
+
+/* ---------- Aprovações ---------- */
+VIEWS.aprovacoes=function(v){
+  const meu=ROLE==='franquia';
+  const lista = ROLE==='brasil'? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDe(a.loja).master==='m2') : S.aprovacoes.filter(a=>a.loja===escopoLoja());
+  const pend=lista.filter(a=>a.st==='pendente');
+  v.innerHTML =
+    ph('Fluxo de aprovação','Projetos de fachada, evidências de etapa e peças fora do padrão passam por aprovação. Cada decisão fica registrada com autor, data e justificativa — e o que é aprovado avança a jornada da unidade na hora.',
+      '','aprovacoes')+
+    '<div class="grid g3" style="margin-bottom:16px">'+
+      kpi(meu?'Suas pendências':'Aguardando você', pend.length, meu?'enviadas pela sua unidade':'SLA de resposta: 3 dias úteis', pend.length?'k-warn':'k-ok')+
+      kpi('Aprovados', lista.filter(a=>a.st==='aprovado').length, 'no período')+
+      kpi('Reprovados', lista.filter(a=>a.st==='reprovado').length, 'com justificativa registrada')+
+    '</div>'+
+    (meu?'<div class="hint" style="margin-bottom:16px">A franquia acompanha o andamento, mas quem aprova é a Master Regional ou a RE/MAX Brasil.</div>':'')+
+    '<div class="card"><div class="lst" id="aps"></div></div>';
+  const pinta=()=>{
+    $('#aps').innerHTML = lista.map(a=>
+      '<div class="li" style="cursor:default"><span class="ico" style="'+(a.tipo==='Fachada'?'background:var(--brand-soft);color:var(--brand-2)':a.tipo==='Evidência'?'background:var(--ok-soft);color:var(--ok)':'background:var(--warn-soft);color:var(--warn)')+'">'+a.tipo[0]+'</span>'+
+      '<div class="bd"><div class="t">'+esc(a.item)+' <span class="tag mut">'+esc(a.tipo)+'</span></div>'+
+      '<div class="s">'+esc(lojaDe(a.loja).nome)+' · '+esc(a.quem)+' · '+quando(a.dt)+' — '+esc(a.obs||'')+
+        (a.motivo?' <b style="color:var(--bad)">Motivo: '+esc(a.motivo)+'</b>':'')+
+        (a.decisor?' · decidido por '+esc(a.decisor):'')+'</div>'+
+        ((a.anexos&&a.anexos.length)?'<div style="margin-top:6px;max-width:420px">'+a.anexos.slice(0,2).map(x=>fileRow(x)).join('')+'</div>':'')+
+      '</div>'+
+      '<div class="rt">'+(a.st==='pendente'
+        ? (meu?'<span class="tag warn">Aguardando</span>':'<div style="display:flex;gap:6px"><button class="btn sm" data-no="'+a.id+'">Reprovar</button><button class="btn sm pri" data-ok="'+a.id+'">Aprovar</button></div>')
+        : stTag(a.st))+'</div></div>').join('')||'<div class="empty">Nada para aprovar.</div>';
+    $$('[data-ok]').forEach(b=>b.addEventListener('click',()=>{
+      const a=S.aprovacoes.find(x=>x.id===b.dataset.ok);
+      commit('Aprovou', a.item, s=>{ aplicarAprovacao(s.aprovacoes.find(x=>x.id===a.id), true); });
+      route(); toast('<b>Aprovado.</b> A unidade avançou na jornada e a adesão foi recalculada.',1);
+    }));
+    $$('[data-no]').forEach(b=>b.addEventListener('click',()=>{
+      const a=S.aprovacoes.find(x=>x.id===b.dataset.no);
+      const ov=modal('Reprovar · '+esc(a.item),'<div class="field"><label>Motivo (vai para a unidade)</label><textarea id="mot" rows="3" placeholder="Ex.: proporção do logotipo alterada — refazer pelo Estúdio."></textarea></div>',
+        '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn red" id="okNo">Reprovar</button>');
+      $('#okNo',ov).addEventListener('click',()=>{
+        const m=$('#mot',ov).value.trim();
+        commit('Reprovou', a.item, s=>{ aplicarAprovacao(s.aprovacoes.find(x=>x.id===a.id), false, m); });
+        fechaModal(); route(); toast('Reprovado — motivo enviado à unidade.');
+      });
+    }));
+  };
+  pinta();
+};
+</script>

@@ -1,0 +1,228 @@
+<script>
+/* =======================================================================
+   MÓDULO 4 · COMMUNICATION CENTER
+   ======================================================================= */
+let AREA_ATUAL='Todas';
+VIEWS.comunicados=function(v,arg){
+  if(arg) return comunicadoDetalhe(v,arg);
+  const ls=lojasVisiveis();
+  const podePublicar = ROLE==='brasil'||ROLE==='master';
+  const meus=S.comunicados.length, obr=S.comunicados.filter(k=>k.obr).length;
+  const minhaLeitura=S.comunicados.length-naoLidos().length;
+  const redeLeitura=Math.round(ls.reduce((a,l)=>a+leituraDe(l.id),0)/Math.max(1,ls.length));
+  v.innerHTML =
+    ph('Comunicados','Canal direto da RE/MAX Brasil e das Masters com franquias e associados — pesquisável, com histórico e confirmação de leitura. É o que substitui a cascata de WhatsApp.',
+      podePublicar?'<button class="btn pri" id="novoC">+ Novo comunicado</button>':'','comunicados')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Publicados', meus, 'no repositório institucional')+
+      kpi('Leitura obrigatória', obr, 'com confirmação exigida')+
+      kpi('Sua leitura', minhaLeitura+'/'+meus, naoLidos().length? naoLidos().length+' pendentes':'em dia', naoLidos().length?'k-warn':'k-ok')+
+      kpi('Leitura da rede', pct(redeLeitura), 'média das unidades do seu escopo', redeLeitura>70?'k-ok':'k-warn')+
+    '</div>'+
+    '<div class="chips" id="areas" style="margin-bottom:14px">'+['Todas'].concat(AREAS).map(a=>'<button class="chip '+(a===AREA_ATUAL?'on':'')+'" data-a="'+a+'">'+a+'</button>').join('')+'</div>'+
+    '<div class="card"><div class="lst" id="ks"></div></div>';
+  const pinta=()=>{
+    const ks=S.comunicados.filter(k=>AREA_ATUAL==='Todas'||k.area===AREA_ATUAL);
+    $('#ks').innerHTML=ks.map(k=>{
+      const lido=(S.leituras[k.id]||[]).indexOf(euId())>=0;
+      return '<div class="li '+(lido?'':'unread')+'" data-k="'+k.id+'"><span class="ico">'+esc(k.area.slice(0,2).toUpperCase())+'</span>'+
+      '<div class="bd"><div class="t">'+esc(k.tit)+(k.obr?' <span class="tag red">Obrigatório</span>':'')+(lido?'':' <span class="tag">Novo</span>')+'</div>'+
+      '<div class="s">'+esc(k.res)+'</div></div>'+
+      '<div class="rt"><span>'+dt(k.dt).toLocaleDateString('pt-BR')+'</span><span class="mini">'+esc(k.autor||k.area)+'</span></div></div>';
+    }).join('')||'<div class="empty">Nenhum comunicado nesta área.</div>';
+    $$('#ks .li').forEach(el=>el.addEventListener('click',()=>location.hash='#/comunicados/'+el.dataset.k));
+  };
+  pinta();
+  $$('#areas .chip').forEach(b=>b.addEventListener('click',()=>{AREA_ATUAL=b.dataset.a;$$('#areas .chip').forEach(x=>x.classList.toggle('on',x===b));pinta();}));
+  $('#novoC')&&$('#novoC').addEventListener('click',()=>{
+    const ov=modal('Novo comunicado',
+      '<div class="field"><label>Título</label><input id="cT" placeholder="Ex.: Etapa de papelaria — prorrogação de prazo"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Área</label><select id="cA">'+AREAS.map(a=>'<option>'+a+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>Destinatários</label><select id="cD"><option>Toda a rede</option><option>Masters Regionais</option><option>Franquias</option><option>Associados</option></select></div></div>'+
+      '<div class="field"><label>Resumo</label><input id="cR" placeholder="Uma linha que aparece na lista"></div>'+
+      '<div class="field"><label>Texto</label><textarea id="cC" rows="4" placeholder="Conteúdo do comunicado…"></textarea></div>'+
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="cO" checked style="width:auto"> Exigir confirmação de leitura</label>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="cOk">Publicar</button>');
+    $('#cOk',ov).addEventListener('click',()=>{
+      const tit=$('#cT',ov).value.trim(); if(!tit) return toast('Dê um título ao comunicado.');
+      const id=uid('k');
+      commit('Publicou comunicado', tit, s=>{
+        s.comunicados.unshift({id, area:$('#cA',ov).value, tit, dt:new Date().toISOString().slice(0,10),
+          obr:$('#cO',ov).checked, res:$('#cR',ov).value.trim()||tit, corpo:esc($('#cC',ov).value.trim()).replace(/\n/g,'<br>'),
+          autor:eu().nome, dest:$('#cD',ov).value});
+        s.leituras[id]=[];
+      });
+      fechaModal(); route(); toast('<b>Comunicado publicado.</b> A rede recebe agora e a leitura passa a ser medida.',1);
+    });
+  });
+};
+
+function comunicadoDetalhe(v,id){
+  const k=S.comunicados.find(x=>x.id===id); if(!k){location.hash='#/comunicados';return;}
+  const lido=(S.leituras[k.id]||[]).indexOf(euId())>=0;
+  const ls=lojasVisiveis(), verLeitura=ROLE!=='corretor';
+  v.innerHTML =
+    '<a class="btn sm" href="#/comunicados" style="margin-bottom:14px">← Comunicados</a>'+
+    ph(esc(k.tit),'<span class="tag mut">'+esc(k.area)+'</span> &nbsp; publicado em '+dt(k.dt).toLocaleDateString('pt-BR')+' por '+esc(k.autor||'RE/MAX Brasil')+
+      (k.obr?' &nbsp; <span class="tag red">Leitura obrigatória</span>':''),'','comunicados')+
+    '<div class="grid '+(verLeitura?'g23':'')+'">'+
+      '<div class="card pad"><div style="font-size:14.2px;line-height:1.7;color:var(--ink-2)">'+k.corpo+'</div><div class="divider"></div>'+
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+        (lido?'<span class="tag ok">✓ Leitura confirmada</span>':'<button class="btn pri" id="okLer">Confirmar leitura</button>')+
+        '<button class="btn" id="dlK">↓ Baixar</button><a class="btn" href="#/jornada">Ir para a jornada</a></div></div>'+
+      (verLeitura?'<div class="card"><div class="ch"><h3>Quem leu</h3><div class="r"><span class="mini">'+(S.leituras[k.id]||[]).length+' confirmações</span></div></div><div class="cb">'+
+        ls.slice(0,8).map(l=>{
+          const cs=corretoresDe(l.id), n=cs.filter(u=>(S.leituras[k.id]||[]).indexOf(u.id)>=0).length;
+          const p=Math.round(n/Math.max(1,cs.length)*100);
+          return '<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12.7px"><span style="font-weight:600">'+esc(l.nome)+'</span><span class="mini num">'+n+'/'+cs.length+'</span></div>'+barra(p)+'</div>';
+        }).join('')+
+        '<div class="divider"></div><button class="btn sm" id="cobrar">Cobrar quem não leu</button></div></div>':'')+
+    '</div>';
+  $('#okLer')&&$('#okLer').addEventListener('click',()=>{
+    commit('Confirmou leitura', k.tit, s=>{ s.leituras[k.id]=(s.leituras[k.id]||[]).concat([euId()]); });
+    route(); renderNav(); toast('Leitura confirmada, com data e hora.',1);
+  });
+  $('#cobrar')&&$('#cobrar').addEventListener('click',()=>{
+    const falta=ls.reduce((a,l)=>a+corretoresDe(l.id).filter(u=>(S.leituras[k.id]||[]).indexOf(u.id)<0).length,0);
+    commit('Cobrou leitura', k.tit+' · '+falta+' pessoas'); toast('Lembrete enviado a '+falta+' pessoas por e-mail e WhatsApp.',1);
+  });
+  $('#dlK').addEventListener('click',()=>{
+    const txt=k.tit+'\n'+dt(k.dt).toLocaleDateString('pt-BR')+' · '+k.area+' · '+(k.autor||'RE/MAX Brasil')+'\n\n'+k.corpo.replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'');
+    baixarBlob(new Blob([txt],{type:'text/plain;charset=utf-8'}), 'comunicado-'+k.id+'.txt'); toast('Comunicado baixado.',1);
+  });
+}
+
+/* =======================================================================
+   MÓDULO 3 · USUÁRIOS E PERMISSÕES
+   ======================================================================= */
+const PERMISSOES=[
+  ['Publicar comunicado nacional',1,0,0,0],['Criar campanha Prontos em Rede',1,0,0,0],
+  ['Definir prazos da jornada',1,0,0,0],['Aprovar projeto e evidência',1,1,0,0],
+  ['Ver painel da rede',1,1,0,0],['Ver painel da unidade',1,1,1,0],
+  ['Enviar evidência da unidade',1,1,1,0],['Gerenciar usuários da unidade',1,1,1,0],
+  ['Personalizar e baixar peças',1,1,1,1],['Publicar nas próprias redes',1,1,1,1],
+  ['Abrir chamado no suporte',1,1,1,1]
+];
+function matrizPerm(){ return (S.permissoes && S.permissoes.length===PERMISSOES.length)? S.permissoes : PERMISSOES.map(r=>r.slice()); }
+VIEWS.usuarios=function(v){
+  const ls=lojasVisiveis();
+  const us=Object.values(S.usuarios).filter(u=>ls.some(l=>l.id===u.loja));
+  const assoc=us.filter(u=>u.nivel==='associado');
+  const ativos=assoc.filter(u=>u.ativo).length;
+  v.innerHTML =
+    ph('Usuários e permissões','Quatro níveis hierárquicos, cada um enxergando apenas o seu escopo. Essa estrutura nasce no primeiro dia do desenvolvimento — refazer escopo de permissão depois não é ajuste, é reescrita.',
+      ROLE!=='corretor'?'<button class="btn pri" id="conv">+ Convidar usuário</button>':'','usuarios')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Usuários no escopo', us.length, ls.length+' gestores + '+assoc.length+' associados')+
+      kpi('Ativos', ativos, pct(ativos/Math.max(1,assoc.length)*100)+' dos associados', ativos/Math.max(1,assoc.length)>.7?'k-ok':'k-warn')+
+      kpi('Contas sociais conectadas', assoc.filter(u=>u.ig).length, 'pré-requisito da publicação automatizada')+
+      kpi('Convites enviados', S.convites, 'pela equipe de implantação')+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Hierarquia da rede</h3><div class="r"><span class="mini">a mesma modelagem vale da primeira unidade às 600</span></div></div><div class="cb"><div class="hier">'+
+      '<div class="hl"><span class="c">1</span><span class="nm">RE/MAX Brasil</span><span class="nt">visão nacional · publica comunicados e campanhas</span></div>'+
+      '<div class="hl"><span class="c">16</span><span class="nm">Masters Regionais</span><span class="nt">acompanham a adesão da regional e aprovam</span></div>'+
+      '<div class="hl"><span class="c">~600</span><span class="nm">Franquias</span><span class="nt">executam o checklist e enviam evidências</span></div>'+
+      '<div class="hl"><span class="c">milhares</span><span class="nm">Associados</span><span class="nt">consomem, personalizam e publicam</span></div>'+
+    '</div><div class="hint" style="margin-top:14px"><b>Nesta fase:</b> '+BASE.masters.length+' regionais de demonstração, '+BASE.lojas.length+' unidades e '+TOTAL_USUARIOS()+' usuários.</div></div></div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Usuários</h3><div class="r"><input id="fq" placeholder="Buscar nome ou unidade…" style="border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px"></div></div>'+
+      '<div class="tw" style="max-height:520px;overflow:auto"><table><thead><tr><th>Usuário</th><th>Unidade</th><th>Nível</th><th>Situação</th><th></th></tr></thead><tbody id="tbc"></tbody></table></div></div>'+
+      '<div class="card"><div class="ch"><h3>Matriz de permissões</h3><div class="r"><span class="mini">'+(ROLE==='brasil'?'clique para mudar quem tem acesso':'definida pela RE/MAX Brasil')+'</span></div></div>'+
+      '<div class="cb" style="overflow-x:auto"><div class="pm" id="pm">'+
+        '<div class="hd">Ação</div><div class="hd">Brasil</div><div class="hd">Master</div><div class="hd">Franquia</div><div class="hd">Associado</div>'+
+        matrizPerm().map((p,i)=>'<div>'+esc(p[0])+'</div>'+p.slice(1).map((x,j)=>
+          '<div class="'+(x?'ck':'no')+'"'+(ROLE==='brasil'?' data-perm="'+i+'-'+j+'" style="cursor:pointer"':'')+'>'+(x?'✓':'—')+'</div>').join('')).join('')+
+      '</div>'+(ROLE==='brasil'?'<div class="mini" style="margin-top:10px">A alteração vale para toda a rede e fica registrada na auditoria.</div>':'')+'</div></div>'+
+    '</div>';
+  $$('[data-perm]',v).forEach(el=>el.addEventListener('click',()=>{
+    const [i,j]=el.dataset.perm.split('-').map(Number);
+    const m=matrizPerm(); const acao=m[i][0];
+    commit('Alterou permissão', acao+' · '+['Brasil','Master','Franquia','Associado'][j]+(m[i][j+1]?' removida':' concedida'), s=>{
+      const mm=(s.permissoes||PERMISSOES.map(r=>r.slice()));
+      mm[i][j+1]=mm[i][j+1]?0:1; s.permissoes=mm;
+    });
+    route(); toast('Permissão atualizada para toda a rede.',1);
+  }));
+  const pinta=(f)=>{
+    const arr=us.filter(u=>!f||(u.nome+' '+lojaDe(u.loja).nome).toLowerCase().includes(f.toLowerCase())).slice(0,80);
+    $('#tbc').innerHTML=arr.map(u=>'<tr><td><div class="stack">'+avatar(u,26)+
+      '<div><div style="font-weight:600">'+esc(u.nome)+'</div><div class="mini">'+(u.creci?'CRECI '+esc(u.creci):'gestor da unidade')+'</div></div></div></td>'+
+      '<td class="mini">'+esc(lojaDe(u.loja).nome)+'</td>'+
+      '<td><span class="tag mut">'+(u.nivel==='franquia'?'Franquia':'Associado')+'</span></td>'+
+      '<td>'+(u.ativo?'<span class="tag ok">Ativo</span>':'<span class="tag warn">Nunca acessou</span>')+'</td>'+
+      '<td>'+(ROLE!=='corretor'?'<button class="btn sm" data-u="'+u.id+'">'+(u.ativo?'Desativar':'Ativar')+'</button>':'')+'</td></tr>').join('');
+    $$('[data-u]').forEach(b=>b.addEventListener('click',()=>{
+      const u=S.usuarios[b.dataset.u];
+      commit(u.ativo?'Desativou usuário':'Ativou usuário', u.nome, s=>{ s.usuarios[b.dataset.u].ativo=!u.ativo; });
+      pinta($('#fq').value); toast(u.nome+(u.ativo?' desativado.':' ativado.'),1);
+    }));
+  };
+  pinta();
+  $('#fq').addEventListener('input',e=>pinta(e.target.value));
+  $('#conv')&&$('#conv').addEventListener('click',()=>{
+    const ov=modal('Convidar usuário',
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Nome</label><input id="uN" placeholder="Nome completo"></div>'+
+      '<div class="field"><label>E-mail</label><input id="uE" type="email" placeholder="nome@remax.com.br"></div></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Nível</label><select id="uL"><option value="associado">Associado</option><option value="franquia">Franquia (gestor)</option></select></div>'+
+      '<div class="field"><label>Unidade</label><select id="uU">'+ls.map(l=>'<option value="'+l.id+'">'+esc(l.nome)+'</option>').join('')+'</select></div></div>'+
+      '<div class="field"><label>CRECI</label><input id="uC" placeholder="Somente para associados"></div>'+
+      '<div class="hint">O convite chega por e-mail e WhatsApp. A ativação entra na esteira do CS, que acompanha até o primeiro uso real.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="uOk">Convidar</button>');
+    $('#uOk',ov).addEventListener('click',()=>{
+      const nome=$('#uN',ov).value.trim(); if(!nome) return toast('Informe o nome.');
+      const id=uid('u');
+      commit('Convidou usuário', nome, s=>{
+        s.usuarios[id]={id, nome, creci:$('#uC',ov).value.trim(), tel:'', foto:'', loja:$('#uU',ov).value,
+          nivel:$('#uL',ov).value, ativo:false, ig:false, criado:agora(), pecasFeitas:0};
+        s.convites++;
+      });
+      fechaModal(); route(); toast('<b>Convite enviado.</b> O usuário aparece como “nunca acessou” até o primeiro login.',1);
+    });
+  });
+};
+
+/* =======================================================================
+   MÓDULO 3 · REGISTROS E PLATAFORMA
+   ======================================================================= */
+VIEWS.registros=function(v){
+  v.innerHTML =
+    ph('Registros e plataforma','Rastreabilidade de tudo o que acontece na plataforma e o que sustenta a operação: capacidade, segurança e backup. Cada linha abaixo foi gerada por uma ação real nesta sessão ou na carga de demonstração.',
+      '<button class="btn" id="expA">↓ Exportar auditoria</button>','registros')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Registros', S.audit.length, 'ações rastreadas')+
+      kpi('Disponibilidade', '99,9%', 'meta contratual de disponibilidade','k-ok')+
+      kpi('Usuários simultâneos', '200 → 6.000', 'hoje → rede completa')+
+      kpi('Backup', '24h', 'retenção de 30 dias, restauração testada','k-ok')+
+    '</div>'+
+    '<div class="grid g2" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Arquitetura</h3></div><div class="cb">'+
+        [['Aplicação','Web responsiva, multi-tenant hierárquico em 4 níveis desde o primeiro commit'],
+         ['Dados','Banco relacional com escopo por regional e unidade; isolamento por linha'],
+         ['Arquivos','Armazenamento de objetos com CDN para peças, evidências e fachadas'],
+         ['Publicação','Integração com a Meta — análise da plataforma no caminho crítico (2ª onda)'],
+         ['Assistente','IA de primeiro nível apoiada no Brand Center, com escalonamento humano'],
+         ['BI','Painéis nativos, sem licença por usuário — condição para estender à rede inteira']]
+        .map(r=>'<div class="kv"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>').join('')+
+      '</div></div>'+
+      '<div class="card"><div class="ch"><h3>Segurança e conformidade</h3></div><div class="cb">'+
+        [['Acesso','Login individual, perfil por nível, sessão expirável'],
+         ['Dados pessoais','Base de associados tratada conforme a LGPD, com finalidade declarada'],
+         ['Registros','Toda alteração, aprovação e upload guarda autor, data e hora'],
+         ['Backup','Diário, com retenção de 30 dias e restauração testada'],
+         ['Saída','Exportação integral dos dados da rede a qualquer momento']]
+        .map(r=>'<div class="kv"><span class="k">'+r[0]+'</span><span class="v">'+r[1]+'</span></div>').join('')+
+      '</div></div>'+
+    '</div>'+
+    '<div class="card"><div class="ch"><h3>Histórico e rastreabilidade</h3><div class="r"><span class="mini">mais recentes primeiro</span></div></div>'+
+      '<div class="tw" style="max-height:480px;overflow:auto"><table><thead><tr><th>Quando</th><th>Quem</th><th>Ação</th><th>Objeto</th><th>Origem</th></tr></thead><tbody>'+
+      (S.audit.slice(0,60).map(a=>'<tr><td class="num mini">'+quando(a.q)+'</td><td>'+esc(a.quem)+'<div class="mini">'+esc(a.papel)+'</div></td>'+
+        '<td style="font-weight:600">'+esc(a.acao)+'</td><td class="mini">'+esc(a.objeto||'—')+'</td><td><span class="tag mut">'+esc(a.origem)+'</span></td></tr>').join('')
+        ||'<tr><td colspan="5"><div class="empty">Nenhuma ação registrada ainda. Aprove uma evidência ou publique um comunicado e volte aqui.</div></td></tr>')+
+      '</tbody></table></div></div>';
+  $('#expA').addEventListener('click',()=>{
+    const linhas=[['quando','quem','papel','acao','objeto','origem']].concat(S.audit.map(a=>[a.q,a.quem,a.papel,a.acao,a.objeto,a.origem]));
+    baixarBlob(new Blob(['﻿'+linhas.map(r=>r.map(x=>'"'+String(x||'').replace(/"/g,'""')+'"').join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),'prontos-em-rede-auditoria.csv');
+    toast('Auditoria exportada.',1);
+  });
+};
+</script>

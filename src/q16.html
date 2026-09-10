@@ -1,0 +1,494 @@
+<script>
+/* =======================================================================
+   ÍCONES — traçado de 1,6px, herdam a cor do contexto
+   ======================================================================= */
+const SVG = (d,extra)=> '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+(extra||'')+'</svg>';
+const ICO = {
+  inicio:      SVG('<path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>'),
+  brand:       SVG('<path d="M12 3.2 20 7.6v8.8L12 20.8 4 16.4V7.6z"/><path d="M12 8.4 15.6 10.4v3.6L12 16 8.4 14V10.4z"/>'),
+  content:     SVG('<circle cx="12" cy="12" r="8.2"/><path d="M12 7.6v4.6l3.4 2"/>'),
+  gov:         SVG('<path d="M20 6.5 10 16.5l-6-6"/><path d="M20 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9"/>'),
+  comm:        SVG('<path d="M4 6.5h16v9a1.5 1.5 0 0 1-1.5 1.5H9l-5 4z"/><path d="M8 10.5h8M8 13.5h4"/>'),
+  sup:         SVG('<path d="M5 12a7 7 0 0 1 14 0"/><path d="M19 12v4a3 3 0 0 1-3 3h-1"/><rect x="3" y="11.5" width="3.2" height="6" rx="1.2"/><rect x="17.8" y="11.5" width="3.2" height="6" rx="1.2"/>'),
+  intel:       SVG('<path d="M4 20V9M9.3 20V4M14.7 20v-8M20 20V6.5"/>'),
+  escopo:      SVG('<circle cx="12" cy="12" r="8.2"/><path d="M12 3.8v16.4M3.8 12h16.4"/><path d="M5.6 6.8c3.6 2.4 9.2 2.4 12.8 0M5.6 17.2c3.6-2.4 9.2-2.4 12.8 0"/>'),
+  guia:        SVG('<path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H19v14.5H6.5A1.5 1.5 0 0 0 5 20z"/><path d="M9 8.5h6M9 12h4"/>'),
+  biblioteca:  SVG('<rect x="4" y="4.5" width="7" height="7" rx="1.4"/><rect x="13" y="4.5" width="7" height="7" rx="1.4"/><rect x="4" y="13" width="7" height="7" rx="1.4"/><rect x="13" y="13" width="7" height="7" rx="1.4"/>'),
+  estudio:     SVG('<path d="M15.5 4.5 19.5 8.5 9 19H5v-4z"/><path d="M13.5 6.5 17.5 10.5"/>'),
+  prontos:     SVG('<circle cx="12" cy="12" r="2.4"/><path d="M6.6 6.6a7.6 7.6 0 0 0 0 10.8M17.4 17.4a7.6 7.6 0 0 0 0-10.8"/><path d="M3.6 3.6a11.9 11.9 0 0 0 0 16.8M20.4 20.4a11.9 11.9 0 0 0 0-16.8"/>'),
+  redes:       SVG('<circle cx="6.5" cy="7" r="2.6"/><circle cx="17.5" cy="7" r="2.6"/><circle cx="12" cy="17.5" r="2.6"/><path d="M8.7 8.6 10.6 15M15.3 8.6 13.4 15M9.1 7h5.8"/>'),
+  jornada:     SVG('<path d="M8.5 6.5h11M8.5 12h11M8.5 17.5h11"/><path d="M4 6.5 5.2 7.7 7 5.4M4 12l1.2 1.2L7 10.9M4 17.5l1.2 1.2L7 16.4"/>'),
+  fachadas:    SVG('<path d="M4 10.5 12 5l8 5.5"/><path d="M5.5 10.5V19h13v-8.5"/><path d="M5.5 13.5h13"/><path d="M10.5 19v-3h3v3"/>'),
+  aprovacoes:  SVG('<path d="M12 20V6"/><path d="M7 11l5-5 5 5"/><path d="M5 20h14"/>'),
+  usuarios:    SVG('<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19.5c.6-3.1 2.9-4.8 5.5-4.8s4.9 1.7 5.5 4.8"/><circle cx="17.5" cy="9.5" r="2.4"/><path d="M16 14.9c2.3.2 4 1.9 4.5 4.6"/>'),
+  registros:   SVG('<ellipse cx="12" cy="6.5" rx="7" ry="2.6"/><path d="M5 6.5v11c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-11"/><path d="M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/>'),
+  comunicados: SVG('<path d="M4.5 8.5h4l6-3.5v14l-6-3.5h-4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z"/><path d="M17.5 9.2a4 4 0 0 1 0 5.6"/>'),
+  suporte:     SVG('<path d="M20 12.5a7.5 7.5 0 1 0-3.2 6.1L20 19.5z"/><path d="M9.6 10a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5"/><path d="M12 16.4h.01"/>'),
+  implantacao: SVG('<path d="M5.5 20V4.8c3.5-1.6 6.5 1.6 10 0V14c-3.5 1.6-6.5-1.6-10 0"/>'),
+  painel:      SVG('<rect x="3.6" y="4.5" width="7.2" height="6" rx="1.4"/><rect x="13.2" y="4.5" width="7.2" height="10" rx="1.4"/><rect x="3.6" y="13" width="7.2" height="6.5" rx="1.4"/><rect x="13.2" y="17" width="7.2" height="2.5" rx="1.2"/>'),
+  marketing:   SVG('<circle cx="12" cy="12" r="8.2"/><path d="M12 3.8A8.2 8.2 0 0 1 20.2 12H12z"/>'),
+  excelencia:  SVG('<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7L12 16.6 6.9 19.3l1-5.7-4.1-4 5.7-.8z"/>'),
+  ranking:     SVG('<path d="M7 20V13M12 20V8M17 20v-5"/><path d="M4.5 20h15"/><path d="M12 8 9.5 5.5h5z"/>'),
+  busca:       SVG('<circle cx="11" cy="11" r="6.4"/><path d="M15.8 15.8 20.5 20.5"/>'),
+  alerta:      SVG('<path d="M18 9a6 6 0 1 0-12 0c0 5-2 6.5-2 6.5h16S18 14 18 9z"/><path d="M10.3 19a2 2 0 0 0 3.4 0"/>'),
+  config:      SVG('<circle cx="12" cy="12" r="2.8"/><path d="M12 3.6v2M12 19v1.4M5.6 5.6l1.5 1.5M17 17l1.5 1.5M3.6 12h2M18.4 12h2M5.6 18.4 7.1 17M17 7.1l1.5-1.5"/>'),
+  tema:        SVG('<circle cx="12" cy="12" r="4.4"/><path d="M12 2.8v2.2M12 19v2.2M4.4 12H2.2M21.8 12h-2.2M6.2 6.2 4.7 4.7M19.3 19.3l-1.5-1.5M6.2 17.8 4.7 19.3M19.3 4.7l-1.5 1.5"/>'),
+  lua:         SVG('<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/>'),
+  idioma:      SVG('<circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8"/><path d="M12 3.6c2.4 2.3 3.6 5.1 3.6 8.4S14.4 18.1 12 20.4c-2.4-2.3-3.6-5.1-3.6-8.4S9.6 5.9 12 3.6z"/>'),
+  chevron:     SVG('<path d="M9.5 6l6 6-6 6"/>'),
+  sair:        SVG('<path d="M15 4.5H6.5A1.5 1.5 0 0 0 5 6v12a1.5 1.5 0 0 0 1.5 1.5H15"/><path d="M13 12h7"/><path d="M17.5 8.5 21 12l-3.5 3.5"/>'),
+  ok:          SVG('<path d="M5 12.5 9.5 17 19 7.5"/>'),
+  seta:        SVG('<path d="M5 12h13"/><path d="M13 7l5 5-5 5"/>'),
+  menu:        SVG('<path d="M4 7h16M4 12h16M4 17h16"/>')
+};
+
+/* =======================================================================
+   IDIOMAS
+   ======================================================================= */
+const IDIOMAS={pt:{nome:'Português',sig:'PT'}, en:{nome:'English',sig:'EN'}, es:{nome:'Español',sig:'ES'}};
+let LANG = (LS.get('pr_idioma')||'pt');
+if(!IDIOMAS[LANG]) LANG='pt';
+
+const DIC={
+en:{
+/* acesso */
+'Entrar na plataforma':'Sign in to the platform',
+'Selecione um acesso de teste — cada um abre a plataforma com o seu próprio escopo de dados e permissões.':'Pick a test account — each one opens the platform with its own data scope and permissions.',
+'E-mail':'Email','Senha':'Password','Entrar':'Sign in','Sair da conta':'Sign out','Trocar de acesso':'Switch account',
+'A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.':'The brand, content, governance and support platform for the RE/MAX network — in one place, with the right access for every level.',
+'Marketing RE/MAX Brasil':'RE/MAX Brazil Marketing','Master SP Capital II':'Master SP Capital II','Gestor da unidade':'Office manager','Associado':'Agent',
+'Visão nacional · publica comunicados e campanhas · aprova':'National view · publishes announcements and campaigns · approves',
+'Acompanha a regional · aprova projetos e evidências':'Tracks the region · approves projects and evidence',
+'Executa o checklist · envia evidências · gerencia a equipe':'Runs the checklist · submits evidence · manages the team',
+'Personaliza peças · publica · acompanha os próprios indicadores':'Customizes assets · publishes · tracks their own metrics',
+'E-mail ou senha inválidos. Clique em um dos acessos acima para preencher.':'Invalid email or password. Click one of the accounts above to fill it in.',
+/* topo e menu */
+'Início':'Home','Mapa do escopo':'Scope map','Módulo':'Module','Idioma':'Language','Tema':'Theme',
+'Claro':'Light','Escuro':'Dark','Automático':'System','Ver a abertura':'Replay intro','Alertas':'Alerts',
+'Identidade da RE/MAX: guia, logos, fontes, cores, templates e regras.':'RE/MAX identity: guidelines, logos, fonts, colors, templates and rules.',
+'Personalização de peças, calendário, Prontos em Rede, redes sociais e distribuição.':'Asset customization, calendar, Prontos em Rede, social accounts and distribution.',
+'Checklists, prazos, evidências, aprovações, adequação das lojas e regras de negócio.':'Checklists, deadlines, evidence, approvals, office compliance and business rules.',
+'Comunicados, notificações, confirmação de leitura, busca e repositório institucional.':'Announcements, notifications, read receipts, search and the institutional repository.',
+'WhatsApp, tickets, IA, SLA, atendimento humano, onboarding e acompanhamento das unidades.':'WhatsApp, tickets, AI, SLA, human support, onboarding and office follow-up.',
+'Indicadores da rede, desempenho de marketing, ranking, pontuação e Programa de Excelência.':'Network metrics, marketing performance, ranking, scoring and the Excellence Program.',
+/* telas */
+'Guia da marca':'Brand guidelines','Biblioteca de materiais':'Asset library','Estúdio de peças':'Asset studio',
+'Redes sociais':'Social accounts','Jornada de adequação':'Brand rollout journey','Fachadas':'Storefronts',
+'Fluxo de aprovação':'Approval workflow','Aprovações':'Approvals','Usuários e permissões':'Users and permissions',
+'Registros e plataforma':'Audit log and platform','Comunicados':'Announcements','Central de atendimento':'Support center',
+'Implantação e Customer Success':'Rollout and Customer Success','Implantação e CS':'Rollout and CS','Painel da rede':'Network dashboard',
+'Painel da regional':'Regional dashboard','Desempenho de marketing':'Marketing performance','Programa de Excelência':'Excellence Program',
+'Ranking e Grand Champion':'Ranking and Grand Champion','Meus indicadores':'My metrics','Prontos em Rede':'Prontos em Rede',
+'Painel RE/MAX Brasil':'RE/MAX Brazil dashboard','Mapa do escopo · 40 frentes em 6 módulos':'Scope map · 40 requirements in 6 modules',
+/* abertura */
+'A rede inteira falando a mesma língua':'The whole network speaking one language',
+'A rede inteira em um só lugar':'The whole network in one place',
+'Ver a jornada da rede':'Open the network journey','Indicadores de marketing':'Marketing metrics','Próxima campanha':'Next campaign',
+/* rótulos de indicador */
+'Unidades':'Offices','Usuários':'Users','Adesão média':'Average adoption','Alcance':'Reach','Publicações':'Posts',
+'Em conformidade':'Compliant','Unidades em atraso':'Offices behind schedule','Leitura de comunicados':'Announcement reads',
+'Chamados abertos':'Open tickets','Adesão':'Adoption','Etapas concluídas':'Completed stages','Encerramento':'Deadline',
+'Próxima etapa':'Next stage','Próxima entrega':'Next deliverable','Evidências':'Evidence','Pontos':'Points',
+'Associados ativos':'Active agents','Fachada':'Storefront','Minhas peças':'My assets','Meus pontos':'My points',
+'Comunicados a ler':'Announcements to read','Campanhas agendadas':'Scheduled campaigns','Engajamento':'Engagement',
+'Frequência':'Frequency','Engajamento médio':'Average engagement','Contas conectadas':'Connected accounts',
+'Publicações na fila':'Queued posts','Já publicadas':'Already published','Sem conta':'No account',
+'Próxima publicação':'Next post','Adesão da campanha':'Campaign adoption','Campanhas no ano':'Campaigns this year',
+'Publicados':'Published','Leitura obrigatória':'Mandatory read','Sua leitura':'Your reading','Leitura da rede':'Network reading',
+'Fachadas instaladas':'Storefronts installed','Projetos em análise':'Projects under review','Em produção':'In production',
+'Prazo de instalação':'Installation deadline','Usuários no escopo':'Users in scope','Ativos':'Active',
+'Contas sociais conectadas':'Connected social accounts','Convites enviados':'Invitations sent','Registros':'Records',
+'Disponibilidade':'Uptime','Usuários simultâneos':'Concurrent users','Backup':'Backup','Aguardando você':'Waiting on you',
+'Aprovados':'Approved','Reprovados':'Rejected','Unidades ativas':'Active offices','Em ativação':'Activating',
+'Tempo médio de ativação':'Average activation time','Saúde da carteira':'Portfolio health','Resolvidos pelo assistente':'Solved by the assistant',
+'Tempo médio de resposta':'Average response time','Entrada por WhatsApp':'Came in via WhatsApp','Sua posição':'Your position',
+'Líder atual':'Current leader','Média da rede':'Network average','Unidades pontuando':'Offices scoring',
+'Frentes mapeadas':'Requirements mapped','No MVP':'In the MVP','Na 2ª onda':'In wave 2','Pedidos novos':'New requests',
+'Módulos':'Modules','Pontos validados':'Validated points','Faixa atual':'Current tier','Comprovações guardadas':'Stored proofs',
+'Ciclo encerra em':'Cycle ends in','Alcance da rede':'Network reach','Publicações e peças':'Posts and assets','Imóveis':'Listings',
+/* botões */
+'Cancelar':'Cancel','Fechar':'Close','Aprovar':'Approve','Reprovar':'Reject','Abrir':'Open','Ver':'View','Detalhar':'Details',
+'Comprovar':'Submit proof','Confirmar leitura':'Confirm reading','Copiar legenda':'Copy caption','Personalizar':'Customize',
+'Agendar na minha conta':'Schedule on my account','Cancelar agendamento':'Cancel schedule','Cancelar meu agendamento':'Cancel my schedule',
+'Publicar em massa':'Bulk publish','Conectar pendentes':'Connect pending','Conectar meu Instagram':'Connect my Instagram',
+'Configurar faixas':'Configure tiers','Como pontuar':'How scoring works','Novo comunicado':'New announcement',
+'Nova campanha':'New campaign','Convidar usuário':'Invite user','Abrir chamado':'Open ticket','Simular WhatsApp':'Simulate WhatsApp',
+'Publicar modelo':'Publish template','Ver biblioteca':'Open library','Limpar filtros':'Clear filters','Baixar PNG':'Download PNG',
+'PDF para impressão':'Print-ready PDF','Salvar nas minhas peças':'Save to my assets','Publicar / agendar':'Publish / schedule',
+'Enviar evidência':'Submit evidence','Enviar comprovação':'Submit proof','Enviar projeto':'Submit project','Enviar foto final':'Submit final photo',
+'Criar peça':'Create asset','Criar minha peça':'Create my asset','Minha jornada':'My journey','Relatório':'Report',
+'Relatório CSV':'CSV report','Exportar CSV':'Export CSV','Exportar auditoria':'Export audit log','Exportar comprovações':'Export proofs',
+'Baixar CSV':'Download CSV','Baixar':'Download','Baixar arte':'Download artwork','Manual da marca':'Brand manual',
+'Pacote de logotipos':'Logo package','Projeto padrão':'Standard project','Gerar relatório':'Generate report',
+'Recarregar demonstração':'Reload demo','Exportar dados (JSON)':'Export data (JSON)','Entendi':'Got it','Depois':'Later',
+'Autorizar':'Authorize','Programar publicação':'Schedule publishing','Criar campanha':'Create campaign','Publicar':'Publish',
+'Convidar':'Invite','Responder':'Reply','Resolver':'Resolve','Escalar N2':'Escalate to L2','Avançar':'Advance','Reabrir':'Reopen',
+'Ativar':'Activate','Desativar':'Deactivate','Cobrar quem não leu':'Nudge who has not read','Cobrar as pendentes':'Nudge the pending ones',
+'Salvar':'Save','Reabrir':'Reopen','Ir para a jornada':'Go to the journey','Ver todos e permissões':'See all and permissions',
+'Abrir indicadores':'Open metrics','Ver adesão':'View adoption','Central':'Support','Recusar':'Reject',
+/* tabelas */
+'Unidade':'Office','Regional':'Region','Etapas':'Stages','Associados':'Agents','Leitura':'Reading','Chamados':'Tickets',
+'Assunto':'Subject','Canal':'Channel','Prioridade':'Priority','Responsável':'Owner','Situação':'Status','Quando':'When',
+'Quem':'Who','Ação':'Action','Objeto':'Object','Origem':'Source','Campanha':'Campaign','Data':'Date','Peça':'Asset',
+'Conteúdo':'Content','Conta':'Account','Usuário':'User','Nível':'Level','Frente':'Requirement','Tela':'Screen','Onda':'Wave',
+'Critério':'Criterion','Digital':'Digital','Impressos':'Printed','Período':'Period','Público':'Audience','Hora':'Time',
+'Título':'Title','Área':'Department','Destinatários':'Recipients','Texto':'Body','Resumo':'Summary','Formato':'Format',
+'Modelo':'Template','Categoria':'Category','Nome':'Name','Telefone':'Phone','Foto':'Photo','Observação':'Note','Tipo':'Type',
+'Descrição':'Description','Motivo':'Reason','Canais':'Channels','Indicadores':'Metrics','Recorte':'Breakdown',
+/* estados */
+'Concluída':'Completed','Em aprovação':'Under review','Em andamento':'In progress','Pendente':'Pending','Atrasada':'Overdue',
+'Aprovado':'Approved','Reprovado':'Rejected','Ativo':'Active','Novo':'New','Obrigatório':'Mandatory','Conectada':'Connected',
+'Agendada':'Scheduled','Publicada':'Published','Planejada':'Planned','Ouro':'Gold','Prata':'Silver','Bronze':'Bronze',
+'Recomendado':'Recommended','2ª onda':'Wave 2','Aguardando':'Awaiting','Validado':'Validated','sua faixa':'your tier',
+'Nunca acessou':'Never signed in','Saudável':'Healthy','Atenção do CS':'Needs CS attention','sem faixa ainda':'no tier yet',
+'Provedor em uso':'Provider in use','Usar este provedor':'Use this provider','Você já agendou':'You already scheduled',
+/* seções */
+'Precisa de atenção':'Needs attention','Publicações da rede por semana':'Network posts per week','Adesão por unidade':'Adoption by office',
+'Progresso por etapa':'Progress by stage','Situação por unidade':'Status by office','Etapas':'Stages','Alertas desta unidade':'Alerts for this office',
+'Linha do tempo':'Timeline','Checklist de adequação':'Rollout checklist','Equipe da unidade':'Office team','Avisos':'Notices',
+'Minhas pendências':'My open items','Campanha em preparação':'Campaign in preparation','Calendário da rede':'Network calendar',
+'Campanhas':'Campaigns','Provedor de publicação':'Publishing provider','Fila de publicação':'Publishing queue',
+'Contas dos associados':'Agent accounts','Assistente da marca':'Brand assistant','Como o atendimento funciona':'How support works',
+'SLA por tipo':'SLA by type','Chamados':'Tickets','Expansão por ondas':'Wave-based rollout','Carteira de unidades':'Office portfolio',
+'Kit de onboarding':'Onboarding kit','Por Master Regional':'By Regional Master','Compliance da marca por unidade':'Brand compliance by office',
+'Evolução da adesão':'Adoption over time','Situação das unidades':'Office status','Relatórios':'Reports','Regionais':'Regions',
+'Associados em destaque':'Top agents','Ranking de unidades':'Office ranking','Critérios do ciclo':'Cycle criteria',
+'Ranking do programa':'Program ranking','Publicações por semana':'Posts per week','Formatos publicados':'Formats published',
+'Alcance por unidade':'Reach by office','Versões do logotipo':'Logo versions','Regras de aplicação':'Usage rules',
+'Cores institucionais':'Brand colors','Tipografia e dúvidas frequentes':'Typography and FAQ','Hierarquia da rede':'Network hierarchy',
+'Matriz de permissões':'Permission matrix','Arquitetura':'Architecture','Segurança e conformidade':'Security and compliance',
+'Histórico e rastreabilidade':'History and traceability','Quem leu':'Who has read','Quem compra o quê':'Who buys what',
+'Pedidos novos já incorporados':'New requests already delivered','Antes e depois':'Before and after','Fluxo da unidade':'Office flow',
+'Acervo nacional de fachadas':'National storefront archive','Como melhorar':'How to improve','Meus formatos':'My formats',
+'Minhas publicações por semana':'My posts per week','Todas as frentes':'All requirements','Grand Champion 2027':'Grand Champion 2027',
+'A rede inteira':'The whole network',
+'falando a mesma língua':'speaking one language',
+'Olá,':'Hello,',
+'unidades acompanhadas etapa a etapa, com evidência e prazo':'offices tracked stage by stage, with evidence and deadlines',
+'de alcance somado no período pelas peças oficiais':'of combined reach in the period from official assets',
+'de adesão média à nova identidade':'average adoption of the new identity',
+'dias até o encerramento da adequação':'days until the rollout deadline',
+'Buscar: cartão de visita, fachada, comunicado, regra de logo…':'Search: business card, storefront, announcement, logo rule…',
+'das 7 etapas':'of the 7 stages',
+'no período':'in the period',
+'5 ativas':'5 active',
+'adesão igual ou acima de 70%':'adoption at or above 70%',
+'com pelo menos uma etapa vencida':'with at least one overdue stage',
+'confirmação nos obrigatórios':'confirmed on mandatory ones',
+'SLA médio de 1h48 na resposta':'average response SLA of 1h48',
+'clique para abrir a jornada':'click to open the journey',
+'Nenhuma unidade em atraso no seu escopo.':'No office is behind schedule in your scope.',
+'Adesão, prazos e uso da plataforma nas 20 unidades da primeira onda. A rede completa entra por ondas, com o mesmo painel.':'Adoption, deadlines and platform usage across the network, wave by wave, on the same dashboard.',
+'Ciclo':'Cycle',
+'no ciclo':'in the cycle',
+'validadas':'validated',
+'pontos validados':'validated points',
+'com foto, autor e data':'with photo, author and date',
+'precisam da sua análise':'need your review',
+'tudo validado':'all validated',
+'geradas pelo Estúdio':'created in the Studio',
+'leitura obrigatória':'mandatory read',
+'no ranking da unidade':'in the office ranking',
+'ranking da unidade':'office ranking',
+'na régua da rede':'on the network scale',
+'últimos 30 dias':'last 30 days',
+'toda a rede':'the whole network',
+'sem passar por pessoa':'without a human touching it',
+'canal preferido do corretor':'the agent’s preferred channel',
+'na rede':'in the network',
+'de 7 etapas concluídas':'of 7 stages completed',
+'usaram a plataforma nos últimos 30 dias':'used the platform in the last 30 days',
+'situação atual':'current status',
+'Detalhar':'Details',
+'Abrir':'Open',
+'Enviar comprovação':'Submit proof',
+'Ver a abertura':'Replay intro',
+},
+es:{
+'Entrar na plataforma':'Entrar en la plataforma',
+'Selecione um acesso de teste — cada um abre a plataforma com o seu próprio escopo de dados e permissões.':'Elija un acceso de prueba: cada uno abre la plataforma con su propio alcance de datos y permisos.',
+'E-mail':'Correo','Senha':'Contraseña','Entrar':'Entrar','Sair da conta':'Cerrar sesión','Trocar de acesso':'Cambiar de acceso',
+'A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.':'La plataforma de marca, contenido, gobernanza y soporte de la red RE/MAX, en un solo lugar y con el acceso de cada nivel.',
+'Marketing RE/MAX Brasil':'Marketing RE/MAX Brasil','Gestor da unidade':'Gerente de la oficina','Associado':'Asesor',
+'Visão nacional · publica comunicados e campanhas · aprova':'Visión nacional · publica comunicados y campañas · aprueba',
+'Acompanha a regional · aprova projetos e evidências':'Sigue la regional · aprueba proyectos y evidencias',
+'Executa o checklist · envia evidências · gerencia a equipe':'Ejecuta el checklist · envía evidencias · gestiona el equipo',
+'Personaliza peças · publica · acompanha os próprios indicadores':'Personaliza piezas · publica · sigue sus propios indicadores',
+'E-mail ou senha inválidos. Clique em um dos acessos acima para preencher.':'Correo o contraseña inválidos. Haga clic en uno de los accesos de arriba para completarlos.',
+'Início':'Inicio','Mapa do escopo':'Mapa del alcance','Módulo':'Módulo','Idioma':'Idioma','Tema':'Tema',
+'Claro':'Claro','Escuro':'Oscuro','Automático':'Automático','Ver a abertura':'Ver la apertura','Alertas':'Alertas',
+'Identidade da RE/MAX: guia, logos, fontes, cores, templates e regras.':'Identidad de RE/MAX: guía, logos, fuentes, colores, plantillas y reglas.',
+'Personalização de peças, calendário, Prontos em Rede, redes sociais e distribuição.':'Personalización de piezas, calendario, Prontos em Rede, redes sociales y distribución.',
+'Checklists, prazos, evidências, aprovações, adequação das lojas e regras de negócio.':'Checklists, plazos, evidencias, aprobaciones, adecuación de las oficinas y reglas de negocio.',
+'Comunicados, notificações, confirmação de leitura, busca e repositório institucional.':'Comunicados, notificaciones, confirmación de lectura, búsqueda y repositorio institucional.',
+'WhatsApp, tickets, IA, SLA, atendimento humano, onboarding e acompanhamento das unidades.':'WhatsApp, tickets, IA, SLA, atención humana, onboarding y seguimiento de las oficinas.',
+'Indicadores da rede, desempenho de marketing, ranking, pontuação e Programa de Excelência.':'Indicadores de la red, desempeño de marketing, ranking, puntuación y Programa de Excelencia.',
+'Guia da marca':'Guía de marca','Biblioteca de materiais':'Biblioteca de materiales','Estúdio de peças':'Estudio de piezas',
+'Redes sociais':'Redes sociales','Jornada de adequação':'Ruta de adecuación','Fachadas':'Fachadas',
+'Fluxo de aprovação':'Flujo de aprobación','Aprovações':'Aprobaciones','Usuários e permissões':'Usuarios y permisos',
+'Registros e plataforma':'Registros y plataforma','Comunicados':'Comunicados','Central de atendimento':'Centro de atención',
+'Implantação e Customer Success':'Implantación y Customer Success','Implantação e CS':'Implantación y CS','Painel da rede':'Panel de la red',
+'Painel da regional':'Panel de la regional','Desempenho de marketing':'Desempeño de marketing','Programa de Excelência':'Programa de Excelencia',
+'Ranking e Grand Champion':'Ranking y Grand Champion','Meus indicadores':'Mis indicadores',
+'Painel RE/MAX Brasil':'Panel RE/MAX Brasil','Mapa do escopo · 40 frentes em 6 módulos':'Mapa del alcance · 40 frentes en 6 módulos',
+'A rede inteira falando a mesma língua':'Toda la red hablando el mismo idioma',
+'A rede inteira em um só lugar':'Toda la red en un solo lugar',
+'Ver a jornada da rede':'Ver la ruta de la red','Indicadores de marketing':'Indicadores de marketing','Próxima campanha':'Próxima campaña',
+'Unidades':'Oficinas','Usuários':'Usuarios','Adesão média':'Adopción media','Alcance':'Alcance','Publicações':'Publicaciones',
+'Em conformidade':'En conformidad','Unidades em atraso':'Oficinas atrasadas','Leitura de comunicados':'Lectura de comunicados',
+'Chamados abertos':'Tickets abiertos','Adesão':'Adopción','Etapas concluídas':'Etapas concluidas','Encerramento':'Cierre',
+'Próxima etapa':'Próxima etapa','Próxima entrega':'Próxima entrega','Evidências':'Evidencias','Pontos':'Puntos',
+'Associados ativos':'Asesores activos','Fachada':'Fachada','Minhas peças':'Mis piezas','Meus pontos':'Mis puntos',
+'Comunicados a ler':'Comunicados por leer','Campanhas agendadas':'Campañas programadas','Engajamento':'Interacción',
+'Frequência':'Frecuencia','Engajamento médio':'Interacción media','Contas conectadas':'Cuentas conectadas',
+'Publicações na fila':'Publicaciones en cola','Já publicadas':'Ya publicadas','Sem conta':'Sin cuenta',
+'Próxima publicação':'Próxima publicación','Adesão da campanha':'Adopción de la campaña','Campanhas no ano':'Campañas del año',
+'Publicados':'Publicados','Leitura obrigatória':'Lectura obligatoria','Sua leitura':'Su lectura','Leitura da rede':'Lectura de la red',
+'Fachadas instaladas':'Fachadas instaladas','Projetos em análise':'Proyectos en análisis','Em produção':'En producción',
+'Prazo de instalação':'Plazo de instalación','Usuários no escopo':'Usuarios en el alcance','Ativos':'Activos',
+'Contas sociais conectadas':'Cuentas sociales conectadas','Convites enviados':'Invitaciones enviadas','Registros':'Registros',
+'Disponibilidade':'Disponibilidad','Usuários simultâneos':'Usuarios simultáneos','Backup':'Respaldo','Aguardando você':'Esperando por usted',
+'Aprovados':'Aprobados','Reprovados':'Rechazados','Unidades ativas':'Oficinas activas','Em ativação':'En activación',
+'Tempo médio de ativação':'Tiempo medio de activación','Saúde da carteira':'Salud de la cartera','Resolvidos pelo assistente':'Resueltos por el asistente',
+'Tempo médio de resposta':'Tiempo medio de respuesta','Entrada por WhatsApp':'Ingresados por WhatsApp','Sua posição':'Su posición',
+'Líder atual':'Líder actual','Média da rede':'Media de la red','Unidades pontuando':'Oficinas puntuando',
+'Frentes mapeadas':'Frentes mapeados','No MVP':'En el MVP','Na 2ª onda':'En la 2ª ola','Pedidos novos':'Pedidos nuevos',
+'Módulos':'Módulos','Pontos validados':'Puntos validados','Faixa atual':'Nivel actual','Comprovações guardadas':'Comprobantes guardados',
+'Ciclo encerra em':'El ciclo cierra en','Alcance da rede':'Alcance de la red','Publicações e peças':'Publicaciones y piezas','Imóveis':'Inmuebles',
+'Cancelar':'Cancelar','Fechar':'Cerrar','Aprovar':'Aprobar','Reprovar':'Rechazar','Abrir':'Abrir','Ver':'Ver','Detalhar':'Detallar',
+'Comprovar':'Comprobar','Confirmar leitura':'Confirmar lectura','Copiar legenda':'Copiar texto','Personalizar':'Personalizar',
+'Agendar na minha conta':'Programar en mi cuenta','Cancelar agendamento':'Cancelar programación','Cancelar meu agendamento':'Cancelar mi programación',
+'Publicar em massa':'Publicar en masa','Conectar pendentes':'Conectar pendientes','Conectar meu Instagram':'Conectar mi Instagram',
+'Configurar faixas':'Configurar niveles','Como pontuar':'Cómo puntuar','Novo comunicado':'Nuevo comunicado',
+'Nova campanha':'Nueva campaña','Convidar usuário':'Invitar usuario','Abrir chamado':'Abrir ticket','Simular WhatsApp':'Simular WhatsApp',
+'Publicar modelo':'Publicar plantilla','Ver biblioteca':'Ver biblioteca','Limpar filtros':'Limpiar filtros','Baixar PNG':'Descargar PNG',
+'PDF para impressão':'PDF para imprenta','Salvar nas minhas peças':'Guardar en mis piezas','Publicar / agendar':'Publicar / programar',
+'Enviar evidência':'Enviar evidencia','Enviar comprovação':'Enviar comprobante','Enviar projeto':'Enviar proyecto','Enviar foto final':'Enviar foto final',
+'Criar peça':'Crear pieza','Criar minha peça':'Crear mi pieza','Minha jornada':'Mi ruta','Relatório':'Informe',
+'Relatório CSV':'Informe CSV','Exportar CSV':'Exportar CSV','Exportar auditoria':'Exportar auditoría','Exportar comprovações':'Exportar comprobantes',
+'Baixar CSV':'Descargar CSV','Baixar':'Descargar','Baixar arte':'Descargar arte','Manual da marca':'Manual de marca',
+'Pacote de logotipos':'Paquete de logos','Projeto padrão':'Proyecto estándar','Gerar relatório':'Generar informe',
+'Recarregar demonstração':'Recargar demostración','Exportar dados (JSON)':'Exportar datos (JSON)','Entendi':'Entendido','Depois':'Después',
+'Autorizar':'Autorizar','Programar publicação':'Programar publicación','Criar campanha':'Crear campaña','Publicar':'Publicar',
+'Convidar':'Invitar','Responder':'Responder','Resolver':'Resolver','Escalar N2':'Escalar a N2','Avançar':'Avanzar','Reabrir':'Reabrir',
+'Ativar':'Activar','Desativar':'Desactivar','Cobrar quem não leu':'Recordar a quien no leyó','Cobrar as pendentes':'Recordar a las pendientes',
+'Salvar':'Guardar','Ir para a jornada':'Ir a la ruta','Ver todos e permissões':'Ver todos y permisos',
+'Abrir indicadores':'Abrir indicadores','Ver adesão':'Ver adopción','Central':'Centro','Recusar':'Rechazar',
+'Unidade':'Oficina','Regional':'Regional','Etapas':'Etapas','Associados':'Asesores','Leitura':'Lectura','Chamados':'Tickets',
+'Assunto':'Asunto','Canal':'Canal','Prioridade':'Prioridad','Responsável':'Responsable','Situação':'Situación','Quando':'Cuándo',
+'Quem':'Quién','Ação':'Acción','Objeto':'Objeto','Origem':'Origen','Campanha':'Campaña','Data':'Fecha','Peça':'Pieza',
+'Conteúdo':'Contenido','Conta':'Cuenta','Usuário':'Usuario','Nível':'Nivel','Frente':'Frente','Tela':'Pantalla','Onda':'Ola',
+'Critério':'Criterio','Digital':'Digital','Impressos':'Impresos','Período':'Período','Público':'Público','Hora':'Hora',
+'Título':'Título','Área':'Área','Destinatários':'Destinatarios','Texto':'Texto','Resumo':'Resumen','Formato':'Formato',
+'Modelo':'Plantilla','Categoria':'Categoría','Nome':'Nombre','Telefone':'Teléfono','Foto':'Foto','Observação':'Observación','Tipo':'Tipo',
+'Descrição':'Descripción','Motivo':'Motivo','Canais':'Canales','Indicadores':'Indicadores','Recorte':'Recorte',
+'Concluída':'Concluida','Em aprovação':'En aprobación','Em andamento':'En curso','Pendente':'Pendiente','Atrasada':'Atrasada',
+'Aprovado':'Aprobado','Reprovado':'Rechazado','Ativo':'Activo','Novo':'Nuevo','Obrigatório':'Obligatorio','Conectada':'Conectada',
+'Agendada':'Programada','Publicada':'Publicada','Planejada':'Planificada','Ouro':'Oro','Prata':'Plata','Bronze':'Bronce',
+'Recomendado':'Recomendado','2ª onda':'2ª ola','Aguardando':'Esperando','Validado':'Validado','sua faixa':'su nivel',
+'Nunca acessou':'Nunca ingresó','Saudável':'Saludable','Atenção do CS':'Atención de CS','sem faixa ainda':'sin nivel aún',
+'Provedor em uso':'Proveedor en uso','Usar este provedor':'Usar este proveedor','Você já agendou':'Ya programó',
+'Precisa de atenção':'Necesita atención','Publicações da rede por semana':'Publicaciones de la red por semana','Adesão por unidade':'Adopción por oficina',
+'Progresso por etapa':'Progreso por etapa','Situação por unidade':'Situación por oficina','Alertas desta unidade':'Alertas de esta oficina',
+'Linha do tempo':'Línea de tiempo','Checklist de adequação':'Checklist de adecuación','Equipe da unidade':'Equipo de la oficina','Avisos':'Avisos',
+'Minhas pendências':'Mis pendientes','Campanha em preparação':'Campaña en preparación','Calendário da rede':'Calendario de la red',
+'Campanhas':'Campañas','Provedor de publicação':'Proveedor de publicación','Fila de publicação':'Cola de publicación',
+'Contas dos associados':'Cuentas de los asesores','Assistente da marca':'Asistente de marca','Como o atendimento funciona':'Cómo funciona la atención',
+'SLA por tipo':'SLA por tipo','Expansão por ondas':'Expansión por olas','Carteira de unidades':'Cartera de oficinas',
+'Kit de onboarding':'Kit de onboarding','Por Master Regional':'Por Master Regional','Compliance da marca por unidade':'Compliance de marca por oficina',
+'Evolução da adesão':'Evolución de la adopción','Situação das unidades':'Situación de las oficinas','Relatórios':'Informes','Regionais':'Regionales',
+'Associados em destaque':'Asesores destacados','Ranking de unidades':'Ranking de oficinas','Critérios do ciclo':'Criterios del ciclo',
+'Ranking do programa':'Ranking del programa','Publicações por semana':'Publicaciones por semana','Formatos publicados':'Formatos publicados',
+'Alcance por unidade':'Alcance por oficina','Versões do logotipo':'Versiones del logo','Regras de aplicação':'Reglas de aplicación',
+'Cores institucionais':'Colores institucionales','Tipografia e dúvidas frequentes':'Tipografía y preguntas frecuentes','Hierarquia da rede':'Jerarquía de la red',
+'Matriz de permissões':'Matriz de permisos','Arquitetura':'Arquitectura','Segurança e conformidade':'Seguridad y conformidad',
+'Histórico e rastreabilidade':'Histórico y trazabilidad','Quem leu':'Quién leyó','Quem compra o quê':'Quién compra qué',
+'Pedidos novos já incorporados':'Pedidos nuevos ya incorporados','Antes e depois':'Antes y después','Fluxo da unidade':'Flujo de la oficina',
+'Acervo nacional de fachadas':'Acervo nacional de fachadas','Como melhorar':'Cómo mejorar','Meus formatos':'Mis formatos',
+'Minhas publicações por semana':'Mis publicaciones por semana','Todas as frentes':'Todos los frentes','Grand Champion 2027':'Grand Champion 2027',
+'A rede inteira':'Toda la red',
+'falando a mesma língua':'hablando el mismo idioma',
+'Olá,':'Hola,',
+'unidades acompanhadas etapa a etapa, com evidência e prazo':'oficinas seguidas etapa por etapa, con evidencia y plazo',
+'de alcance somado no período pelas peças oficiais':'de alcance sumado en el período por las piezas oficiales',
+'de adesão média à nova identidade':'de adopción media de la nueva identidad',
+'dias até o encerramento da adequação':'días hasta el cierre de la adecuación',
+'Buscar: cartão de visita, fachada, comunicado, regra de logo…':'Buscar: tarjeta, fachada, comunicado, regla del logo…',
+'das 7 etapas':'de las 7 etapas',
+'no período':'en el período',
+'5 ativas':'5 activas',
+'adesão igual ou acima de 70%':'adopción igual o superior al 70%',
+'com pelo menos uma etapa vencida':'con al menos una etapa vencida',
+'confirmação nos obrigatórios':'confirmación en los obligatorios',
+'SLA médio de 1h48 na resposta':'SLA medio de 1h48 en la respuesta',
+'clique para abrir a jornada':'haga clic para abrir la ruta',
+'Nenhuma unidade em atraso no seu escopo.':'Ninguna oficina atrasada en su alcance.',
+'Ciclo':'Ciclo',
+'no ciclo':'en el ciclo',
+'validadas':'validadas',
+'pontos validados':'puntos validados',
+'com foto, autor e data':'con foto, autor y fecha',
+'precisam da sua análise':'necesitan su revisión',
+'tudo validado':'todo validado',
+'geradas pelo Estúdio':'creadas en el Estudio',
+'leitura obrigatória':'lectura obligatoria',
+'no ranking da unidade':'en el ranking de la oficina',
+'ranking da unidade':'ranking de la oficina',
+'na régua da rede':'en la regla de la red',
+'últimos 30 dias':'últimos 30 días',
+'toda a rede':'toda la red',
+'sem passar por pessoa':'sin pasar por una persona',
+'canal preferido do corretor':'canal preferido del asesor',
+'na rede':'en la red',
+'de 7 etapas concluídas':'de 7 etapas concluidas',
+'usaram a plataforma nos últimos 30 dias':'usaron la plataforma en los últimos 30 días',
+'situação atual':'situación actual',
+'Detalhar':'Detallar',
+'Abrir':'Abrir',
+}};
+function T(s){ if(LANG==='pt'||!s) return s; const d=DIC[LANG]; return (d && d[s]) || s; }
+function aplicarIdioma(root){
+  const d=DIC[LANG];
+  ['placeholder','title','aria-label'].forEach(at=>{
+    $$('['+at+']',root||document).forEach(el=>{
+      const chave='pt'+at.replace('-','');
+      if(!el.dataset[chave]) el.dataset[chave]=el.getAttribute(at)||'';
+      const orig=el.dataset[chave];
+      el.setAttribute(at, (d&&d[orig])||orig);
+    });
+  });
+  if(LANG==='pt'||!d) return;
+  const w=document.createTreeWalker(root||document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(n){ const p=n.parentNode; if(!p) return NodeFilter.FILTER_REJECT;
+      const tag=p.nodeName; if(tag==='SCRIPT'||tag==='STYLE'||tag==='CANVAS') return NodeFilter.FILTER_REJECT;
+      return n.nodeValue && n.nodeValue.trim().length>1 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }
+  });
+  const alvos=[]; let n; while((n=w.nextNode())) alvos.push(n);
+  alvos.forEach(t=>{ const v=t.nodeValue.trim(); if(d[v]) t.nodeValue=t.nodeValue.replace(v,d[v]); });
+}
+function trocaIdioma(l){
+  if(!IDIOMAS[l]) return;
+  LANG=l; LS.set('pr_idioma',l);
+  document.documentElement.lang = l==='pt'?'pt-BR':l;
+  if($('#login')){ $('#login').remove(); telaLogin(); }
+  else { renderWho(); renderNav(); route(); aplicarIdioma(document.body); }
+  toast('<b>'+IDIOMAS[l].nome+'</b>');
+}
+
+/* =======================================================================
+   TEMA
+   ======================================================================= */
+let TEMA = LS.get('pr_tema')||'auto';
+function temaEfetivo(){
+  if(TEMA!=='auto') return TEMA;
+  const doHost=document.documentElement.getAttribute('data-theme');   // quando aberto no claude.ai, segue o tema escolhido lá
+  if(doHost==='dark') return 'escuro';
+  if(doHost==='light') return 'claro';
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)?'escuro':'claro';
+}
+function aplicarTema(){
+  document.documentElement.setAttribute('data-tema', temaEfetivo());
+  if(typeof atualizaPaleta==='function') atualizaPaleta();
+}
+function trocaTema(t){
+  TEMA=t; LS.set('pr_tema',t); aplicarTema();
+  if($('#view') && $('#view').innerHTML) route();
+  const nome={claro:T('Claro'),escuro:T('Escuro'),auto:T('Automático')}[t];
+  toast('<b>'+T('Tema')+':</b> '+nome);
+}
+if(window.matchMedia) try{ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(TEMA==='auto'){ aplicarTema(); if($('#view')&&$('#view').innerHTML) route(); } }); }catch(e){}
+
+/* =======================================================================
+   NÚMEROS QUE SOBEM
+   ======================================================================= */
+function animaNumeros(root){
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  $$('.kpi .v, .hero .st .v', root||document).forEach(el=>{
+    const txt=el.textContent.trim();
+    const m=txt.match(/^([0-9][0-9.,]*)(.*)$/);
+    if(!m) return;
+    const bruto=m[1], resto=m[2]||'';
+    const dec=(bruto.indexOf(',')>=0);
+    const alvo=parseFloat(bruto.replace(/\./g,'').replace(',','.'));
+    if(!isFinite(alvo)||alvo<=0||alvo>1e9) return;
+    const fmt=v=> dec? v.toFixed(1).replace('.',',') : Math.round(v).toLocaleString('pt-BR');
+    const dur=760; let t0=null;
+    const passo=ts=>{ if(!t0)t0=ts; const p=Math.min((ts-t0)/dur,1);
+      el.textContent=fmt(alvo*(1-Math.pow(1-p,3)))+resto;
+      if(p<1) requestAnimationFrame(passo); };
+    el.textContent=fmt(0)+resto;
+    requestAnimationFrame(passo);
+  });
+}
+/* =======================================================================
+   MARCA LUMINOSA — o balão da RE/MAX desenhado em luz (abertura, acesso, início)
+   ======================================================================= */
+let _mb=0;
+function marcaBrilho(cls){
+  const id='mb'+(++_mb);
+  const P='M100 14C147 14 184 50 184 97C184 136 158 162 136 181C128 188 123 193 122 198H78C77 193 72 188 64 181C42 162 16 136 16 97C16 50 53 14 100 14Z';
+  const G='M100 14C76 36 64 70 66 104C68 140 80 170 88 198M100 14C124 36 136 70 134 104C132 140 120 170 112 198M18 112C60 124 140 124 182 112';
+  const C='M80 200L88 222M120 200L112 222M90 222H110Q114 222 114 226V238Q114 242 110 242H90Q86 242 86 238V226Q86 222 90 222Z';
+  return '<div class="marca '+(cls||'')+'" aria-hidden="true"><div class="halo"></div>'+
+    '<svg viewBox="0 0 200 260">'+
+      '<defs>'+
+        '<radialGradient id="'+id+'f" cx="50%" cy="40%" r="62%">'+
+          '<stop offset="0" stop-color="#fff" stop-opacity=".95"/>'+
+          '<stop offset=".32" stop-color="#EEF5FF" stop-opacity=".6"/>'+
+          '<stop offset=".72" stop-color="#C4DCFF" stop-opacity=".16"/>'+
+          '<stop offset="1" stop-color="#A9CBFF" stop-opacity="0"/>'+
+        '</radialGradient>'+
+        '<linearGradient id="'+id+'s" x1="0" y1="0" x2="1" y2="1">'+
+          '<stop offset="0" stop-color="#FFFFFF"/><stop offset=".22" stop-color="#FFC9E7"/>'+
+          '<stop offset=".48" stop-color="#B6EEFF"/><stop offset=".72" stop-color="#FFF0B5"/><stop offset="1" stop-color="#FFFFFF"/>'+
+          '<animateTransform attributeName="gradientTransform" type="rotate" from="0 .5 .5" to="360 .5 .5" dur="10s" repeatCount="indefinite"/>'+
+        '</linearGradient>'+
+        '<filter id="'+id+'b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>'+
+      '</defs>'+
+      '<path class="gl" d="'+P+'" fill="none" stroke="#fff" stroke-width="12" filter="url(#'+id+'b)"/>'+
+      '<path class="fi" d="'+P+'" fill="url(#'+id+'f)"/>'+
+      '<path class="go" d="'+G+'" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1.2"/>'+
+      '<path class="ri" d="'+P+'" fill="none" stroke="url(#'+id+'s)" stroke-width="3.2" stroke-linejoin="round" pathLength="1"/>'+
+      '<path class="ces" d="'+C+'" fill="none" stroke="url(#'+id+'s)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'+
+    '</svg></div>';
+}
+
+/* =======================================================================
+   ABERTURA — o balão se desenha em luz, o céu acende, o nome aparece
+   ======================================================================= */
+function abertura(depois){
+  const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduz){ depois(); return; }
+  const el=document.createElement('div'); el.id='abertura';
+  const t1 = LANG==='en'?'Ready as a Network.':LANG==='es'?'Listos en Red.':'Prontos em Rede.';
+  const t2 = LANG==='en'?'20 offices. 200 users. One network.'
+           : LANG==='es'?'20 oficinas. 200 usuarios. Una sola red.'
+           : '20 unidades. 200 usuários. Uma só rede.';
+  el.innerHTML='<div class="ceu"></div>'+
+    '<div class="palco">'+marcaBrilho('ab')+
+      '<h1 class="t1">'+esc(t1)+'</h1>'+
+      '<p class="t2">'+esc(t2)+'</p>'+
+      '<div class="lg"><img src="'+LOGO+'" alt="RE/MAX"></div>'+
+    '</div>'+
+    '<button class="pular">'+(LANG==='en'?'Skip':LANG==='es'?'Saltar':'Pular')+'</button>';
+  document.body.appendChild(el);
+  document.body.style.overflow='hidden';
+  const ets=[
+    setTimeout(()=>el.classList.add('f1'),120),
+    setTimeout(()=>el.classList.add('f2'),1250),
+    setTimeout(()=>el.classList.add('f3'),2250),
+    setTimeout(()=>el.classList.add('f4'),2950),
+    setTimeout(()=>fim(),5700)
+  ];
+  let acabou=false;
+  function fim(){
+    if(acabou) return; acabou=true;
+    ets.forEach(clearTimeout);
+    el.classList.add('sai');
+    depois();                                   // o que vem depois já nasce por baixo: a troca é um cruzamento, sem corte
+    setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);
+  }
+  el.addEventListener('click',fim);
+  document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); fim(); });
+}
+</script>

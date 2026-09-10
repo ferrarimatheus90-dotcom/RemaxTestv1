@@ -1,0 +1,133 @@
+<script>
+/* =======================================================================
+   CONTEÚDO DO PRODUTO
+   ======================================================================= */
+const TEMPLATES = [
+  {id:'t01', nome:'Imóvel em destaque',        cat:'Redes sociais',  fmt:'feed',   dim:'1080 × 1080', tag:'Mais usado', txt:'ESTE PODE SER O SEU', sub:'3 dorm · 2 vagas · Vila Mariana'},
+  {id:'t02', nome:'Story — novo imóvel',       cat:'Redes sociais',  fmt:'story',  dim:'1080 × 1920', txt:'NOVIDADE NA REGIÃO', sub:'Deslize para conhecer'},
+  {id:'t03', nome:'Vendido!',                  cat:'Redes sociais',  fmt:'feed',   dim:'1080 × 1080', tag:'Campanha', txt:'VENDIDO', sub:'Mais um sonho realizado'},
+  {id:'t04', nome:'Apresentação do corretor',  cat:'Redes sociais',  fmt:'feed',   dim:'1080 × 1080', txt:'PRAZER, SOU SEU CORRETOR', sub:'Especialista na sua região'},
+  {id:'t05', nome:'Cartão de visita',          cat:'Papelaria',      fmt:'cartao', dim:'90 × 50 mm · 300 dpi', tag:'Nova marca', txt:'', sub:''},
+  {id:'t06', nome:'Assinatura de e-mail',      cat:'Digital',        fmt:'email',  dim:'600 × 180 px', tag:'Nova marca', txt:'', sub:''},
+  {id:'t07', nome:'Papel timbrado',            cat:'Papelaria',      fmt:'a4',     dim:'A4 · impressão', txt:'', sub:''},
+  {id:'t08', nome:'Placa de venda',            cat:'Placas e campo', fmt:'placa',  dim:'80 × 60 cm', tag:'Nova marca', txt:'VENDE-SE', sub:'Fale com o corretor'},
+  {id:'t09', nome:'Placa de locação',          cat:'Placas e campo', fmt:'placa',  dim:'80 × 60 cm', txt:'ALUGA-SE', sub:'Agende sua visita'},
+  {id:'t10', nome:'Faixa de lançamento',       cat:'Placas e campo', fmt:'placa',  dim:'3 × 1 m', txt:'LANÇAMENTO', sub:'Unidades a partir de 62 m²'},
+  {id:'t11', nome:'Apresentação comercial',    cat:'Apresentações',  fmt:'slide',  dim:'16:9 · 12 slides', txt:'PROPOSTA DE VENDA', sub:'Modelo oficial da rede'},
+  {id:'t12', nome:'Análise de mercado (PMA)',  cat:'Apresentações',  fmt:'slide',  dim:'16:9 · 8 slides', tag:'Mais usado', txt:'ANÁLISE DE MERCADO', sub:'Avaliação do seu imóvel'},
+  {id:'t13', nome:'Outdoor institucional',     cat:'Mídia externa',  fmt:'slide',  dim:'9 × 3 m', txt:'A MAIOR REDE DE IMÓVEIS DO MUNDO', sub:''},
+  {id:'t14', nome:'Capa de WhatsApp Business', cat:'Digital',        fmt:'feed',   dim:'640 × 640 px', txt:'ATENDIMENTO', sub:'Fale comigo agora'},
+  {id:'t15', nome:'Fachada — projeto padrão',  cat:'Fachadas',       fmt:'slide',  dim:'DWG + PDF', tag:'Obrigatório', txt:'PADRÃO DE FACHADA', sub:'Especificação técnica'}
+];
+function TPLS(){ return TEMPLATES.concat((S&&S.templatesExtra)||[]); }
+const CATS = ['Todos','Redes sociais','Papelaria','Placas e campo','Apresentações','Mídia externa','Digital','Fachadas'];
+const DIMS = {feed:[1080,1080], story:[1080,1920], cartao:[1063,591], placa:[1200,900], email:[1200,360], a4:[1240,1754], slide:[1600,900]};
+
+const SEED_COMUNICADOS = [
+  {id:'k1', area:'Marketing', tit:'Nova identidade visual RE/MAX — cronograma de adequação por etapa', dt:'2026-09-08', obr:true,
+   res:'A jornada de adequação está em curso. Este comunicado consolida os prazos de cada etapa e reforça as duas primeiras, já vencidas.',
+   corpo:'A adequação começou em agosto de 2026 e se encerra em 31 de março de 2027. As etapas de cadastro (15/08) e de adequação digital (05/09) já venceram: as unidades pendentes aparecem como atrasadas no painel e recebem cobrança automática.<br><br>O acompanhamento é feito exclusivamente pela plataforma Prontos em Rede — cada etapa tem prazo, responsável e evidência anexada. Materiais da versão anterior devem sair de circulação conforme o cronograma de cada etapa.'},
+  {id:'k2', area:'Marketing', tit:'Prontos em Rede — campanha nacional de 15 de setembro', dt:'2026-09-07', obr:true,
+   res:'Arte e legenda liberadas para publicação sincronizada em toda a rede, às 10h. Agendamento pela plataforma.',
+   corpo:'A publicação sincronizada acontece em 15/09 às 10h. Arte, legenda e hashtags estão no módulo Content &amp; Social Hub. O agendamento é feito em um clique para todas as contas conectadas.'},
+  {id:'k3', area:'Universidade RE/MAX', tit:'Inscrições abertas — trilha de formação do 4º trimestre', dt:'2026-09-05', obr:false,
+   res:'Turmas de captação, avaliação de imóveis e negociação. Vagas por regional.',
+   corpo:'As inscrições vão até 30/09. Cada Master Regional recebe um lote de vagas proporcional ao número de associados ativos.'},
+  {id:'k4', area:'Financeiro', tit:'Calendário de faturamento e repasses — 4º trimestre', dt:'2026-09-03', obr:true,
+   res:'Datas de fechamento, emissão e repasse até dezembro.',
+   corpo:'Fechamento no dia 25, emissão em até 2 dias úteis e repasse no 5º dia útil do mês seguinte.'},
+  {id:'k5', area:'Tecnologia', tit:'Integração de perfis do Instagram — orientações para as unidades', dt:'2026-09-01', obr:false,
+   res:'Como converter a conta do associado para perfil Business, pré-requisito da publicação automatizada.',
+   corpo:'A publicação automatizada exige conta Instagram Business ou Creator vinculada a uma página do Facebook. O passo a passo está no módulo Content &amp; Social Hub e o suporte acompanha unidade por unidade.'},
+  {id:'k6', area:'Jurídico', tit:'Uso da marca em anúncios pagos — regras atualizadas', dt:'2026-08-27', obr:true,
+   res:'O que pode e o que não pode em mídia paga com a marca RE/MAX.',
+   corpo:'É vedado o uso da marca em anúncios que não identifiquem a unidade responsável, bem como qualquer alteração de proporção, cor ou composição do logotipo.'},
+  {id:'k7', area:'Expansão', tit:'Novas unidades da Grande São Paulo — 3º trimestre', dt:'2026-08-20', obr:false,
+   res:'Unidades inauguradas e as que entram na próxima onda da plataforma.',
+   corpo:'Três novas unidades entram na segunda onda do Prontos em Rede, com onboarding conduzido pela equipe de implantação.'},
+  {id:'k8', area:'Marketing', tit:'Acervo nacional de fachadas — envio da foto final', dt:'2026-08-14', obr:true,
+   res:'Toda unidade com fachada instalada deve enviar a foto final pela plataforma.',
+   corpo:'A foto deve ser diurna, frontal, sem obstruções e com a fachada inteira visível. O acervo alimenta materiais institucionais e o relatório de compliance.'}
+];
+const SEED_CAMPANHAS = [
+  {id:'c1', tit:'Setembro Imobiliário — a hora de comprar', dt:'2026-09-15T10:00', st:'agendada', peca:'Feed + Story', tpl:'t01',
+   leg:'Setembro é o mês de realizar. Fale com um consultor RE/MAX e descubra as condições da sua região. #RemaxBrasil #ProntosEmRede'},
+  {id:'c2', tit:'Nova identidade — anúncio oficial da rede', dt:'2026-10-01T09:00', st:'planejada', peca:'Feed', tpl:'t04',
+   leg:'A RE/MAX evolui com você. Nova identidade, o mesmo compromisso. #RemaxBrasil'},
+  {id:'c3', tit:'Semana do Corretor — bastidores', dt:'2026-08-27T10:00', st:'publicada', peca:'Story', tpl:'t02',
+   leg:'Quem faz a maior rede de imóveis do mundo? Você. #SemanaDoCorretor'},
+  {id:'c4', tit:'Balanço do trimestre — números da rede', dt:'2026-09-30T18:00', st:'planejada', peca:'Carrossel', tpl:'t03',
+   leg:'Os números que a nossa rede construiu neste trimestre. #RemaxBrasil'}
+];
+const SEED_TICKETS = [
+  {id:'#4821', assunto:'Placa de venda com CRECI errado', canal:'WhatsApp', prio:'Alta', sla:'2h', st:'Em atendimento', resp:'Ana · N1', loja:'l18', autor:'Gestor da unidade', abertura:'2026-09-09T09:12:00', ia:false},
+  {id:'#4820', assunto:'Não consigo conectar o Instagram', canal:'Plataforma', prio:'Média', sla:'8h', st:'Resolvido pelo assistente', resp:'Assistente', loja:'l06', autor:'Associado', abertura:'2026-09-09T08:47:00', ia:true},
+  {id:'#4819', assunto:'Projeto de fachada reprovado — o que corrigir?', canal:'WhatsApp', prio:'Alta', sla:'4h', st:'Escalado · N2', resp:'Rafael · N2', loja:'l11', autor:'Gestor da unidade', abertura:'2026-09-08T17:30:00', ia:false},
+  {id:'#4818', assunto:'Onde encontro o papel timbrado novo?', canal:'WhatsApp', prio:'Baixa', sla:'24h', st:'Resolvido pelo assistente', resp:'Assistente', loja:'l03', autor:'Associado', abertura:'2026-09-08T15:02:00', ia:true},
+  {id:'#4817', assunto:'Erro ao baixar apresentação comercial', canal:'Plataforma', prio:'Média', sla:'8h', st:'Aguardando usuário', resp:'Ana · N1', loja:'l14', autor:'Associado', abertura:'2026-09-08T11:20:00', ia:false},
+  {id:'#4816', assunto:'Solicito arte fora do padrão para evento', canal:'Plataforma', prio:'Média', sla:'24h', st:'Em aprovação', resp:'Design', loja:'l19', autor:'Marketing da unidade', abertura:'2026-09-07T16:40:00', ia:false},
+  {id:'#4815', assunto:'Trocar gestor responsável da unidade', canal:'E-mail', prio:'Baixa', sla:'24h', st:'Resolvido', resp:'Ana · N1', loja:'l02', autor:'Gestor da unidade', abertura:'2026-09-07T10:05:00', ia:false}
+];
+const SEED_APROV = [
+  {id:'a1', tipo:'Fachada', item:'Projeto de fachada — RE/MAX LEE', loja:'l11', quem:'Gestor da unidade', dt:'2026-09-08T17:10:00', st:'pendente', obs:'Segunda versão, após ajuste de altura do letreiro.', alvo:{tipo:'fachada_projeto'}},
+  {id:'a2', tipo:'Peça fora do padrão', item:'Arte de evento — feirão de bairro', loja:'l19', quem:'Marketing da unidade', dt:'2026-09-08T14:02:00', st:'pendente', obs:'Pede aplicação do balão sobre foto.', alvo:{tipo:'peca'}},
+  {id:'a3', tipo:'Fachada', item:'Projeto de fachada — RE/MAX ESFERA', loja:'l06', quem:'Gestor da unidade', dt:'2026-09-07T09:40:00', st:'pendente', obs:'Aguardando medidas do letreiro lateral.', alvo:{tipo:'fachada_projeto'}},
+  {id:'a4', tipo:'Evidência', item:'Cartões de visita — nota fiscal da gráfica', loja:'l02', quem:'Gestor da unidade', dt:'2026-09-05T16:20:00', st:'aprovado', obs:'Dentro do padrão.', alvo:{tipo:'etapa', etapa:'e3'}},
+  {id:'a5', tipo:'Peça fora do padrão', item:'Placa comemorativa — 5 anos', loja:'l02', quem:'Associado', dt:'2026-09-04T11:00:00', st:'reprovado', obs:'Proporção do logotipo alterada — refazer pelo Estúdio.', alvo:{tipo:'peca'}}
+];
+const FAQ = [
+  {q:'Qual a área mínima de respiro do logotipo?', a:'A área de proteção equivale à altura da letra “R” do wordmark em todos os lados. Nenhum elemento gráfico, texto ou borda pode invadir esse espaço.', fonte:'Brand Center · Regras de aplicação'},
+  {q:'Posso usar o balão em preto e branco?', a:'Sim, apenas nas versões monocromáticas homologadas (preto 100% ou negativo em branco). Não é permitido aplicar filtros, gradientes ou sombras sobre o balão.', fonte:'Brand Center · Versões do logotipo'},
+  {q:'Que fonte uso quando a oficial não está disponível?', a:'A alternativa homologada para sistemas sem a fonte institucional é Arial regular e bold. Nunca substituir por fontes decorativas.', fonte:'Brand Center · Tipografia'},
+  {q:'Qual o prazo para trocar a fachada?', a:'A etapa de projeto vence em 30/01/2027 e a instalação em 15/03/2027. O acompanhamento é feito na Jornada de adequação da sua unidade.', fonte:'Compliance · Jornada de adequação'},
+  {q:'Como personalizo um cartão de visita?', a:'Abra o Estúdio de peças, escolha o modelo de cartão, preencha nome, CRECI, telefone e foto, e baixe o arquivo pronto para impressão. Não é necessário Canva, Photoshop nem Illustrator.', fonte:'Content & Social Hub · Estúdio'},
+  {q:'Preciso de aprovação para publicar uma peça personalizada?', a:'Peças geradas a partir de modelos oficiais são liberadas automaticamente. Peças fora do padrão e projetos de fachada passam pelo fluxo de aprovação da Master Regional.', fonte:'Compliance · Fluxo de aprovação'},
+  {q:'Como envio a evidência de uma etapa?', a:'Na Jornada de adequação, clique em “Enviar evidência” na etapa, anexe fotos, notas fiscais ou documentos e envie. A etapa fica em aprovação até a Master validar.', fonte:'Compliance · Jornada de adequação'},
+  {q:'Quem pode publicar comunicado para toda a rede?', a:'Apenas a RE/MAX Brasil. As Masters publicam para as suas franquias e a franquia se comunica com os seus associados.', fonte:'Communication Center'}
+];
+const REGRAS = [
+  {t:'Área de proteção', d:'Respiro equivalente à altura do “R” em todos os lados do logotipo.'},
+  {t:'Tamanho mínimo', d:'25 mm de largura em impressos e 120 px em telas.'},
+  {t:'Fundos permitidos', d:'Branco, azul institucional e imagens com contraste mínimo de 4,5:1.'},
+  {t:'Proibido', d:'Distorcer, rotacionar, recolorir, aplicar sombra ou contornar o logotipo.'},
+  {t:'Co-branding', d:'A marca da unidade nunca aparece com corpo maior que o wordmark RE/MAX.'},
+  {t:'Identificação', d:'Toda peça pública leva o nome da unidade e o CRECI do responsável.'}
+];
+const CORES = [
+  {n:'Azul RE/MAX', hex:'#0B3F94'}, {n:'Vermelho RE/MAX', hex:'#DC1C2E'},
+  {n:'Azul institucional', hex:'#08405F'}, {n:'Azul claro', hex:'#2EA3F2'},
+  {n:'Grafite', hex:'#152028'}, {n:'Cinza claro', hex:'#EEF3F7'}
+];
+
+/* ---------- provedores de publicação em massa (Módulo 2) ---------- */
+const PROVEDORES = [
+  {id:'bundle', nome:'bundle.social', tipo:'API de publicação', rec:true,
+   desc:'A plataforma publica por API em nome de cada associado: a arte sai do Prontos em Rede direto para o perfil, sem painel intermediário.',
+   pontos:['Sem limite de contas conectadas','Login direto pelo Instagram, sem exigir Página do Facebook','Feed, carrossel, reels e stories agendados pela plataforma','Alcance, curtidas, comentários e salvamentos voltam para o painel a cada 24 h'],
+   atencao:'Cada associado precisa de conta profissional no Instagram (Comercial ou Criador de conteúdo). Contrato com SLA e tratamento de dados (LGPD) antes da ativação.'},
+  {id:'zernio', nome:'Zernio', tipo:'API de publicação', selo:'Reserva',
+   desc:'Mesma função da bundle.social, já testada e pronta para assumir se o provedor principal falhar.',
+   pontos:['Tela de conexão sem marca de terceiros','Login direto pelo Instagram','Documentação técnica detalhada'],
+   atencao:'Entrar com a Zernio pede nova autorização do Instagram a cada associado.'},
+  {id:'meta', nome:'App próprio na Meta', tipo:'API oficial do Instagram',
+   desc:'A plataforma publica com o próprio aplicativo aprovado pela Meta: a tela de autorização mostra "Prontos em Rede" e as autorizações ficam com a rede.',
+   pontos:['Autorizações dos associados em nome da plataforma','Nenhum intermediário entre a rede e o Instagram','Métricas oficiais do Instagram'],
+   atencao:'Depende da aprovação da Meta (2 a 4 semanas por envio) e da verificação da empresa. Segue em paralelo, sem travar o início.'},
+  {id:'mlabs', nome:'mLabs', tipo:'Painel de gestão de redes',
+   desc:'Agendamento em massa por um painel externo, operado pela equipe de marketing.',
+   pontos:['Aprovação de conteúdo no próprio painel','Relatório por perfil','Suporte em português'],
+   atencao:'Não tem API pública: a publicação sai do painel da mLabs, fora do Prontos em Rede.'}
+];
+
+/* ---------- Programa de Excelência (Módulo 6) ---------- */
+const CRITERIOS_EXC = [
+  {id:'x1', nome:'Fachada instalada e comprovada',        pts:150, desc:'Foto da fachada nova instalada, diurna e frontal.', prova:'Foto da fachada'},
+  {id:'x2', nome:'Papelaria e cartões entregues',         pts:60,  desc:'Material impresso na nova identidade, em uso na loja.', prova:'Foto do material'},
+  {id:'x3', nome:'Vitrine e interior adequados',          pts:80,  desc:'Ambiente interno com a comunicação atualizada.', prova:'Foto do interior'},
+  {id:'x4', nome:'12 publicações no mês pelo Estúdio',    pts:60,  desc:'Peças oficiais publicadas nas redes do associado.', prova:'Print do perfil'},
+  {id:'x5', nome:'Participação nas campanhas da rede',    pts:90,  desc:'Publicou nas datas sincronizadas do Prontos em Rede.', prova:'Print da publicação'},
+  {id:'x6', nome:'Equipe treinada na plataforma',         pts:70,  desc:'Todos os associados da unidade com acesso ativo e primeiro uso.', prova:'Lista de presença ou print'},
+  {id:'x7', nome:'Evento ou ação local da marca',         pts:120, desc:'Ação presencial usando materiais oficiais.', prova:'Fotos do evento'},
+  {id:'x8', nome:'Zerar pendências da jornada',           pts:200, desc:'Todas as etapas de adequação concluídas e aprovadas.', prova:'Automático pela plataforma'}
+];
+</script>

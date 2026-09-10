@@ -1,0 +1,112 @@
+<script>
+/* =======================================================================
+   MÓDULO 1 · BRAND CENTER
+   ======================================================================= */
+VIEWS.guia=function(v){
+  v.innerHTML =
+    ph('Guia da marca','Fonte única da identidade RE/MAX: versões do logotipo, cores, tipografia e regras de aplicação. Quando a RE/MAX Brasil atualiza aqui, a rede inteira passa a ver a versão nova — e o assistente do suporte responde por estas mesmas regras.',
+      '<button class="btn" id="dlManual">↓ Manual da marca</button><button class="btn pri" id="dlLogos">↓ Pacote de logotipos</button>','guia')+
+    '<div class="hint" style="margin-bottom:16px"><b>Nova identidade em vigor.</b> A adequação vai até '+dataLonga(DEADLINE)+', por etapas, com evidência e prazo — acompanhe em <a href="#/jornada">Compliance · Jornada de adequação</a>.</div>'+
+    '<div class="grid g2" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Versões do logotipo</h3><div class="r"><span class="tag">4 homologadas</span></div></div><div class="cb"><div class="grid g2" style="gap:10px">'+
+        [['Principal','linear-gradient(135deg,#08405F,#0B6FB4)','azul'],['Negativo','#152028','negativo'],
+         ['Monocromático','#8FA6B5','mono'],['Reduzido','linear-gradient(135deg,#0B3F94,#2EA3F2)','reduzido']].map(x=>
+        '<div style="border:1px solid var(--line);border-radius:10px;overflow:hidden">'+
+        '<div style="background:'+x[1]+';display:grid;place-items:center;padding:22px 10px"><img src="'+LOGO+'" style="height:19px;width:auto" alt=""></div>'+
+        '<div style="padding:8px 11px;display:flex;align-items:center;gap:8px"><span style="font-size:12.4px;font-weight:600">'+x[0]+'</span>'+
+        '<button class="btn sm" style="margin-left:auto" data-logo="'+x[2]+'">↓ PNG</button></div></div>').join('')+
+      '</div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Regras de aplicação</h3><div class="r"><span class="mini">base de conhecimento do assistente</span></div></div><div class="cb">'+
+        REGRAS.map(r=>'<div style="display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)"><span class="tag '+(r.t==='Proibido'?'bad':'mut')+'" style="min-width:118px;justify-content:center">'+esc(r.t)+'</span><div style="font-size:13px;color:var(--ink-2)">'+esc(r.d)+'</div></div>').join('')+
+      '</div></div>'+
+    '</div>'+
+    '<div class="grid g2">'+
+      '<div class="card"><div class="ch"><h3>Cores institucionais</h3><div class="r"><span class="mini">clique para copiar</span></div></div><div class="cb"><div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px">'+
+        CORES.map(c=>'<div data-hex="'+c.hex+'" style="cursor:pointer"><div style="height:56px;border-radius:9px;background:'+c.hex+';border:1px solid var(--line)"></div>'+
+        '<div style="font-size:12.3px;font-weight:600;margin-top:6px">'+esc(c.n)+'</div><div class="mini num">'+c.hex+'</div></div>').join('')+
+      '</div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Tipografia e dúvidas frequentes</h3></div><div class="cb">'+
+        '<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px">'+
+        '<div style="font-family:var(--font-d);font-weight:800;font-size:24px;letter-spacing:-.03em">Aa Bb Cc 0123</div>'+
+        '<div class="mini" style="margin-top:4px">Família institucional · pesos 400, 600, 700 e 800. Alternativa homologada em sistemas sem a fonte: Arial.</div></div>'+
+        FAQ.slice(0,5).map(f=>'<details style="border-bottom:1px solid var(--line);padding:9px 0"><summary style="cursor:pointer;font-size:13.1px;font-weight:600">'+esc(f.q)+'</summary>'+
+        '<div style="font-size:12.9px;color:var(--ink-2);margin-top:7px">'+esc(f.a)+'<div class="mini" style="margin-top:5px">Fonte: '+esc(f.fonte)+'</div></div></details>').join('')+
+      '</div></div>'+
+    '</div>';
+
+  $$('[data-hex]',v).forEach(el=>el.addEventListener('click',()=>{ try{navigator.clipboard.writeText(el.dataset.hex);}catch(e){} toast('Cor '+el.dataset.hex+' copiada.',1); }));
+  $$('[data-logo]',v).forEach(b=>b.addEventListener('click',()=>{
+    const cv=document.createElement('canvas'), esc_=4;
+    cv.width=LOGO_IMG.naturalWidth*esc_; cv.height=LOGO_IMG.naturalHeight*esc_;
+    const g=cv.getContext('2d');
+    if(b.dataset.logo!=='negativo'){ g.fillStyle= b.dataset.logo==='mono'?'#8FA6B5':'#08405F'; }
+    if(b.dataset.logo==='negativo'){ g.fillStyle='#152028'; g.fillRect(0,0,cv.width,cv.height); g.drawImage(LOGO_IMG,0,0,cv.width,cv.height); }
+    else { g.drawImage(LOGO_IMG,0,0,cv.width,cv.height); g.globalCompositeOperation='source-in'; g.fillRect(0,0,cv.width,cv.height); }
+    canvasBlob(cv,'image/png').then(bl=>{ baixarBlob(bl,'remax-logo-'+b.dataset.logo+'.png'); toast('Logotipo baixado.',1); });
+  }));
+  $('#dlManual').addEventListener('click',()=>{
+    const txt='RE/MAX · MANUAL DE MARCA (extrato gerado pela plataforma Prontos em Rede)\n\nREGRAS DE APLICAÇÃO\n'+
+      REGRAS.map(r=>'- '+r.t+': '+r.d).join('\n')+'\n\nCORES\n'+CORES.map(c=>'- '+c.n+': '+c.hex).join('\n')+
+      '\n\nDÚVIDAS FREQUENTES\n'+FAQ.map(f=>'- '+f.q+'\n  '+f.a+'\n  ('+f.fonte+')').join('\n');
+    baixarBlob(new Blob([txt],{type:'text/plain;charset=utf-8'}),'remax-manual-da-marca.txt');
+    commit('Baixou o manual da marca','Brand Center');
+    toast('Extrato do manual baixado.',1);
+  });
+  $('#dlLogos').addEventListener('click',()=>{
+    const bs=$$('[data-logo]',v);
+    bs.forEach((b,i)=>setTimeout(()=>b.click(), i*450));
+    commit('Baixou o pacote de logotipos','Brand Center');
+    toast('Baixando as '+bs.length+' versões homologadas do logotipo.',1);
+  });
+};
+
+/* ---------- Biblioteca de materiais ---------- */
+let CAT_ATUAL='Todos';
+VIEWS.biblioteca=function(v){
+  v.innerHTML =
+    ph('Biblioteca de materiais','Tudo o que a rede pode publicar, imprimir ou instalar, sempre na versão vigente da marca. Cada modelo abre no Estúdio já preenchido com os seus dados.',
+      ROLE==='brasil'?'<button class="btn pri" id="novoT">+ Publicar modelo</button>':'','biblioteca')+
+    '<div class="chips" id="cats" style="margin-bottom:16px">'+CATS.map(c=>'<button class="chip '+(c===CAT_ATUAL?'on':'')+'" data-c="'+c+'">'+c+'</button>').join('')+'</div>'+
+    '<div class="grid g4" id="tpls"></div>';
+  const pinta=()=>{
+    const ts=TPLS().filter(t=>CAT_ATUAL==='Todos'||t.cat===CAT_ATUAL);
+    $('#tpls').innerHTML = ts.map(t=>
+      '<div class="tpl"><div class="thumb sq"><canvas id="cv-'+t.id+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></canvas>'+
+      '<span class="fmt">'+esc(t.dim.split(' ')[0])+'</span>'+(t.tag?'<span class="new">'+esc(t.tag)+'</span>':'')+'</div>'+
+      '<div class="meta"><div class="t">'+esc(t.nome)+'</div><div class="s">'+esc(t.cat)+' · '+esc(t.dim)+'</div>'+
+      '<div class="acts"><a class="btn sm pri" href="#/estudio/'+t.id+'">Personalizar</a><button class="btn sm" data-png="'+t.id+'">↓ PNG</button></div></div></div>').join('');
+    const u=S.usuarios[souCorretor()?euId():(corretoresDe(escopoLoja()||'l18')[0]||{}).id] || Object.values(S.usuarios)[0];
+    ts.forEach(t=>{
+      montarPeca({fmt:t.fmt, tema: t.cat==='Papelaria'?'claro':t.tag==='Campanha'?'vermelho':'azul',
+        titulo:t.txt||t.nome, sub:t.sub||t.dim, nome:u.nome, creci:u.creci, tel:u.tel, unidade:lojaDe(u.loja).nome, foto:u.foto})
+      .then(cv=>{ const alvo=$('#cv-'+t.id); if(!alvo) return; alvo.width=cv.width; alvo.height=cv.height; alvo.getContext('2d').drawImage(cv,0,0); });
+    });
+    $$('[data-png]').forEach(b=>b.addEventListener('click',()=>{
+      const cv=$('#cv-'+b.dataset.png);
+      canvasBlob(cv,'image/png').then(bl=>{ baixarBlob(bl,'remax-'+b.dataset.png+'.png'); toast('Arquivo baixado.',1); });
+    }));
+  };
+  pinta();
+  $$('#cats .chip').forEach(b=>b.addEventListener('click',()=>{CAT_ATUAL=b.dataset.c;$$('#cats .chip').forEach(x=>x.classList.toggle('on',x===b));pinta();}));
+  $('#novoT')&&$('#novoT').addEventListener('click',()=>{
+    const ov=modal('Publicar novo modelo',
+      '<div class="field"><label>Nome do modelo</label><input id="mN" placeholder="Ex.: Convite para feirão"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Categoria</label><select id="mC">'+CATS.filter(c=>c!=='Todos').map(c=>'<option>'+c+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>Formato</label><select id="mF"><option value="feed">Feed 1080×1080</option><option value="story">Story 1080×1920</option><option value="cartao">Cartão 90×50 mm</option><option value="placa">Placa 80×60 cm</option><option value="slide">16:9</option></select></div></div>'+
+      '<div class="field"><label>Título da arte</label><input id="mT" placeholder="Texto grande da peça"></div>'+
+      '<div class="field"><label>Linha de apoio</label><input id="mS" placeholder="Texto menor"></div>'+
+      '<div class="hint">O modelo entra na biblioteca de toda a rede e já abre no Estúdio com os dados de quem for usar.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="mOk">Publicar modelo</button>');
+    $('#mOk',ov).addEventListener('click',()=>{
+      const nome=$('#mN',ov).value.trim(); if(!nome) return toast('Dê um nome ao modelo.');
+      const fmt=$('#mF',ov).value;
+      const dims={feed:'1080 × 1080',story:'1080 × 1920',cartao:'90 × 50 mm · 300 dpi',placa:'80 × 60 cm',slide:'16:9'};
+      commit('Publicou modelo na biblioteca', nome, s=>{
+        s.templatesExtra=(s.templatesExtra||[]).concat([{id:uid('t'), nome, cat:$('#mC',ov).value, fmt, dim:dims[fmt],
+          tag:'Novo', txt:($('#mT',ov).value.trim()||nome).toUpperCase(), sub:$('#mS',ov).value.trim()}]);
+      });
+      fechaModal(); route(); toast('<b>Modelo publicado.</b> Já aparece para toda a rede.',1);
+    });
+  });
+};
+</script>

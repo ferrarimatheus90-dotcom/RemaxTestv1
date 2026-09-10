@@ -1,0 +1,173 @@
+<script>
+/* =======================================================================
+   MÓDULO 6 · PROGRAMA DE EXCELÊNCIA
+   Entrega comprovada com foto, guardada e validada — vira ponto e bonificação.
+   ======================================================================= */
+const critDe = id => CRITERIOS_EXC.find(c=>c.id===id) || {nome:'Critério', pts:0};
+const provasDe = lid => S.excelencia.provas.filter(p=>p.loja===lid);
+function pontosExcLoja(lid){ return provasDe(lid).filter(p=>p.st==='aprovado').reduce((a,p)=>a+p.pts,0); }
+function pontosExcUser(id){ return S.excelencia.provas.filter(p=>p.uid===id&&p.st==='aprovado').reduce((a,p)=>a+p.pts,0); }
+function faixaDe(pts){
+  const fs=S.excelencia.faixas.slice().sort((a,b)=>b.min-a.min);
+  return fs.find(f=>pts>=f.min) || null;
+}
+function proximaFaixa(pts){
+  const fs=S.excelencia.faixas.slice().sort((a,b)=>a.min-b.min);
+  return fs.find(f=>pts<f.min) || null;
+}
+
+VIEWS.excelencia=function(v){
+  const eGestor = ROLE==='brasil'||ROLE==='master';
+  const alvoLoja = escopoLoja();
+  const ls=lojasVisiveis();
+  const provas = eGestor ? S.excelencia.provas.filter(p=>ls.some(l=>l.id===p.loja)) : provasDe(alvoLoja);
+  const pend = provas.filter(p=>p.st==='pendente');
+  const meusPts = souCorretor()? pontosExcUser(euId()) : alvoLoja? pontosExcLoja(alvoLoja) : provas.filter(p=>p.st==='aprovado').reduce((a,p)=>a+p.pts,0);
+  const faixa = faixaDe(meusPts), prox = proximaFaixa(meusPts);
+  const encerra = dias(dt(S.excelencia.encerra));
+
+  v.innerHTML =
+    ph('Programa de Excelência','Cada entrega feita vale ponto — desde que comprovada. O associado ou a unidade envia a foto da prova, a RE/MAX valida, o arquivo fica guardado com autor, data e hora, e os pontos entram na faixa de bonificação do ciclo.',
+      (ROLE!=='brasil'?'<button class="btn pri" id="envProva">＋ Enviar comprovação</button>':'')+
+      (ROLE==='brasil'?'<button class="btn" id="editFaixas">Configurar faixas</button><button class="btn pri" id="expExc">↓ Exportar comprovações</button>':''),'excelencia')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi(eGestor?'Pontos validados':'Meus pontos', nf(meusPts), 'no ciclo '+esc(S.excelencia.ciclo), faixa?'k-ok':'')+
+      kpi('Faixa atual', faixa? esc(faixa.nome) : '—', prox? 'faltam '+(prox.min-meusPts)+' pontos para '+prox.nome : 'faixa máxima alcançada', faixa&&faixa.id==='ouro'?'k-ok':'k-warn')+
+      kpi('Comprovações guardadas', provas.length, provas.filter(p=>p.st==='aprovado').length+' validadas')+
+      kpi('Ciclo encerra em', encerra+' <small>dias</small>', dataLonga(dt(S.excelencia.encerra)), encerra<30?'k-warn':'')+
+    '</div>'+
+    '<div class="grid g3" style="margin-bottom:16px">'+
+      S.excelencia.faixas.slice().sort((a,b)=>b.min-a.min).map(f=>
+        '<div class="faixa '+f.id+'"><div class="fn">'+esc(f.nome)+(faixa&&faixa.id===f.id?' <span class="tag ok">sua faixa</span>':'')+'</div>'+
+        '<div class="fq">a partir de '+f.min+' pontos no ciclo</div>'+
+        '<div class="fb">'+esc(f.premio)+'</div>'+
+        '<div style="margin-top:11px">'+barra(Math.min(100,Math.round(meusPts/f.min*100)))+
+        '<span class="mini num">'+nf(meusPts)+' / '+f.min+'</span></div></div>').join('')+
+    '</div>'+
+    (eGestor&&pend.length?'<div class="hint warn" style="margin-bottom:16px"><b>'+pend.length+' comprovações aguardando validação.</b> Validar credita os pontos na hora e move o ranking da rede.</div>':'')+
+    '<div class="grid g23" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Critérios do ciclo</h3><div class="r"><span class="mini">'+CRITERIOS_EXC.length+' formas de pontuar</span></div></div><div class="cb">'+
+        CRITERIOS_EXC.map(c=>{
+          const feita = provas.some(p=>p.criterio===c.id && p.st==='aprovado');
+          return '<div class="crit"><div class="pt">'+c.pts+'</div><div class="cn"><b>'+esc(c.nome)+(feita?' <span class="tag ok">validado</span>':'')+'</b>'+
+          '<span>'+esc(c.desc)+' · prova: '+esc(c.prova)+'</span></div>'+
+          (ROLE!=='brasil'&&!feita?'<button class="btn sm" data-crit="'+c.id+'">Comprovar</button>':'')+'</div>';
+        }).join('')+
+      '</div></div>'+
+      '<div class="card"><div class="ch"><h3>Ranking do programa</h3><div class="r"><span class="mini">pontos validados</span></div></div><div class="cb">'+
+        (function(){
+          const arr = souCorretor()
+            ? corretoresDe(lojaDe(S.usuarios[euId()].loja).id).map(u=>({n:u.nome, p:pontosExcUser(u.id), eu:u.id===euId()}))
+            : BASE.lojas.map(l=>({n:l.nome, p:pontosExcLoja(l.id), eu:l.id===alvoLoja}));
+          return arr.sort((a,b)=>b.p-a.p).slice(0,10).map((x,i)=>{
+            const f=faixaDe(x.p);
+            return '<div style="display:flex;align-items:center;gap:11px;padding:8px 0;border-bottom:1px solid var(--line);'+(x.eu?'background:var(--brand-soft);border-radius:8px;padding-left:8px':'')+'">'+
+            '<span style="font-family:var(--font-d);font-weight:800;color:'+(i<3?'var(--red)':'var(--muted)')+';width:20px">'+(i+1)+'</span>'+
+            '<div style="flex:1;min-width:0"><div style="font-size:12.9px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(x.n)+'</div>'+
+            (f?'<div class="mini">faixa '+esc(f.nome)+'</div>':'<div class="mini">sem faixa ainda</div>')+'</div>'+
+            '<b class="num" style="font-family:var(--font-d)">'+x.p+'</b></div>';
+          }).join('');
+        })()+
+      '</div></div>'+
+    '</div>'+
+    '<div class="card"><div class="ch"><h3>Comprovações guardadas</h3>'+
+      '<div class="r"><span class="mini">arquivo, autor, data e hora — registro imutável</span></div></div><div class="cb">'+
+      (provas.length? '<div class="provas" id="gal"></div>' : '<div class="empty">Nenhuma comprovação enviada ainda. Escolha um critério acima e envie a foto da entrega.</div>')+
+    '</div></div>';
+
+  if(provas.length){
+    $('#gal').innerHTML=provas.map(p=>{
+      const c=critDe(p.criterio);
+      return '<div class="prova">'+(p.arq&&p.arq.thumb?'<img src="'+p.arq.thumb+'" data-lupa alt="">':'<div style="aspect-ratio:4/3;display:grid;place-items:center;background:var(--surface-2);color:var(--muted);font-size:12px">'+esc((p.arq&&p.arq.nome)||'sem imagem')+'</div>')+
+        '<div class="pv"><b>'+esc(c.nome)+'</b>'+
+        '<span>'+esc(p.autor)+' · '+quando(p.q)+'</span>'+
+        '<div style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+          (p.st==='pendente'?'<span class="tag warn">Aguardando</span>':p.st==='aprovado'?'<span class="tag ok">+'+p.pts+' pts</span>':'<span class="tag bad">Recusada</span>')+
+          (p.arq&&p.arq.thumb?'<button class="btn sm" data-dl="'+p.id+'">↓</button>':'')+
+          (eGestor&&p.st==='pendente'?'<button class="btn sm" data-no="'+p.id+'">✕</button><button class="btn sm pri" data-ok="'+p.id+'">✓</button>':'')+
+        '</div>'+
+        (p.obs?'<span style="display:block;margin-top:6px">'+esc(p.obs)+'</span>':'')+
+        (p.motivo?'<span style="display:block;margin-top:6px;color:var(--bad)">'+esc(p.motivo)+'</span>':'')+
+        '</div></div>';
+    }).join('');
+    $$('[data-dl]',v).forEach(b=>b.addEventListener('click',()=>{
+      const p=S.excelencia.provas.find(x=>x.id===b.dataset.dl);
+      fetch(p.arq.thumb).then(r=>r.blob()).then(bl=>baixarBlob(bl,'comprovacao-'+p.id+'.jpg'));
+      toast('Comprovação baixada.',1);
+    }));
+    $$('[data-ok]',v).forEach(b=>b.addEventListener('click',()=>{
+      const p=S.excelencia.provas.find(x=>x.id===b.dataset.ok);
+      commit('Validou comprovação', critDe(p.criterio).nome+' — '+(lojaDe(p.loja)||{}).nome, s=>{
+        const x=s.excelencia.provas.find(y=>y.id===p.id); x.st='aprovado'; x.validador=eu().nome; x.validado=agora(); });
+      route(); toast('<b>Comprovação validada.</b> +'+p.pts+' pontos creditados.',1);
+    }));
+    $$('[data-no]',v).forEach(b=>b.addEventListener('click',()=>{
+      const p=S.excelencia.provas.find(x=>x.id===b.dataset.no);
+      const ov=modal('Recusar comprovação','<div class="field"><label>Motivo</label><textarea id="mx" rows="3" placeholder="Ex.: foto não mostra a fachada inteira."></textarea></div>',
+        '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn red" id="okNo">Recusar</button>');
+      $('#okNo',ov).addEventListener('click',()=>{
+        const m=$('#mx',ov).value.trim();
+        commit('Recusou comprovação', critDe(p.criterio).nome, s=>{
+          const x=s.excelencia.provas.find(y=>y.id===p.id); x.st='recusado'; x.motivo=m||'Sem justificativa.'; x.validador=eu().nome; });
+        fechaModal(); route(); toast('Comprovação recusada — o autor foi avisado.');
+      });
+    }));
+  }
+
+  const abrirEnvio=(critId)=>{
+    let arq=null;
+    const ov=modal('Enviar comprovação',
+      '<div class="field"><label>Critério</label><select id="xC">'+CRITERIOS_EXC.map(c=>'<option value="'+c.id+'"'+(c.id===critId?' selected':'')+'>'+esc(c.nome)+' · '+c.pts+' pts</option>').join('')+'</select></div>'+
+      '<div class="field"><label>Unidade</label><select id="xL">'+(alvoLoja? '<option value="'+alvoLoja+'">'+esc(lojaDe(alvoLoja).nome)+'</option>' : lojasVisiveis().map(l=>'<option value="'+l.id+'">'+esc(l.nome)+'</option>').join(''))+'</select></div>'+
+      '<div class="drop" id="dx"><div class="ic">📷</div><div class="t">Enviar a foto da prova</div><div class="mini">JPG ou PNG · fica guardada com autor, data e hora</div></div>'+
+      '<div id="xLista"></div>'+
+      '<div class="field" style="margin-top:14px"><label>O que foi feito</label><textarea id="xObs" rows="2" placeholder="Ex.: fachada instalada em 05/09, foto tirada de frente, sem obstrução."></textarea></div>'+
+      '<div class="hint">A comprovação não pode ser apagada depois de enviada: fica no histórico com o registro de quem enviou e de quem validou.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="xOk" disabled>Enviar para validação</button>');
+    $('#dx',ov).addEventListener('click',()=>pedirArquivos('image/*',false,as=>{
+      arq=as[0]; $('#xLista',ov).innerHTML=fileRow(arq); $('#xOk',ov).disabled=false;
+    }));
+    $('#xOk',ov).addEventListener('click',()=>{
+      const cid=$('#xC',ov).value, c=critDe(cid), lid=$('#xL',ov).value;
+      commit('Enviou comprovação', c.nome+' — '+(lojaDe(lid)||{}).nome, s=>{
+        s.excelencia.provas.unshift({id:uid('x'), criterio:cid, criterioNome:c.nome, pts:c.pts, loja:lid,
+          uid: souCorretor()? euId() : null, autor:eu().nome, q:agora(), st:'pendente',
+          obs:$('#xObs',ov).value.trim(), arq});
+      });
+      fechaModal(); route(); renderNav();
+      toast('<b>Comprovação enviada.</b> Fica guardada e aguarda a validação da RE/MAX.',1);
+    });
+  };
+  $('#envProva')&&$('#envProva').addEventListener('click',()=>abrirEnvio(CRITERIOS_EXC[0].id));
+  $$('[data-crit]',v).forEach(b=>b.addEventListener('click',()=>abrirEnvio(b.dataset.crit)));
+
+  $('#editFaixas')&&$('#editFaixas').addEventListener('click',()=>{
+    const ov=modal('Configurar faixas de bonificação',
+      '<div class="field"><label>Ciclo</label><input id="fCic" value="'+esc(S.excelencia.ciclo)+'"></div>'+
+      '<div class="field"><label>Encerramento</label><input type="date" id="fEnc" value="'+S.excelencia.encerra+'"></div>'+
+      S.excelencia.faixas.map(f=>'<div class="grid g2" style="gap:12px"><div class="field"><label>'+esc(f.nome)+' · pontos mínimos</label>'+
+        '<input type="number" data-min="'+f.id+'" value="'+f.min+'"></div>'+
+        '<div class="field"><label>Bonificação</label><input data-pre="'+f.id+'" value="'+esc(f.premio)+'"></div></div>').join('')+
+      '<div class="hint">A régua é da RE/MAX Brasil. Mudar aqui recalcula a faixa de todo mundo na hora.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="fOk">Salvar</button>');
+    $('#fOk',ov).addEventListener('click',()=>{
+      commit('Ajustou as faixas do Programa de Excelência','', s=>{
+        s.excelencia.ciclo=$('#fCic',ov).value.trim()||s.excelencia.ciclo;
+        s.excelencia.encerra=$('#fEnc',ov).value||s.excelencia.encerra;
+        s.excelencia.faixas.forEach(f=>{
+          const m=$('[data-min="'+f.id+'"]',ov), p=$('[data-pre="'+f.id+'"]',ov);
+          if(m) f.min=parseInt(m.value,10)||f.min;
+          if(p) f.premio=p.value.trim()||f.premio;
+        });
+      });
+      fechaModal(); route(); toast('Faixas atualizadas.',1);
+    });
+  });
+  $('#expExc')&&$('#expExc').addEventListener('click',()=>{
+    const linhas=[['id','criterio','pontos','unidade','autor','enviado_em','situacao','validador','observacao','arquivo']];
+    S.excelencia.provas.forEach(p=>linhas.push([p.id,critDe(p.criterio).nome,p.pts,(lojaDe(p.loja)||{}).nome||'',p.autor,p.q,p.st,p.validador||'',(p.obs||'').replace(/;/g,','),(p.arq&&p.arq.nome)||'']));
+    baixarBlob(new Blob(['﻿'+linhas.map(r=>r.join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),'programa-excelencia.csv');
+    toast('Comprovações exportadas.',1);
+  });
+};
+</script>

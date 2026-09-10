@@ -1,0 +1,144 @@
+<script>
+/* =======================================================================
+   MAPA DO ESCOPO — 40 frentes distribuídas nos 6 módulos
+   ======================================================================= */
+const FRENTES=[
+ [1,'Portal central da marca','brand','guia',1],
+ [2,'Biblioteca de materiais','brand','biblioteca',1],
+ [3,'Personalização simplificada','content','estudio',1],
+ [4,'Geração e download de peças','content','estudio',1],
+ [5,'Automação de redes sociais','content','redes',2],
+ [6,'Prontos em Rede','content','prontos',1],
+ [7,'Comunicação nacional','comm','comunicados',1],
+ [8,'Central de comunicados','comm','comunicados',1],
+ [9,'Confirmação de leitura','comm','comunicados',1],
+ [10,'Busca inteligente','comm','comunicados',1],
+ [11,'Jornada de adequação da marca','gov','jornada',1],
+ [12,'Cronograma e prazos','gov','jornada',1],
+ [13,'Alertas automáticos','gov','jornada',1],
+ [14,'Adequação de fachadas','gov','fachadas',1],
+ [15,'Acervo nacional de fachadas','gov','fachadas',1],
+ [16,'Upload de evidências','gov','jornada',1],
+ [17,'Workflow de aprovação','gov','aprovacoes',1],
+ [18,'Governança por níveis','gov','usuarios',1],
+ [19,'Compliance da marca','gov','painel',1],
+ [20,'Dashboard executivo','intel','painel',1],
+ [21,'Dashboard das Masters','intel','painel',1],
+ [22,'Ranking','intel','ranking',2],
+ [23,'Gamificação','intel','excelencia',1],
+ [24,'Grand Champion','intel','ranking',2],
+ [25,'Suporte ao usuário','sup','suporte',1],
+ [26,'Atendimento via WhatsApp','sup','suporte',1],
+ [27,'Gestão de tickets','sup','suporte',1],
+ [28,'SLA de atendimento','sup','suporte',1],
+ [29,'Agentes de IA','sup','suporte',2],
+ [30,'Escalonamento humano','sup','suporte',1],
+ [31,'Customer Success / implantação','sup','implantacao',1],
+ [32,'Onboarding','sup','implantacao',1],
+ [33,'Controle de usuários','gov','usuarios',1],
+ [34,'Estrutura escalável','gov','registros',1],
+ [35,'Infraestrutura','gov','registros',1],
+ [36,'Histórico e registros','gov','registros',1],
+ [37,'Relatórios','intel','marketing',1],
+ [38,'Grupo controlado de validação','sup','implantacao',1],
+ [39,'Expansão por ondas','sup','implantacao',1],
+ [40,'Operação white-label RE/MAX','sup','implantacao',1]
+];
+const NOVOS=[
+ ['Redes sociais com provedor de publicação','redes','Publicação em massa por API direto da plataforma, pela bundle.social, com a Zernio de reserva e o app próprio da Meta em aprovação.'],
+ ['Indicadores de marketing unificados','marketing','Frequência, alcance, engajamento, formatos e imóveis — os indicadores da apresentação agora dentro da estrutura, com filtro por regional, unidade e associado.'],
+ ['Programa de Excelência com bonificação','excelencia','O funcionário envia a foto da prova, o arquivo fica guardado com autor e data, a RE/MAX valida e os pontos entram na faixa de bonificação.'],
+ ['Acesso por login, um por nível','guia','Quatro contas de teste, cada uma abrindo a plataforma com o seu escopo de dados e permissões.'],
+ ['Banner de abertura animado','inicio','Abertura da home com os números vivos da rede e atalho para as ações do dia.']
+];
+let FILTRO_F='todas';
+VIEWS.escopo=function(v){
+  const o1=FRENTES.filter(f=>f[4]===1).length;
+  v.innerHTML =
+    '<div class="ph"><div><div class="eyebrow-mod"><span class="m">BMAG · visão interna</span></div>'+
+    '<h1>Mapa do escopo · 40 frentes em 6 módulos</h1>'+
+    '<div class="sub">Cada frente da minuta da RE/MAX, o módulo onde vive e a tela que a materializa. Clique para abrir. O corte de MVP é o combinado: primeira versão útil sem virar projeto gigante, com a arquitetura já preparada para o resto.</div></div></div>'+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Frentes mapeadas','40/40','todas com tela definida','k-ok')+
+      kpi('No MVP', o1, 'sem dependência externa')+
+      kpi('Na 2ª onda', 40-o1, 'Instagram automatizado, IA avançada e Grand Champion','k-warn')+
+      kpi('Pedidos novos', NOVOS.length, 'incorporados nesta versão','k-ok')+
+    '</div>'+
+    '<div class="grid g3" style="margin-bottom:16px">'+
+      MODULOS.map(m=>{
+        const fs=FRENTES.filter(f=>f[2]===m.id);
+        return '<div class="card pad"><div style="display:flex;align-items:baseline;gap:8px">'+
+          '<span style="font-family:var(--font-d);font-weight:800;font-size:22px;color:var(--brand-2)">'+m.n+'</span>'+
+          '<h3 style="font-size:15px">'+esc(m.nome)+'</h3></div>'+
+          '<div class="mini" style="margin-top:6px">'+esc(m.desc)+'</div>'+
+          '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">'+
+          '<span class="tag mut">'+fs.length+' frentes</span>'+
+          (fs.some(f=>f[4]===2)?'<span class="tag warn">'+fs.filter(f=>f[4]===2).length+' na 2ª onda</span>':'<span class="tag ok">tudo no MVP</span>')+'</div></div>';
+      }).join('')+
+    '</div>'+
+    '<div class="grid g2" style="margin-bottom:16px">'+
+      '<div class="card pad"><h3>Quem compra o quê</h3>'+
+        '<div class="kv" style="margin-top:8px"><span class="k">RE/MAX Brasil</span><span class="v">Compra <b>governança e inteligência da rede</b>: compliance da marca, prazos cumpridos, comunicação que chega, visão nacional e apuração do Grand Champion. Módulos 3, 4 e 6.</span></div>'+
+        '<div class="kv"><span class="k">Franqueado e corretor</span><span class="v">Compram <b>facilidade e produtividade</b>: material pronto, peça personalizada em minutos, campanha da rede em um clique e suporte que responde. Módulos 1, 2 e 5.</span></div>'+
+        '<div class="hint" style="margin-top:12px">É a distinção que impede o projeto de ser lido como “software de postagem por corretor”. São duas dores diferentes, atendidas pela mesma plataforma.</div></div>'+
+      '<div class="card pad"><h3>Pedidos novos já incorporados</h3>'+
+        '<div class="mini" style="margin:8px 0 12px">Solicitações desta rodada, todas funcionando na plataforma.</div>'+
+        NOVOS.map(n=>'<div class="li" data-go="'+n[1]+'" style="display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer">'+
+          '<span class="tag ok">novo</span><div><div style="font-size:13.1px;font-weight:600">'+esc(n[0])+'</div><div class="mini">'+esc(n[2])+'</div></div></div>').join('')+
+      '</div>'+
+    '</div>'+
+    '<div class="chips" id="ff" style="margin-bottom:14px">'+
+      [['todas','Todas as frentes'],['1','MVP'],['2','2ª onda']].map(o=>'<button class="chip '+(FILTRO_F===o[0]?'on':'')+'" data-o="'+o[0]+'">'+o[1]+'</button>').join('')+
+      MODULOS.map(m=>'<button class="chip '+(FILTRO_F===m.id?'on':'')+'" data-o="'+m.id+'">'+m.n+' · '+esc(m.nome.split(' ')[0])+'</button>').join('')+'</div>'+
+    '<div class="card"><div class="tw"><table><thead><tr><th style="width:44px">#</th><th>Frente</th><th>Módulo</th><th>Tela</th><th>Onda</th><th></th></tr></thead><tbody id="tbf"></tbody></table></div></div>';
+  const pinta=()=>{
+    $('#tbf').innerHTML=FRENTES.filter(f=> FILTRO_F==='todas' || String(f[4])===FILTRO_F || f[2]===FILTRO_F).map(f=>
+      '<tr><td style="font-family:var(--font-d);font-weight:800;color:var(--muted)">'+f[0]+'</td>'+
+      '<td style="font-weight:600">'+esc(f[1])+'</td>'+
+      '<td class="mini">'+TELAS[f[3]].mod.n+' · '+esc(TELAS[f[3]].mod.nome)+'</td>'+
+      '<td class="mini">'+esc(TELAS[f[3]].t)+'</td>'+
+      '<td>'+(f[4]===1?'<span class="tag ok">MVP</span>':'<span class="tag warn">2ª onda</span>')+'</td>'+
+      '<td><a class="btn sm" href="#/'+f[3]+'">Abrir</a></td></tr>').join('');
+  };
+  pinta();
+  $$('#ff .chip').forEach(b=>b.addEventListener('click',()=>{FILTRO_F=b.dataset.o;$$('#ff .chip').forEach(x=>x.classList.toggle('on',x===b));pinta();}));
+  $$('.li[data-go]',v).forEach(el=>el.addEventListener('click',()=>location.hash='#/'+el.dataset.go));
+};
+
+/* =======================================================================
+   BOOT
+   ======================================================================= */
+function boasVindas(){
+  if(LS.get('pr_visto_v4')) return;
+  LS.set('pr_visto_v4','1');
+  modal('Prontos em Rede',
+    '<p style="margin:0 0 14px;font-size:13.6px;color:var(--ink-2)">A plataforma da RE/MAX em <b>seis módulos</b>. Não é uma maquete: o que você faz aqui fica gravado e recalcula o resto.</p>'+
+    '<div class="kv"><span class="k">Experimente</span><span class="v">Envie uma evidência na <b>Jornada</b>, aprove em <b>Aprovações</b> e veja a adesão e o ranking mudarem.</span></div>'+
+    '<div class="kv"><span class="k">Estúdio</span><span class="v">Preencha seus dados, escolha a cor e baixe a peça em <b>PNG</b> ou <b>PDF</b> — os arquivos saem de verdade.</span></div>'+
+    '<div class="kv"><span class="k">Excelência</span><span class="v">Envie a foto de uma entrega no <b>Programa de Excelência</b>: ela fica guardada e, ao ser validada, vira ponto e faixa de bonificação.</span></div>'+
+    '<div class="kv"><span class="k">Menu</span><span class="v">Passe o mouse por um módulo na barra lateral para abrir as telas dele.</span></div>',
+    '<button class="btn pri" onclick="fechaModal()">Começar</button>');
+}
+function iniciarApp(){
+  P = personas();
+  renderWho(); renderNav();
+  if(!location.hash) location.hash='#/inicio';
+  route();
+  boasVindas();
+}
+function entrarNaPlataforma(){
+  if(LS.get('pr_sessao') && CONTAS.some(c=>c.papel===LS.get('pr_sessao'))){
+    ROLE = LS.get('pr_sessao');
+    iniciarApp();
+  } else {
+    telaLogin();
+  }
+}
+loadState();
+aplicarTema();
+document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
+if(LS.get('pr_abertura_v6')) entrarNaPlataforma();
+else { LS.set('pr_abertura_v6','1'); abertura(entrarNaPlataforma); }
+</script>
+</body>
+</html>

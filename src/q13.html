@@ -1,0 +1,271 @@
+<script>
+/* =======================================================================
+   MÓDULO 6 · INTELLIGENCE & GAMIFICATION
+   ======================================================================= */
+
+/* ---------- indicadores de marketing (os da apresentação, agora dentro da plataforma) ---------- */
+const SEMANAS=12;
+function metricasCorretor(id){
+  const u=S.usuarios[id]||{}, r=seed('mk:'+id);
+  const base = u.ativo? rint(r,4,20) : rint(r,0,3);
+  const reais = S.campanhas.filter(c=>c.ag&&c.ag[id]).length + S.pecas.filter(p=>p.uid===id).length;
+  const posts = base+reais;
+  const seguidores = u.ig? rint(r,320,4200) : rint(r,0,180);
+  const alcance = Math.round(posts*(180+r()*520) + seguidores*0.7);
+  const eng = 1.2 + r()*4.4;
+  const reels = Math.round(posts*(0.12+r()*0.28));
+  const stories = Math.round(posts*(0.5+r()*1.3));
+  const imoveis = rint(r,0,16);
+  const dist = Array.from({length:SEMANAS},(_,i)=> Math.max(0, Math.round(posts/SEMANAS*(0.4+r()*1.6))));
+  return {posts, alcance, eng, reels, stories, imoveis, seguidores, freq:posts/SEMANAS, dist};
+}
+function metricasLoja(lid){
+  const cs=corretoresDe(lid);
+  const acc={posts:0,alcance:0,reels:0,stories:0,imoveis:0,seguidores:0,eng:0,pecas:0,dist:Array(SEMANAS).fill(0)};
+  cs.forEach(c=>{ const m=metricasCorretor(c.id);
+    acc.posts+=m.posts; acc.alcance+=m.alcance; acc.reels+=m.reels; acc.stories+=m.stories;
+    acc.imoveis+=m.imoveis; acc.seguidores+=m.seguidores; acc.eng+=m.eng;
+    m.dist.forEach((d,i)=>acc.dist[i]+=d); });
+  acc.eng = cs.length? acc.eng/cs.length : 0;
+  acc.freq = cs.length? acc.posts/SEMANAS/cs.length : 0;
+  acc.pecas = S.pecas.filter(p=>{const u=S.usuarios[p.uid]; return u&&u.loja===lid;}).length;
+  acc.corretores = cs.length; acc.ativos = ativosDe(lid);
+  return acc;
+}
+function metricasRede(ls){
+  const acc={posts:0,alcance:0,reels:0,stories:0,imoveis:0,seguidores:0,eng:0,pecas:0,corretores:0,ativos:0,dist:Array(SEMANAS).fill(0)};
+  ls.forEach(l=>{ const m=metricasLoja(l.id);
+    ['posts','alcance','reels','stories','imoveis','seguidores','pecas','corretores','ativos'].forEach(k=>acc[k]+=m[k]);
+    acc.eng+=m.eng; m.dist.forEach((d,i)=>acc.dist[i]+=d); });
+  acc.eng = ls.length? acc.eng/ls.length : 0;
+  acc.freq = acc.corretores? acc.posts/SEMANAS/acc.corretores : 0;
+  acc.serie = acc.dist;
+  acc.seriePecas = acc.dist.map((d,i)=> Math.round(d*(0.35+((i%4)*0.06))) + (i===SEMANAS-1? S.pecas.length:0));
+  const hoje=new Date(HOJE);
+  acc.semanas = Array.from({length:SEMANAS},(_,i)=>{ const d=new Date(hoje); d.setDate(d.getDate()-(SEMANAS-1-i)*7); return dataBR(d); });
+  return acc;
+}
+
+let MKT={regional:'todas', unidade:'todas', periodo:12};
+VIEWS.marketing=function(v){
+  if(souCorretor()) return marketingCorretor(v);
+  let ls=lojasVisiveis();
+  if(MKT.regional!=='todas') ls=ls.filter(l=>l.master===MKT.regional);
+  if(MKT.unidade!=='todas') ls=ls.filter(l=>l.id===MKT.unidade);
+  if(!ls.length) ls=lojasVisiveis();
+  const M=metricasRede(ls);
+  const corte=SEMANAS-MKT.periodo;
+  const serie=M.serie.slice(corte), semanas=M.semanas.slice(corte);
+  const postsPeriodo=serie.reduce((a,b)=>a+b,0);
+  const top=ls.map(l=>({l, m:metricasLoja(l.id)})).sort((a,b)=>b.m.alcance-a.m.alcance).slice(0,8);
+  const mix=[{n:'Feed',v:Math.max(0,M.posts-M.reels)},{n:'Reels',v:M.reels},{n:'Stories',v:M.stories}];
+
+  v.innerHTML =
+    ph('Desempenho de marketing','Os indicadores que antes viviam em uma apresentação à parte, agora dentro da plataforma e ligados ao dado real: frequência de publicação, alcance, engajamento, formatos e imóveis divulgados — por rede, regional, unidade e associado.',
+      '<button class="btn" id="expM">↓ Exportar CSV</button>','marketing')+
+    '<div class="filtros">'+
+      '<div class="f"><label>Regional</label><select id="fReg"><option value="todas">Todas as regionais</option>'+
+        BASE.masters.map(m=>'<option value="'+m.id+'"'+(MKT.regional===m.id?' selected':'')+'>'+esc(m.nome)+'</option>').join('')+'</select></div>'+
+      '<div class="f"><label>Unidade</label><select id="fUni"><option value="todas">Todas as unidades</option>'+
+        lojasVisiveis().filter(l=>MKT.regional==='todas'||l.master===MKT.regional).map(l=>'<option value="'+l.id+'"'+(MKT.unidade===l.id?' selected':'')+'>'+esc(l.nome)+'</option>').join('')+'</select></div>'+
+      '<div class="f"><label>Período</label><select id="fPer">'+[[4,'Últimas 4 semanas'],[8,'Últimas 8 semanas'],[12,'Últimas 12 semanas']]
+        .map(p=>'<option value="'+p[0]+'"'+(MKT.periodo===p[0]?' selected':'')+'>'+p[1]+'</option>').join('')+'</select></div>'+
+      '<div class="f"><label>&nbsp;</label><button class="btn" id="limpar">Limpar filtros</button></div>'+
+    '</div>'+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Publicações', nf(postsPeriodo), 'no período · '+ls.length+' unidade'+(ls.length>1?'s':''))+
+      kpi('Alcance', compacto(M.alcance), 'somado das contas conectadas','k-ok')+
+      kpi('Engajamento médio', M.eng.toFixed(1).replace('.',',')+'%', 'sobre o alcance das peças')+
+      kpi('Frequência', M.freq.toFixed(1).replace('.',',')+' <small>/semana</small>', 'por associado', M.freq>=1.5?'k-ok':'k-warn')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Publicações por semana</h3><div class="r"><span class="mini">'+semanas[0]+' a '+semanas[semanas.length-1]+'</span></div></div>'+
+        '<div class="cb"><div class="grafico"><canvas id="gSerie"></canvas></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Formatos publicados</h3></div><div class="cb"><div class="grafico"><canvas id="gMix"></canvas></div>'+legenda(mix.map((m,i)=>({n:m.n,v:m.v,cor:PALETA[i]})))+'</div></div>'+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Alcance por unidade</h3><div class="r"><span class="mini">8 maiores do recorte</span></div></div>'+
+      '<div class="cb"><div class="grafico"><canvas id="gTop"></canvas></div></div></div>'+
+    '<div class="card"><div class="ch"><h3>Detalhe por '+(MKT.unidade==='todas'?'unidade':'associado')+'</h3>'+
+      '<div class="r"><span class="mini">clique para abrir o recorte</span></div></div>'+
+      '<div class="tw"><table><thead><tr>'+
+      (MKT.unidade==='todas'
+        ? '<th>Unidade</th><th>Regional</th><th>Associados</th><th>Publicações</th><th>Frequência</th><th>Alcance</th><th>Engajamento</th><th>Imóveis</th>'
+        : '<th>Associado</th><th>Conta</th><th>Publicações</th><th>Frequência</th><th>Alcance</th><th>Engajamento</th><th>Imóveis</th>')+
+      '</tr></thead><tbody id="tbM"></tbody></table></div></div>';
+
+  gLinha($('#gSerie'), semanas, [{nome:'Publicações', dados:serie, cor:PALETA[0]}], {alt:250});
+  gRosca($('#gMix'), mix, {alt:250, centro:compacto(mix.reduce((a,b)=>a+b.v,0)), rotulo:'peças publicadas'});
+  gBarras($('#gTop'), top.map(t=>t.l.nome.replace('RE/MAX ','')), top.map(t=>t.m.alcance), {alt:270, fmt:compacto, cores:[PALETA[0],PALETA[1]]});
+
+  const pintaTab=()=>{
+    if(MKT.unidade==='todas'){
+      $('#tbM').innerHTML=ls.map(l=>{ const m=metricasLoja(l.id);
+        return '<tr style="cursor:pointer" data-l="'+l.id+'"><td style="font-weight:600">'+esc(l.nome)+'<div class="mini">'+esc(l.bairro)+'</div></td>'+
+        '<td class="mini">'+esc(masterDe(l.master).nome.replace('Master SP ',''))+'</td>'+
+        '<td class="num">'+m.ativos+'/'+m.corretores+'</td><td class="num">'+nf(m.posts)+'</td>'+
+        '<td class="num">'+m.freq.toFixed(1).replace('.',',')+'</td><td class="num">'+compacto(m.alcance)+'</td>'+
+        '<td class="num">'+m.eng.toFixed(1).replace('.',',')+'%</td><td class="num">'+m.imoveis+'</td></tr>'; }).join('');
+      $$('#tbM [data-l]').forEach(tr=>tr.addEventListener('click',()=>{ MKT.unidade=tr.dataset.l; route(); }));
+    } else {
+      const cs=corretoresDe(MKT.unidade).map(c=>({c,m:metricasCorretor(c.id)})).sort((a,b)=>b.m.alcance-a.m.alcance);
+      $('#tbM').innerHTML=cs.map(x=>'<tr><td><div class="stack">'+avatar(x.c,26)+'<div><div style="font-weight:600">'+esc(x.c.nome)+'</div><div class="mini">CRECI '+esc(x.c.creci)+'</div></div></div></td>'+
+        '<td>'+(x.c.ig?'<span class="tag ok">Conectada</span>':'<span class="tag warn">Sem conta</span>')+'</td>'+
+        '<td class="num">'+x.m.posts+'</td><td class="num">'+x.m.freq.toFixed(1).replace('.',',')+'</td>'+
+        '<td class="num">'+compacto(x.m.alcance)+'</td><td class="num">'+x.m.eng.toFixed(1).replace('.',',')+'%</td>'+
+        '<td class="num">'+x.m.imoveis+'</td></tr>').join('');
+    }
+  };
+  pintaTab();
+  $('#fReg').addEventListener('change',e=>{ MKT.regional=e.target.value; MKT.unidade='todas'; route(); });
+  $('#fUni').addEventListener('change',e=>{ MKT.unidade=e.target.value; route(); });
+  $('#fPer').addEventListener('change',e=>{ MKT.periodo=parseInt(e.target.value,10); route(); });
+  $('#limpar').addEventListener('click',()=>{ MKT={regional:'todas',unidade:'todas',periodo:12}; route(); });
+  $('#expM').addEventListener('click',()=>{
+    const linhas=[['unidade','regional','associados','ativos','publicacoes','frequencia_semana','alcance','engajamento_%','reels','stories','imoveis']];
+    ls.forEach(l=>{ const m=metricasLoja(l.id);
+      linhas.push([l.nome,masterDe(l.master).nome,m.corretores,m.ativos,m.posts,m.freq.toFixed(2),m.alcance,m.eng.toFixed(1),m.reels,m.stories,m.imoveis]); });
+    baixarBlob(new Blob(['﻿'+linhas.map(r=>r.join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),'prontos-em-rede-marketing.csv');
+    commit('Exportou indicadores de marketing', ls.length+' unidades'); toast('Indicadores exportados.',1);
+  });
+};
+
+function marketingCorretor(v){
+  const c=S.usuarios[euId()], l=lojaDe(c.loja), m=metricasCorretor(c.id), ml=metricasLoja(l.id);
+  const mediaUnidade = {posts: ml.corretores? ml.posts/ml.corretores:0, alcance: ml.corretores? ml.alcance/ml.corretores:0, eng: ml.eng};
+  const semanas=metricasRede([l]).semanas;
+  const mix=[{n:'Feed',v:Math.max(0,m.posts-m.reels)},{n:'Reels',v:m.reels},{n:'Stories',v:m.stories}];
+  v.innerHTML =
+    ph('Meus indicadores','Como está o seu marketing: quanto você publica, quanto alcança e como isso se compara com a média da sua unidade.','','marketing')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Publicações', m.posts, 'nas últimas 12 semanas')+
+      kpi('Frequência', m.freq.toFixed(1).replace('.',',')+' <small>/semana</small>', mediaUnidade.posts? 'média da unidade: '+(mediaUnidade.posts/SEMANAS).toFixed(1).replace('.',','):'', m.freq>=(mediaUnidade.posts/SEMANAS)?'k-ok':'k-warn')+
+      kpi('Alcance', compacto(m.alcance), 'média da unidade: '+compacto(Math.round(mediaUnidade.alcance)), m.alcance>=mediaUnidade.alcance?'k-ok':'k-warn')+
+      kpi('Engajamento', m.eng.toFixed(1).replace('.',',')+'%', 'média da unidade: '+ml.eng.toFixed(1).replace('.',',')+'%', m.eng>=ml.eng?'k-ok':'k-warn')+
+    '</div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Minhas publicações por semana</h3></div><div class="cb"><div class="grafico"><canvas id="gEu"></canvas></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Meus formatos</h3></div><div class="cb"><div class="grafico"><canvas id="gMixEu"></canvas></div>'+legenda(mix.map((x,i)=>({n:x.n,v:x.v,cor:PALETA[i]})))+'</div></div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:16px"><div class="ch"><h3>Como melhorar</h3></div><div class="cb">'+
+      [!c.ig?['Conecte seu Instagram','Sem a conta conectada você fica fora das campanhas sincronizadas e o alcance não é medido.','#/redes']:null,
+       m.freq<1.5?['Publique ao menos 2 vezes por semana','A frequência é o indicador que mais move alcance na rede.','#/estudio']:null,
+       m.reels<3?['Use mais Reels','Formatos em vídeo puxam o engajamento para cima.','#/biblioteca']:null,
+       ['Participe da próxima campanha da rede','Publicação sincronizada rende alcance e pontos no Programa de Excelência.','#/prontos']
+      ].filter(Boolean).map(x=>'<div class="li" data-go="'+x[2]+'" style="display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer">'+
+        '<span class="ico" style="width:30px;height:30px;border-radius:8px;background:var(--brand-soft);color:var(--brand-2);display:grid;place-items:center">→</span>'+
+        '<div><div style="font-weight:600;font-size:13.3px">'+esc(x[0])+'</div><div class="mini">'+esc(x[1])+'</div></div></div>').join('')+
+    '</div></div>';
+  gLinha($('#gEu'), semanas, [{nome:'Publicações', dados:m.dist, cor:PALETA[0]}], {alt:250});
+  gRosca($('#gMixEu'), mix, {alt:250, centro:String(mix.reduce((a,b)=>a+b.v,0)), rotulo:'peças'});
+  $$('[data-go]',v).forEach(el=>el.addEventListener('click',()=>location.hash=el.dataset.go));
+}
+
+/* ---------- painel da rede ---------- */
+VIEWS.painel=function(v){
+  const ls=lojasVisiveis();
+  const porMaster=BASE.masters.filter(m=>ROLE==='brasil'||m.id==='m2').map(m=>{
+    const sub=BASE.lojas.filter(l=>l.master===m.id);
+    return {m, n:sub.length, ad:mediaAdesao(sub), us:sub.reduce((a,l)=>a+corretoresDe(l.id).length,0), at:sub.reduce((a,l)=>a+ativosDe(l.id),0)};
+  });
+  const conformes=ls.filter(l=>adesao(l.id)>=70).length;
+  const M=metricasRede(ls);
+  v.innerHTML =
+    ph(ROLE==='brasil'?'Painel da rede':'Painel da regional','Adesão, evolução, pendências, prazos, usuários ativos e compliance da marca — calculado sobre o estado real da plataforma. Nativo no produto: sem licença de BI por usuário, que a preços de mercado inviabilizaria estender o painel à rede inteira.',
+      '<button class="btn" id="rel3">↓ Relatório CSV</button><a class="btn pri" href="#/marketing">Indicadores de marketing</a>','painel')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Unidades', ls.length, ROLE==='brasil'?'projeto prevê ~600 na rede':'na sua regional')+
+      kpi('Em conformidade', conformes+'/'+ls.length, 'adesão igual ou acima de 70%', conformes/ls.length>.5?'k-ok':'k-warn')+
+      kpi('Usuários ativos', ls.reduce((a,l)=>a+ativosDe(l.id),0), 'últimos 30 dias')+
+      kpi('Alcance da rede', compacto(M.alcance), nf(M.posts)+' publicações no período')+
+    '</div>'+
+    (ROLE==='brasil'?'<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Por Master Regional</h3><div class="r"><span class="mini">agrupamento de demonstração — em produção, as 16 Masters reais</span></div></div><div class="cb">'+
+      porMaster.map(x=>'<div style="display:grid;grid-template-columns:1.2fr 1fr 150px 60px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">'+
+        '<div><div style="font-weight:600;font-size:13.3px">'+esc(x.m.nome)+'</div><div class="mini">'+esc(x.m.area)+'</div></div>'+
+        '<div class="mini">'+x.n+' unidades · '+x.us+' associados · '+x.at+' ativos</div>'+
+        barra(x.ad)+'<div class="num" style="text-align:right;font-family:var(--font-d);font-weight:800">'+x.ad+'%</div></div>').join('')+
+    '</div></div>':'')+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Compliance da marca por unidade</h3><div class="r"><span class="mini">quem está e quem não está no padrão</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>Unidade</th><th>Adesão</th><th>Fachada</th><th>Digital</th><th>Impressos</th><th>Ativos</th><th>Leitura</th><th>Chamados</th></tr></thead><tbody>'+
+      ls.slice().sort((a,b)=>adesao(b.id)-adesao(a.id)).map(l=>{ const U=S.unidades[l.id];
+        return '<tr><td style="font-weight:600">'+esc(l.nome)+'<div class="mini">'+esc(masterDe(l.master).nome.replace('Master ',''))+'</div></td>'+
+        '<td style="min-width:110px">'+barra(adesao(l.id))+'<span class="mini num">'+adesao(l.id)+'%</span></td>'+
+        '<td>'+(U.fachada.st==='instalada'?'<span class="tag ok">OK</span>':'<span class="tag warn">'+FACH_LABEL[U.fachada.st]+'</span>')+'</td>'+
+        '<td>'+(U.etapas.e2.ok?'<span class="tag ok">OK</span>':'<span class="tag mut">pendente</span>')+'</td>'+
+        '<td>'+(U.etapas.e3.ok?'<span class="tag ok">OK</span>':'<span class="tag mut">pendente</span>')+'</td>'+
+        '<td class="num">'+ativosDe(l.id)+'/'+corretoresDe(l.id).length+'</td>'+
+        '<td class="num">'+leituraDe(l.id)+'%</td><td class="num">'+ticketsDe(l.id)+'</td></tr>'; }).join('')+
+      '</tbody></table></div></div>'+
+    '<div class="grid g2">'+
+      '<div class="card"><div class="ch"><h3>Evolução da adesão</h3></div><div class="cb"><div class="grafico"><canvas id="gEvo"></canvas></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Situação das unidades</h3></div><div class="cb"><div class="grafico"><canvas id="gSit"></canvas></div>'+
+        legenda([{n:'Em conformidade',v:conformes,cor:cssVar('--ok','#1F6B45')},{n:'Em andamento',v:ls.filter(l=>adesao(l.id)<70&&adesao(l.id)>=40).length,cor:PALETA[1]},{n:'Em risco',v:ls.filter(l=>adesao(l.id)<40).length,cor:cssVar('--red','#D4222F')}])+
+      '</div></div>'+
+    '</div>';
+  const base=mediaAdesao(ls);
+  gLinha($('#gEvo'), ['abr','mai','jun','jul','ago','set'],
+    [{nome:'Adesão média', dados:[0,1,2,3,4,5].map(i=> i===5? base : Math.max(3,Math.round(base*(0.25+i*0.15)))), cor:PALETA[0]}],
+    {alt:230, fmt:v=>Math.round(v)+'%'});
+  gRosca($('#gSit'), [{n:'Em conformidade',v:conformes,cor:cssVar('--ok','#1F6B45')},
+                      {n:'Em andamento',v:ls.filter(l=>adesao(l.id)<70&&adesao(l.id)>=40).length,cor:PALETA[1]},
+                      {n:'Em risco',v:ls.filter(l=>adesao(l.id)<40).length,cor:cssVar('--red','#D4222F')}],
+    {alt:230, centro:String(ls.length), rotulo:'unidades'});
+  $('#rel3').addEventListener('click',()=>relatorioModal(ls));
+};
+
+/* ---------- ranking ---------- */
+VIEWS.ranking=function(v){
+  const ls=BASE.lojas.slice().sort((a,b)=>pontosU(b.id)-pontosU(a.id));
+  const minha=minhaLoja(), pos=minha? ls.findIndex(l=>l.id===minha.id)+1 : 0;
+  const cs=Object.values(S.usuarios).filter(u=>u.nivel==='associado').map(u=>({u,p:pontosC(u.id)})).sort((a,b)=>b.p-a.p).slice(0,8);
+  const faltam=dias(CONVENCAO), total=Math.round((CONVENCAO-new Date(2026,7,1))/86400000);
+  const regionais=BASE.masters.map(m=>{ const sub=BASE.lojas.filter(l=>l.master===m.id);
+    return {m, p:Math.round(sub.reduce((a,l)=>a+pontosU(l.id),0)/sub.length)}; }).sort((a,b)=>b.p-a.p);
+  v.innerHTML =
+    ph('Ranking e Grand Champion','Pontuação por etapa concluída no prazo, evidência aprovada, participação nas campanhas, leitura de comunicados e entregas validadas no Programa de Excelência.',
+      '<button class="btn" id="regras">Como pontuar</button>','ranking')+
+    '<div class="card pad" style="margin-bottom:16px;background:linear-gradient(135deg,#062E45,#0B6FB4 62%,#2EA3F2);color:#fff;border:0">'+
+      '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">'+
+      '<div><div style="font-family:var(--font-d);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#A9D8F7">Grand Champion 2027</div>'+
+      '<div style="font-family:var(--font-d);font-size:22px;font-weight:800;margin-top:6px">Convenção de maio de 2027</div>'+
+      '<div style="font-size:13px;color:#DDEEFC;margin-top:5px;max-width:54ch">A apuração sai da plataforma: adesão à nova identidade, participação nas campanhas sincronizadas e entregas comprovadas no Programa de Excelência.</div></div>'+
+      '<div style="margin-left:auto;text-align:right"><div style="font-family:var(--font-d);font-size:40px;font-weight:800;letter-spacing:-.03em" class="num">'+faltam+'</div><div class="mini" style="color:#CFE9FB">dias para a convenção</div></div></div>'+
+      '<div style="height:8px;border-radius:99px;background:rgba(255,255,255,.22);margin-top:18px;overflow:hidden"><i style="display:block;height:100%;width:'+Math.round((1-faltam/total)*100)+'%;background:#fff;border-radius:99px"></i></div>'+
+    '</div>'+
+    '<div class="grid g3" style="margin-bottom:16px">'+
+      (minha? kpi('Sua posição', pos+'º', 'entre as '+ls.length+' unidades', pos<=5?'k-ok':'') : kpi('Unidades pontuando', ls.length, 'toda a rede do programa'))+
+      kpi('Líder atual', esc(ls[0].nome.replace('RE/MAX ','')), pontosU(ls[0].id)+' pontos','k-ok')+
+      kpi('Média da rede', Math.round(ls.reduce((a,l)=>a+pontosU(l.id),0)/ls.length), 'pontos por unidade')+
+    '</div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Ranking de unidades</h3><div class="r"><span class="mini">recalculado a cada ação na plataforma</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>#</th><th>Unidade</th><th>Regional</th><th>Adesão</th><th>Etapas</th><th>Pontos</th></tr></thead><tbody>'+
+      ls.map((l,i)=>'<tr'+(minha&&l.id===minha.id?' style="background:var(--brand-soft)"':'')+'>'+
+        '<td style="font-family:var(--font-d);font-weight:800;color:'+(i<3?'var(--red)':'var(--muted)')+'">'+(i+1)+'</td>'+
+        '<td style="font-weight:600">'+esc(l.nome)+'</td><td class="mini">'+esc(masterDe(l.master).nome.replace('Master SP ',''))+'</td>'+
+        '<td class="num">'+adesao(l.id)+'%</td><td class="num">'+etapasOk(l.id)+'/7</td>'+
+        '<td style="font-family:var(--font-d);font-weight:800" class="num">'+pontosU(l.id)+'</td></tr>').join('')+
+      '</tbody></table></div></div>'+
+      '<div><div class="card" style="margin-bottom:16px"><div class="ch"><h3>Regionais</h3></div><div class="cb">'+
+        regionais.map((r,i)=>'<div style="display:flex;align-items:center;gap:11px;padding:8px 0;border-bottom:1px solid var(--line)">'+
+        '<span style="font-family:var(--font-d);font-weight:800;color:'+(i===0?'var(--red)':'var(--muted)')+'">'+(i+1)+'º</span>'+
+        '<div style="flex:1"><div style="font-size:12.9px;font-weight:600">'+esc(r.m.nome)+'</div><div class="mini">'+esc(r.m.area)+'</div></div>'+
+        '<span class="num" style="font-family:var(--font-d);font-weight:800">'+r.p+'</span></div>').join('')+
+      '</div></div>'+
+      '<div class="card"><div class="ch"><h3>Associados em destaque</h3></div><div class="lst">'+
+        cs.map((x,i)=>'<div class="li" style="cursor:default"><span style="font-family:var(--font-d);font-weight:800;width:18px;color:'+(i<3?'var(--red)':'var(--muted)')+'">'+(i+1)+'</span>'+
+        avatar(x.u)+'<div class="bd"><div class="t" style="font-size:12.9px">'+esc(x.u.nome)+'</div><div class="s">'+esc(lojaDe(x.u.loja).nome)+'</div></div>'+
+        '<div class="rt"><b class="num">'+x.p+'</b></div></div>').join('')+
+      '</div></div></div>'+
+    '</div>';
+  $('#regras').addEventListener('click',()=>modal('Como a pontuação funciona',
+    '<div class="tw"><table><thead><tr><th>Critério</th><th>Pontos</th></tr></thead><tbody>'+
+    [['Etapa concluída dentro do prazo','+'+PONTOS.etapa],['Etapa concluída em atraso','+'+PONTOS.etapaAtraso],
+     ['Etapa com evidência aprovada','+'+PONTOS.evidencia],['Participação em campanha sincronizada','+'+PONTOS.campanha+' por campanha'],
+     ['Confirmação de leitura obrigatória','+'+PONTOS.leitura],['Peça oficial gerada pelo Estúdio','+'+PONTOS.peca],
+     ['Fachada instalada e validada','+'+PONTOS.fachada],['Entrega validada no Programa de Excelência','conforme o critério']]
+    .map(r=>'<tr><td>'+r[0]+'</td><td style="font-family:var(--font-d);font-weight:700;color:var(--ok)">'+r[1]+'</td></tr>').join('')+
+    '</tbody></table></div>'+
+    '<div class="hint" style="margin-top:14px">Pesos configuráveis pela RE/MAX Brasil. Aprove uma evidência em Compliance ou valide uma comprovação no Programa de Excelência e volte aqui: o ranking muda.</div>',
+    '<button class="btn pri" onclick="fechaModal()">Entendi</button>'));
+};
+</script>

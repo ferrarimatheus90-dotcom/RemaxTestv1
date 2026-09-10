@@ -1,0 +1,227 @@
+<script>
+/* =======================================================================
+   MÓDULO 2 · PRONTOS EM REDE (comunicação sincronizada)
+   ======================================================================= */
+function usuariosVisiveis(){
+  const ls=lojasVisiveis();
+  return Object.values(S.usuarios).filter(u=>u.nivel==='associado' && ls.some(l=>l.id===u.loja));
+}
+const adesaoCampanha = c => {
+  const us=usuariosVisiveis(); if(!us.length) return 0;
+  return Math.round(us.filter(u=>c.ag&&c.ag[u.id]).length/us.length*100);
+};
+VIEWS.prontos=function(v){
+  const us=usuariosVisiveis(), con=us.filter(u=>u.ig).length;
+  const camp=S.campanhas.find(c=>c.st==='agendada')||S.campanhas[0];
+  const souBrasil=ROLE==='brasil', euAg=camp.ag&&camp.ag[euId()];
+  v.innerHTML =
+    ph('Prontos em Rede','O programa nacional de comunicação sincronizada: a RE/MAX Brasil publica arte e legenda, a rede inteira posta no mesmo dia e na mesma hora — em um clique, sem repassar arquivo por WhatsApp.',
+      souBrasil?'<button class="btn pri" id="novaC">+ Nova campanha</button>':(souCorretor()&&!euAg?'<button class="btn pri" id="agEu">Agendar na minha conta</button>':''),'prontos')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Próxima publicação', new Date(camp.dt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), esc(camp.tit.split('—')[0].trim())+' · '+new Date(camp.dt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))+
+      kpi('Contas conectadas', con+'/'+us.length, pct(con/Math.max(1,us.length)*100)+' dos associados', con/Math.max(1,us.length)>.6?'k-ok':'k-warn')+
+      kpi('Adesão da campanha', pct(adesaoCampanha(camp)), 'já agendaram a publicação', adesaoCampanha(camp)>60?'k-ok':'k-warn')+
+      kpi('Campanhas no ano', S.campanhas.length, S.campanhas.filter(c=>c.st==='publicada').length+' publicadas')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Campanha em preparação</h3><div class="r">'+(euAg?'<span class="tag ok">Você já agendou</span>':'<span class="tag red">Faltam '+dias(new Date(camp.dt))+' dias</span>')+'</div></div>'+
+      '<div class="cb" style="display:grid;grid-template-columns:190px 1fr;gap:18px;align-items:start">'+
+        '<canvas class="prev" id="cvC"></canvas>'+
+        '<div><div style="font-family:var(--font-d);font-weight:800;font-size:17px">'+esc(camp.tit)+'</div>'+
+        '<div class="mini" style="margin:5px 0 12px">'+new Date(camp.dt).toLocaleString('pt-BR')+' · '+esc(camp.peca)+' · toda a rede</div>'+
+        '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.9px;line-height:1.55">'+esc(camp.leg)+'</div>'+
+        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
+          (souBrasil?'<button class="btn pri" id="disparar">Programar para '+lojasVisiveis().length+' unidades</button>':
+           euAg?'<button class="btn" id="desag">Cancelar meu agendamento</button>':'<button class="btn pri" id="agEu2">Agendar na minha conta</button>')+
+          '<button class="btn" id="cpLeg">Copiar legenda</button>'+
+          '<a class="btn" href="#/estudio/'+(camp.tpl||'t01')+'">Personalizar</a>'+
+          '<button class="btn" id="dlArte">↓ Baixar arte</button></div>'+
+        '</div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Calendário da rede</h3><div class="r"><span class="mini">setembro/2026</span></div></div><div class="cb" id="cal"></div></div>'+
+    '</div>'+
+    '<div class="card"><div class="ch"><h3>Campanhas</h3><div class="r"><span class="mini">adesão medida sobre '+us.length+' associados do seu escopo</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>Campanha</th><th>Data</th><th>Peça</th><th>Situação</th><th>Adesão</th><th></th></tr></thead><tbody>'+
+      S.campanhas.map(c=>{ const ad=adesaoCampanha(c);
+        return '<tr><td style="font-weight:600">'+esc(c.tit)+'</td><td class="num">'+new Date(c.dt).toLocaleDateString('pt-BR')+'</td><td>'+esc(c.peca)+'</td>'+
+        '<td>'+(c.st==='publicada'?'<span class="tag ok">Publicada</span>':c.st==='agendada'?'<span class="tag">Agendada</span>':'<span class="tag mut">Planejada</span>')+'</td>'+
+        '<td style="min-width:130px">'+barra(ad)+'<span class="mini num">'+ad+'% · '+Object.keys(c.ag||{}).length+' contas</span></td>'+
+        '<td>'+(souCorretor()? (c.ag&&c.ag[euId()]?'<span class="tag ok">Agendada</span>':'<button class="btn sm" data-ag="'+c.id+'">Agendar</button>')
+                            : '<button class="btn sm" data-ver="'+c.id+'">Ver adesão</button>')+'</td></tr>';
+      }).join('')+'</tbody></table></div></div>';
+
+  montarPeca({fmt:'feed', tema:'azul', titulo:camp.tit.split('—')[0].trim(), sub:camp.peca+' · publicação sincronizada',
+    nome:eu().nome, creci:'', tel:'', unidade:'RE/MAX Brasil', foto:eu().foto}).then(cv=>{
+      const a=$('#cvC'); if(!a) return; a.width=cv.width; a.height=cv.height; a.getContext('2d').drawImage(cv,0,0);
+      $('#dlArte')&&$('#dlArte').addEventListener('click',()=>canvasBlob(cv,'image/png').then(b=>{baixarBlob(b,'campanha-'+camp.id+'.png');toast('Arte baixada.',1);})); });
+
+  const prim=new Date(2026,8,1).getDay();
+  let cal=['D','S','T','Q','Q','S','S'].map(d=>'<div class="dh">'+d+'</div>').join('');
+  for(let i=0;i<prim;i++) cal+='<div class="dy off"></div>';
+  for(let d=1;d<=30;d++){
+    let ev='';
+    S.campanhas.forEach(c=>{ const cd=new Date(c.dt); if(cd.getMonth()===8&&cd.getDate()===d)
+      ev+='<div class="ev '+(c.st==='publicada'?'ok':'red')+'">'+cd.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' · '+esc(c.tit.split('—')[0].trim().slice(0,16))+'</div>'; });
+    S.comunicados.forEach(k=>{ const kd=dt(k.dt); if(kd.getMonth()===8&&kd.getDate()===d&&k.obr) ev+='<div class="ev">Comunicado</div>'; });
+    cal+='<div class="dy'+(d===9?' today':'')+'"><div class="n">'+d+'</div>'+ev+'</div>';
+  }
+  $('#cal').innerHTML='<div class="cal">'+cal+'</div>';
+
+  const agendar=cid=>{ commit('Agendou campanha', S.campanhas.find(c=>c.id===cid).tit, s=>{ const c=s.campanhas.find(x=>x.id===cid); c.ag=c.ag||{}; c.ag[euId()]=c.dt; });
+    toast('<b>Agendado.</b> Sua conta publica junto com a rede.',1); route(); };
+  $('#agEu')&&$('#agEu').addEventListener('click',()=>agendar(camp.id));
+  $('#agEu2')&&$('#agEu2').addEventListener('click',()=>agendar(camp.id));
+  $$('[data-ag]',v).forEach(b=>b.addEventListener('click',()=>agendar(b.dataset.ag)));
+  $('#desag')&&$('#desag').addEventListener('click',()=>{ commit('Cancelou agendamento',camp.tit,s=>{delete s.campanhas.find(x=>x.id===camp.id).ag[euId()];}); route(); toast('Agendamento cancelado.'); });
+  $('#cpLeg').addEventListener('click',()=>{ try{navigator.clipboard.writeText(camp.leg);}catch(e){} toast('Legenda copiada.',1); });
+  $$('[data-ver]',v).forEach(b=>b.addEventListener('click',()=>{
+    const c=S.campanhas.find(x=>x.id===b.dataset.ver);
+    modal('Adesão · '+esc(c.tit),
+      '<div class="tw" style="max-height:52vh;overflow:auto"><table><thead><tr><th>Unidade</th><th>Agendaram</th><th>Adesão</th></tr></thead><tbody>'+
+      lojasVisiveis().map(l=>{ const cs=corretoresDe(l.id), n=cs.filter(u=>c.ag&&c.ag[u.id]).length;
+        return '<tr><td>'+esc(l.nome)+'</td><td class="num">'+n+'/'+cs.length+'</td><td style="min-width:120px">'+barra(Math.round(n/Math.max(1,cs.length)*100))+'</td></tr>'; }).join('')+
+      '</tbody></table></div>','<button class="btn pri" onclick="fechaModal()">Fechar</button>');
+  }));
+  $('#disparar')&&$('#disparar').addEventListener('click',()=>disparoEmMassa(camp.id));
+  $('#novaC')&&$('#novaC').addEventListener('click',()=>{
+    const ov=modal('Nova campanha',
+      '<div class="field"><label>Título</label><input id="nT" placeholder="Ex.: Outubro — semana do imóvel pronto"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="nD" value="2026-10-06"></div>'+
+      '<div class="field"><label>Hora</label><input type="time" id="nH" value="10:00"></div></div>'+
+      '<div class="field"><label>Formato</label><select id="nP"><option>Feed</option><option>Feed + Story</option><option>Story</option><option>Carrossel</option></select></div>'+
+      '<div class="field"><label>Legenda oficial</label><textarea id="nL" rows="3" placeholder="Texto que a rede publica…"></textarea></div>'+
+      '<div class="field"><label>Modelo de arte</label><select id="nM">'+TPLS().filter(t=>t.cat==='Redes sociais').map(t=>'<option value="'+t.id+'">'+esc(t.nome)+'</option>').join('')+'</select></div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="nOk">Criar campanha</button>');
+    $('#nOk',ov).addEventListener('click',()=>{
+      const tit=$('#nT',ov).value.trim()||'Nova campanha da rede';
+      commit('Criou campanha', tit, s=>{ s.campanhas.unshift({id:uid('c'), tit, dt:$('#nD',ov).value+'T'+$('#nH',ov).value,
+        st:'planejada', peca:$('#nP',ov).value, tpl:$('#nM',ov).value, leg:$('#nL',ov).value.trim()||'#RemaxBrasil #ProntosEmRede', ag:{}}); });
+      fechaModal(); route(); toast('Campanha criada e visível para a rede.',1);
+    });
+  });
+};
+
+/* disparo em massa — usado em Prontos em Rede e em Redes sociais */
+function disparoEmMassa(campId){
+  const camp=S.campanhas.find(c=>c.id===campId)||S.campanhas[0];
+  const prov=PROVEDORES.find(p=>p.id===S.social.provedor);
+  const ov=modal('Publicação em massa',
+    '<div class="field"><label>Campanha</label><select id="pC">'+S.campanhas.map(c=>'<option value="'+c.id+'"'+(c.id===camp.id?' selected':'')+'>'+esc(c.tit)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>Público</label><select id="pPub"><option value="todas">Todas as unidades ('+BASE.lojas.length+')</option>'+
+      BASE.masters.map(m=>'<option value="'+m.id+'">Somente '+esc(m.nome)+'</option>').join('')+
+      BASE.lojas.map(l=>'<option value="L'+l.id+'">Somente '+esc(l.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="pD" value="'+camp.dt.slice(0,10)+'"></div>'+
+    '<div class="field"><label>Hora</label><input type="time" id="pH" value="'+camp.dt.slice(11,16)+'"></div></div>'+
+    '<div class="field"><label>Canais</label><div class="chips" id="pCan"><button class="chip on">Instagram feed</button><button class="chip on">Story</button><button class="chip">Facebook</button></div></div>'+
+    '<div class="hint">Envio pelo provedor <b>'+esc(prov?prov.nome:'não definido')+'</b>. Só entram na fila as contas conectadas; as demais recebem arte e legenda com aviso de publicação manual e vão para a esteira de ativação do CS.</div>',
+    '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="okD">Programar publicação</button>');
+  $$('#pCan .chip',ov).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+  $('#okD',ov).addEventListener('click',()=>{
+    const cid=$('#pC',ov).value, pub=$('#pPub',ov).value, d=$('#pD',ov).value, h=$('#pH',ov).value;
+    let n=0, semConta=0;
+    commit('Programou publicação em massa', S.campanhas.find(c=>c.id===cid).tit, s=>{
+      const c=s.campanhas.find(x=>x.id===cid); c.dt=d+'T'+h; c.ag=c.ag||{}; if(c.st==='planejada') c.st='agendada';
+      Object.values(s.usuarios).forEach(u=>{
+        if(u.nivel!=='associado') return;
+        if(pub!=='todas'){
+          if(pub[0]==='L'){ if(u.loja!==pub.slice(1)) return; }
+          else if(lojaDe(u.loja).master!==pub) return;
+        }
+        if(!u.ig){ semConta++; return; }
+        if(!c.ag[u.id]){ c.ag[u.id]=c.dt; n++; }
+      });
+    }, (PROVEDORES.find(p=>p.id===S.social.provedor)||{}).nome||'provedor');
+    fechaModal(); route();
+    toast('<b>'+n+' contas</b> entraram na fila para '+new Date(d+'T'+h).toLocaleString('pt-BR')+(semConta?'.<br>'+semConta+' sem conta conectada receberam a arte para publicação manual.':'.'),1);
+  });
+}
+
+/* =======================================================================
+   MÓDULO 2 · REDES SOCIAIS
+   ======================================================================= */
+VIEWS.redes=function(v){
+  const us=usuariosVisiveis(), con=us.filter(u=>u.ig).length;
+  const prov=PROVEDORES.find(p=>p.id===S.social.provedor);
+  const fila=[];
+  S.campanhas.forEach(c=>Object.keys(c.ag||{}).forEach(uidc=>{
+    const u=S.usuarios[uidc]; if(!u||!us.some(x=>x.id===uidc)) return;
+    fila.push({q:c.dt, tit:c.tit, u, st:new Date(c.dt)<HOJE?'publicada':'fila'});
+  }));
+  fila.sort((a,b)=> a.q<b.q?1:-1);
+  const eu_=souCorretor()?S.usuarios[euId()]:null;
+  const M=metricasRede(lojasVisiveis());
+
+  v.innerHTML =
+    ph('Redes sociais','Conexão das contas dos associados, provedor de publicação e agendamento em massa. É daqui que a arte oficial sai para o perfil de cada corretor, no mesmo dia e na mesma hora.',
+      (eu_&&!eu_.ig)?'<button class="btn pri" id="conectar">Conectar meu Instagram</button>':
+      (ROLE!=='corretor'?'<button class="btn pri" id="massa">Publicar em massa</button><button class="btn" id="conectarTodas">Conectar pendentes</button>':''),'redes')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi('Contas conectadas', con+'/'+us.length, pct(con/Math.max(1,us.length)*100)+' da base visível', con/Math.max(1,us.length)>.6?'k-ok':'k-warn')+
+      kpi('Publicações na fila', fila.filter(f=>f.st==='fila').length, 'agendadas e ainda não publicadas')+
+      kpi('Já publicadas', fila.filter(f=>f.st==='publicada').length, 'pela plataforma')+
+      kpi('Alcance no período', compacto(M.alcance), 'somado das publicações da rede','k-ok')+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Provedor de publicação</h3><div class="r"><span class="mini">quem leva a peça até o perfil do associado</span></div></div>'+
+      '<div class="cb"><div class="grid g2">'+
+      PROVEDORES.map(p=>{
+        const ativo=S.social.provedor===p.id;
+        return '<div class="card pad" style="box-shadow:'+(ativo?'0 0 0 1.5px var(--azul) inset;background:var(--azul-soft)':'none;background:var(--surface-2)')+'">'+
+          '<div style="display:flex;align-items:center;gap:8px"><h3 style="font-size:15.5px">'+esc(p.nome)+'</h3>'+
+          (p.rec?'<span class="tag" style="background:var(--azul);color:#fff">Recomendado</span>':(p.selo?'<span class="tag mut">'+esc(p.selo)+'</span>':''))+(ativo?'<span class="tag ok" style="margin-left:auto">Conectado</span>':'')+'</div>'+
+          '<div class="mini" style="margin-top:4px">'+esc(p.tipo)+'</div>'+
+          '<div style="font-size:12.9px;color:var(--ink-2);margin-top:9px">'+esc(p.desc)+'</div>'+
+          '<div style="margin-top:10px">'+p.pontos.map(x=>'<div style="font-size:12.5px;color:var(--ink-2);padding:3px 0 3px 16px;position:relative"><span style="position:absolute;left:0;color:var(--ok)">✓</span>'+esc(x)+'</div>').join('')+'</div>'+
+          '<div class="hint warn" style="margin-top:10px;font-size:12.2px">'+esc(p.atencao)+'</div>'+
+          (ROLE==='brasil'? '<button class="btn '+(ativo?'':'pri')+'" style="margin-top:12px;width:100%;justify-content:center" data-prov="'+p.id+'"'+(ativo?' disabled':'')+'>'+(ativo?'Provedor em uso':'Usar este provedor')+'</button>':'')+
+        '</div>';
+      }).join('')+
+      '</div>'+
+      '<div class="hint" style="margin-top:14px"><b>Uma camada só.</b> Toda publicação passa pela mesma camada da plataforma, então trocar de provedor não muda nenhuma tela. A troca pede nova autorização do Instagram a cada associado — por isso o app próprio da Meta segue em aprovação em paralelo.</div>'+
+    '</div></div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>Fila de publicação</h3><div class="r"><span class="mini">gerada pelos agendamentos reais</span></div></div>'+
+      '<div class="tw" style="max-height:430px;overflow:auto"><table><thead><tr><th>Quando</th><th>Conteúdo</th><th>Conta</th><th>Situação</th></tr></thead><tbody>'+
+      (fila.slice(0,40).map(f=>'<tr><td class="num">'+new Date(f.q).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+'</td>'+
+        '<td>'+esc(f.tit.split('—')[0].trim())+'</td><td class="mini">'+esc(primeiro(f.u.nome))+' · '+esc(lojaDe(f.u.loja).nome)+'</td>'+
+        '<td>'+(f.st==='fila'?'<span class="tag">Agendada</span>':'<span class="tag ok">Publicada</span>')+'</td></tr>').join('')
+        ||'<tr><td colspan="4"><div class="empty">Nada na fila. Programe uma publicação em massa.</div></td></tr>')+
+      '</tbody></table></div></div>'+
+      '<div class="card"><div class="ch"><h3>Contas dos associados</h3><div class="r"><span class="mini">'+con+' de '+us.length+'</span></div></div><div class="lst" style="max-height:430px;overflow:auto">'+
+        us.slice(0,40).map(u=>'<div class="li" style="cursor:default">'+avatar(u)+
+          '<div class="bd"><div class="t" style="font-size:13px">'+esc(u.nome)+'</div><div class="s">'+esc(lojaDe(u.loja).nome)+'</div></div>'+
+          '<div class="rt">'+(u.ig?'<span class="tag ok">Conectada</span>':
+            (ROLE==='corretor'?'<span class="tag warn">Pendente</span>':'<button class="btn sm" data-con="'+u.id+'">Conectar</button>'))+'</div></div>').join('')+
+      '</div></div>'+
+    '</div>';
+
+  const conecta=id=>{ commit('Conectou conta social', S.usuarios[id].nome, s=>{ s.usuarios[id].ig=true; }, (prov||{}).nome||'provedor');
+    toast('<b>Conta conectada.</b> O associado entra nas publicações sincronizadas.',1); route(); };
+  $$('[data-con]',v).forEach(b=>b.addEventListener('click',()=>conecta(b.dataset.con)));
+  $$('[data-prov]',v).forEach(b=>b.addEventListener('click',()=>{
+    commit('Trocou o provedor de publicação', PROVEDORES.find(p=>p.id===b.dataset.prov).nome, s=>{ s.social.provedor=b.dataset.prov; s.social.conectadoEm=agora(); });
+    route(); toast('Provedor atualizado para <b>'+esc(PROVEDORES.find(p=>p.id===b.dataset.prov).nome)+'</b>.',1);
+  }));
+  $('#massa')&&$('#massa').addEventListener('click',()=>disparoEmMassa((S.campanhas.find(c=>c.st==='agendada')||S.campanhas[0]).id));
+  $('#conectarTodas')&&$('#conectarTodas').addEventListener('click',()=>{
+    const pend=us.filter(u=>!u.ig);
+    if(!pend.length) return toast('Todas as contas do seu escopo já estão conectadas.',1);
+    const ov=modal('Conectar contas pendentes',
+      '<p style="margin:0 0 12px;font-size:13.4px;color:var(--ink-2)">'+pend.length+' associados ainda não conectaram o perfil. A plataforma dispara o convite de autorização por e-mail e WhatsApp; quem autorizar entra automaticamente nas próximas campanhas.</p>'+
+      '<div class="lst" style="border:1px solid var(--line);border-radius:12px;max-height:38vh;overflow:auto">'+
+      pend.slice(0,20).map(u=>'<div class="li" style="cursor:default">'+avatar(u,26)+'<div class="bd"><div class="t" style="font-size:12.8px">'+esc(u.nome)+'</div><div class="s">'+esc(lojaDe(u.loja).nome)+'</div></div></div>').join('')+'</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="okT">Enviar convite a '+pend.length+'</button>');
+    $('#okT',ov).addEventListener('click',()=>{
+      commit('Enviou convite de conexão', pend.length+' associados', s=>{ pend.forEach(u=>{ if(Math.random()<0.55) s.usuarios[u.id].ig=true; }); });
+      fechaModal(); route(); toast('Convites enviados. As autorizações que voltarem já aparecem conectadas.',1);
+    });
+  });
+  $('#conectar')&&$('#conectar').addEventListener('click',()=>{
+    const ov=modal('Conectar Instagram',
+      '<div class="tl" style="margin-bottom:6px">'+
+      ['Converter a conta em Instagram Business ou Creator','Vincular a uma página do Facebook da unidade','Autorizar a plataforma Prontos em Rede','Escolher os horários preferidos de publicação']
+        .map((p,i)=>'<div class="it '+(i===0?'now':'')+'"><div class="t">'+p+'</div></div>').join('')+'</div>'+
+      '<div class="hint">Se travar em qualquer passo, mande “instagram” no WhatsApp do suporte: um analista faz junto com você.</div>',
+      '<button class="btn" onclick="fechaModal()">Depois</button><button class="btn pri" id="okC">Autorizar</button>');
+    $('#okC',ov).addEventListener('click',()=>{ fechaModal(); conecta(euId()); });
+  });
+};
+</script>
