@@ -432,6 +432,52 @@ function marcaBrilho(cls){
 }
 
 /* =======================================================================
+   ABERTURA EM VÍDEO — a vinheta "Prontos em Rede" (splash.mp4, ao lado do index.html).
+   Sem o arquivo (artefato, HTML solto) ou com o vídeo bloqueado, entra a abertura animada abaixo.
+   ======================================================================= */
+function aberturaVideo(depois){
+  const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduz){ depois(); return; }
+  const el=document.createElement('div'); el.id='splash';
+  el.innerHTML='<video muted playsinline preload="auto" poster="'+SPLASH_POSTER+'"><source src="splash.mp4" type="video/mp4"><source src="splash.webm" type="video/webm"></video>'+
+    '<button class="pular">'+(LANG==='en'?'Skip':LANG==='es'?'Saltar':'Pular')+'</button>';
+  document.body.appendChild(el);
+  document.body.style.overflow='hidden';
+  const v=el.querySelector('video');
+  v.muted=true;                                   // o navegador só deixa tocar sozinho se estiver mudo
+  let acabou=false, tocou=false, guarda=null, teto=null;
+  function fim(){
+    if(acabou) return; acabou=true; clearTimeout(guarda); clearTimeout(teto);
+    el.classList.add('sai');
+    depois();                                     // o login já nasce por baixo e as duas telas se cruzam
+    setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);
+  }
+  function reserva(){                             // sem vídeo: a abertura animada
+    if(acabou || tocou) return; acabou=true; clearTimeout(guarda);
+    el.remove(); abertura(depois);
+  }
+  v.addEventListener('playing',()=>{ if(tocou) return; tocou=true; clearTimeout(guarda);
+    teto=setTimeout(fim, ((isFinite(v.duration)&&v.duration)||9)*1000+2500); });
+  v.addEventListener('ended',fim);
+  v.addEventListener('error',reserva);
+  const fontes=el.querySelectorAll('source');
+  fontes[fontes.length-1].addEventListener('error',reserva);   // MP4 e WebM falharam
+  function quandoVisivel(fn){                     // aba em segundo plano: o navegador pausa vídeo sem som
+    clearTimeout(guarda);
+    document.addEventListener('visibilitychange',function vz(){ if(!document.hidden){ document.removeEventListener('visibilitychange',vz); fn(); } });
+  }
+  function tocar(){
+    if(acabou) return;
+    guarda=setTimeout(reserva, 3500);             // não começou em 3,5 s: rede lenta ou bloqueio
+    const p=v.play();
+    if(p && p.catch) p.catch(e=>{ if(e && e.name==='AbortError' && document.hidden) quandoVisivel(tocar); else reserva(); });
+  }
+  if(document.hidden) quandoVisivel(tocar); else tocar();
+  el.addEventListener('click',fim);
+  document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); fim(); });
+}
+
+/* =======================================================================
    ABERTURA — o pino da RE/MAX sobe no céu, pousa, e a escrita REMAX desce de baixo dele
    ======================================================================= */
 function abertura(depois){

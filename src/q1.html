@@ -153,13 +153,25 @@
   opacity:0;transform:translateY(10px);transition:opacity 1s var(--e) .05s, transform 1.1s var(--e) .05s
 }
 #abertura.f4 .t2{opacity:1;transform:none}
-#abertura .pular{
+#abertura .pular,#splash .pular{
   position:absolute;right:26px;bottom:24px;z-index:3;height:32px;padding:0 15px;border:0;border-radius:99px;cursor:pointer;
   background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#fff;font-size:12.5px;font-weight:500;
   transition:background .2s var(--e2)
 }
-#abertura .pular:hover{background:rgba(255,255,255,.26)}
+#abertura .pular:hover,#splash .pular:hover{background:rgba(255,255,255,.26)}
 #abertura.sai{opacity:0;transform:scale(1.035);transition:opacity .85s var(--e2), transform 1.1s var(--e)}
+
+/* ---------- abertura em vídeo (splash.mp4) ---------- */
+#splash{
+  position:fixed;inset:0;z-index:400;overflow:hidden;cursor:pointer;
+  background:radial-gradient(ellipse 120% 75% at 50% 50%, #5279D6 0%, #1D3E9D 55%, #071538 100%)
+}
+#splash video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+@media (max-aspect-ratio:1/1){
+  /* celular em pé: amplia o miolo do vídeo para o balão e o texto não serem cortados */
+  #splash video{inset:auto;left:50%;top:50%;width:190vw;height:auto;max-width:none;transform:translate(-50%,-50%);object-fit:contain}
+}
+#splash.sai{opacity:0;transform:scale(1.02);transition:opacity .85s var(--e2), transform 1s var(--e)}
 
 /* ---------- acesso ---------- */
 .login{
@@ -408,6 +420,6 @@
   #toast{right:12px;left:12px;top:auto;bottom:14px;max-width:none}
   .studio{gap:16px}
   .hero h1{font-size:32px}
-  #abertura .pular{right:16px;bottom:16px}
+  #abertura .pular,#splash .pular{right:16px;bottom:16px}
 }
 </style>

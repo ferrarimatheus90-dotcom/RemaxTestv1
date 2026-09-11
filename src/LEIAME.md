@@ -106,9 +106,15 @@ sem sair, e "Sair da conta" volta ao login.
   pede a fonte do sistema primeiro (`-apple-system` — é a SF Pro em iPhone e Mac) e cai
   na **Inter** do Google Fonts no Windows e no Android. A Inter vem com o eixo óptico
   (`opsz`), que aperta o desenho nos títulos grandes, como a SF Pro Display.
-- **Abertura**: o céu azul acende, o pino da RE/MAX sobe e pousa, e a escrita REMAX desce de baixo
+- **Vinheta em vídeo**: `splash.mp4` (H.264) e `splash.webm` (VP9, para navegador sem H.264) —
+  8,5 s, 1920×1080, sem áudio — abrem o site. Ficam em `prontos-em-rede-src/` e o `build.py`
+  copia os dois para o lado do HTML gerado. Aba aberta em segundo plano: o vídeo espera a aba
+  aparecer, porque o navegador pausa vídeo sem som em aba escondida. O primeiro quadro vai embutido (`splash-poster.b64`) para
+  a tela não piscar. Se o vídeo não carregar em 3,5 s ou o navegador bloquear, entra a abertura
+  animada. Celular em pé: o miolo do vídeo é ampliado sobre um fundo da mesma cor.
+- **Abertura animada (reserva)**: o céu azul acende, o pino da RE/MAX sobe e pousa, e a escrita REMAX desce de baixo
   dele formando o logo vertical; depois vem o título. Ao terminar, a tela de acesso já está por baixo e
-  as duas se cruzam. Roda uma vez por navegador (chave `pr_abertura_v8`) e pode ser revista pelo menu da engrenagem,
+  as duas se cruzam. Roda uma vez por navegador (chave `pr_abertura_v9`) e pode ser revista pelo menu da engrenagem,
   em "Ver a abertura". Respeita `prefers-reduced-motion`.
 
 ## Notas de manutenção

@@ -626,13 +626,25 @@ canvas.prev{max-width:100%;height:auto;display:block;border-radius:8px;box-shado
   opacity:0;transform:translateY(10px);transition:opacity 1s var(--e) .05s, transform 1.1s var(--e) .05s
 }
 #abertura.f4 .t2{opacity:1;transform:none}
-#abertura .pular{
+#abertura .pular,#splash .pular{
   position:absolute;right:26px;bottom:24px;z-index:3;height:32px;padding:0 15px;border:0;border-radius:99px;cursor:pointer;
   background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);color:#fff;font-size:12.5px;font-weight:500;
   transition:background .2s var(--e2)
 }
-#abertura .pular:hover{background:rgba(255,255,255,.26)}
+#abertura .pular:hover,#splash .pular:hover{background:rgba(255,255,255,.26)}
 #abertura.sai{opacity:0;transform:scale(1.035);transition:opacity .85s var(--e2), transform 1.1s var(--e)}
+
+/* ---------- abertura em vídeo (splash.mp4) ---------- */
+#splash{
+  position:fixed;inset:0;z-index:400;overflow:hidden;cursor:pointer;
+  background:radial-gradient(ellipse 120% 75% at 50% 50%, #5279D6 0%, #1D3E9D 55%, #071538 100%)
+}
+#splash video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+@media (max-aspect-ratio:1/1){
+  /* celular em pé: amplia o miolo do vídeo para o balão e o texto não serem cortados */
+  #splash video{inset:auto;left:50%;top:50%;width:190vw;height:auto;max-width:none;transform:translate(-50%,-50%);object-fit:contain}
+}
+#splash.sai{opacity:0;transform:scale(1.02);transition:opacity .85s var(--e2), transform 1s var(--e)}
 
 /* ---------- acesso ---------- */
 .login{
@@ -881,7 +893,7 @@ canvas.prev{max-width:100%;height:auto;display:block;border-radius:8px;box-shado
   #toast{right:12px;left:12px;top:auto;bottom:14px;max-width:none}
   .studio{gap:16px}
   .hero h1{font-size:32px}
-  #abertura .pular{right:16px;bottom:16px}
+  #abertura .pular,#splash .pular{right:16px;bottom:16px}
 }
 </style>
 <body>
@@ -951,6 +963,7 @@ const BALAO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYUAAAG5CAYAAABhmyi
 const BALAO_IMG = new Image(); BALAO_IMG.src = BALAO;
 const WORD_BRANCO_IMG = new Image(); WORD_BRANCO_IMG.src = WORD_BRANCO;
 const WORD_COR_IMG = new Image(); WORD_COR_IMG.src = WORD_COR;
+const SPLASH_POSTER = "data:image/jpeg;base64,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";      /* primeiro quadro da vinheta em vídeo */
 
 /* ---------- utilidades ---------- */
 const $ = (s,r)=> (r||document).querySelector(s);
@@ -1670,7 +1683,7 @@ function viewConfig(){
     '<div class="kv"><span class="k">Carga inicial</span><span class="v">Adesão, chamados, campanhas e leituras começam preenchidos para a tela não nascer vazia. A partir daí, quem move os números é você.</span></div>'+
     '<div class="kv"><span class="k">Ocupação</span><span class="v">'+tam+' KB gravados · '+S.audit.length+' registros de auditoria · '+S.excelencia.provas.length+' comprovações guardadas</span></div>',
     '<button class="btn" id="verAb">'+esc(T('Ver a abertura'))+'</button><button class="btn" id="expJ">↓ Exportar dados (JSON)</button><button class="btn red" id="rst">Recarregar demonstração</button><button class="btn pri" onclick="fechaModal()">Fechar</button>');
-  $('#verAb',ov).addEventListener('click',()=>{ fechaModal(); abertura(()=>{}); });
+  $('#verAb',ov).addEventListener('click',()=>{ fechaModal(); aberturaVideo(()=>{}); });
   $('#expJ',ov).addEventListener('click',()=>{
     baixarBlob(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),'prontos-em-rede-dados.json'); toast('Arquivo exportado.',1);
   });
@@ -4323,6 +4336,52 @@ function marcaBrilho(cls){
 }
 
 /* =======================================================================
+   ABERTURA EM VÍDEO — a vinheta "Prontos em Rede" (splash.mp4, ao lado do index.html).
+   Sem o arquivo (artefato, HTML solto) ou com o vídeo bloqueado, entra a abertura animada abaixo.
+   ======================================================================= */
+function aberturaVideo(depois){
+  const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduz){ depois(); return; }
+  const el=document.createElement('div'); el.id='splash';
+  el.innerHTML='<video muted playsinline preload="auto" poster="'+SPLASH_POSTER+'"><source src="splash.mp4" type="video/mp4"><source src="splash.webm" type="video/webm"></video>'+
+    '<button class="pular">'+(LANG==='en'?'Skip':LANG==='es'?'Saltar':'Pular')+'</button>';
+  document.body.appendChild(el);
+  document.body.style.overflow='hidden';
+  const v=el.querySelector('video');
+  v.muted=true;                                   // o navegador só deixa tocar sozinho se estiver mudo
+  let acabou=false, tocou=false, guarda=null, teto=null;
+  function fim(){
+    if(acabou) return; acabou=true; clearTimeout(guarda); clearTimeout(teto);
+    el.classList.add('sai');
+    depois();                                     // o login já nasce por baixo e as duas telas se cruzam
+    setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);
+  }
+  function reserva(){                             // sem vídeo: a abertura animada
+    if(acabou || tocou) return; acabou=true; clearTimeout(guarda);
+    el.remove(); abertura(depois);
+  }
+  v.addEventListener('playing',()=>{ if(tocou) return; tocou=true; clearTimeout(guarda);
+    teto=setTimeout(fim, ((isFinite(v.duration)&&v.duration)||9)*1000+2500); });
+  v.addEventListener('ended',fim);
+  v.addEventListener('error',reserva);
+  const fontes=el.querySelectorAll('source');
+  fontes[fontes.length-1].addEventListener('error',reserva);   // MP4 e WebM falharam
+  function quandoVisivel(fn){                     // aba em segundo plano: o navegador pausa vídeo sem som
+    clearTimeout(guarda);
+    document.addEventListener('visibilitychange',function vz(){ if(!document.hidden){ document.removeEventListener('visibilitychange',vz); fn(); } });
+  }
+  function tocar(){
+    if(acabou) return;
+    guarda=setTimeout(reserva, 3500);             // não começou em 3,5 s: rede lenta ou bloqueio
+    const p=v.play();
+    if(p && p.catch) p.catch(e=>{ if(e && e.name==='AbortError' && document.hidden) quandoVisivel(tocar); else reserva(); });
+  }
+  if(document.hidden) quandoVisivel(tocar); else tocar();
+  el.addEventListener('click',fim);
+  document.addEventListener('keydown',function k(){ document.removeEventListener('keydown',k); fim(); });
+}
+
+/* =======================================================================
    ABERTURA — o pino da RE/MAX sobe no céu, pousa, e a escrita REMAX desce de baixo dele
    ======================================================================= */
 function abertura(depois){
@@ -4501,8 +4560,8 @@ function entrarNaPlataforma(){
 loadState();
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
-if(LS.get('pr_abertura_v8')) entrarNaPlataforma();
-else { LS.set('pr_abertura_v8','1'); abertura(entrarNaPlataforma); }
+if(LS.get('pr_abertura_v9')) entrarNaPlataforma();
+else { LS.set('pr_abertura_v9','1'); aberturaVideo(entrarNaPlataforma); }
 </script>
 </body>
 </html>

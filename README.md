@@ -32,6 +32,9 @@ E-mails fictícios, uma conta por nível. Senha de todas: `Rede@2026`
 
 Para atualizar: novo push na `main` e implantar de novo.
 
+A vinheta de abertura são os arquivos `splash.mp4` e `splash.webm`, na raiz, ao lado do
+`index.html` — os três precisam ir juntos para a hospedagem. Sem ele, o site abre com a animação de reserva.
+
 ## Como alterar
 
 Edite as partes em `src/` e reconstrua a partir da raiz do repositório:

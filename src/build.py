@@ -11,7 +11,7 @@ de dados da rede (base.json) e grava o HTML final.
 
 Regra: SEMPRE editar as partes e reconstruir. Nunca editar o HTML final.
 """
-import io, os, sys
+import io, os, sys, shutil
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 SAIDA_PADRAO = os.path.join(os.path.dirname(AQUI), 'prontos-em-rede-app.html')
@@ -47,9 +47,14 @@ def main():
     html = html.replace('__BASE__', ler('base.json').strip())
     for marca, arq in (('__BALAO__', 'balao.b64'), ('__WORD_BRANCO__', 'wordmark-branco.b64'), ('__WORD_COR__', 'wordmark-cor.b64')):
         html = html.replace(marca, 'data:image/png;base64,' + ler(arq).strip())
-    if any(m in html for m in ('__LOGO__', '__BASE__', '__BALAO__', '__WORD_BRANCO__', '__WORD_COR__')):
+    html = html.replace('__SPLASH_POSTER__', 'data:image/jpeg;base64,' + ler('splash-poster.b64').strip())
+    if any(m in html for m in ('__LOGO__', '__BASE__', '__BALAO__', '__WORD_BRANCO__', '__WORD_COR__', '__SPLASH_POSTER__')):
         raise SystemExit('placeholder nao substituido')
     io.open(saida, 'w', encoding='utf-8').write(html)
+    for nome in ('splash.mp4', 'splash.webm'):                      # a vinheta viaja ao lado do HTML
+        video = os.path.join(AQUI, nome)
+        if os.path.exists(video):
+            shutil.copy2(video, os.path.join(os.path.dirname(saida), nome))
     print('gerado:', saida, str(len(html) // 1024) + ' KB')
 
 if __name__ == '__main__':
