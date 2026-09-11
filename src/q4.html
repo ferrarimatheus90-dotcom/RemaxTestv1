@@ -3,43 +3,60 @@
    OS SEIS MÓDULOS
    ======================================================================= */
 const MODULOS = [
-  {n:1, id:'brand',  nome:'Brand Center', ic:'◆', desc:'Identidade da RE/MAX: guia, logos, fontes, cores, templates e regras.', telas:[
-    {id:'guia',        t:'Guia da marca',            ic:'◆', mvp:1},
-    {id:'biblioteca',  t:'Biblioteca de materiais',  ic:'▤', mvp:1}]},
-  {n:2, id:'content', nome:'Content & Social Hub', ic:'◉', desc:'Personalização de peças, calendário, Prontos em Rede, redes sociais e distribuição.', telas:[
-    {id:'estudio',     t:'Estúdio de peças',         ic:'✎', mvp:1},
-    {id:'prontos',     t:'Prontos em Rede',          ic:'◉', mvp:1},
-    {id:'redes',       t:'Redes sociais',            ic:'⇄', mvp:1}]},
-  {n:3, id:'gov',     nome:'Compliance & Governance', ic:'✓', desc:'Checklists, prazos, evidências, aprovações, adequação das lojas e regras de negócio.', telas:[
-    {id:'jornada',     t:'Jornada de adequação',     ic:'✓', mvp:1},
-    {id:'fachadas',    t:'Fachadas',                 ic:'⌂', mvp:1},
-    {id:'aprovacoes',  t:'Aprovações',               ic:'⇧', mvp:1, papeis:['brasil','master','franquia'], badge:()=>pendentesAprov().length},
-    {id:'usuarios',    t:'Usuários e permissões',    ic:'☷', mvp:1, papeis:['brasil','master','franquia']},
-    {id:'registros',   t:'Registros e plataforma',   ic:'⛁', mvp:1, papeis:['brasil','master']}]},
-  {n:4, id:'comm',    nome:'Communication Center', ic:'✉', desc:'Comunicados, notificações, confirmação de leitura, busca e repositório institucional.', telas:[
-    {id:'comunicados', t:'Comunicados',              ic:'✉', mvp:1, badge:()=>naoLidos().length}]},
-  {n:5, id:'sup',     nome:'Support & Success', ic:'☎', desc:'WhatsApp, tickets, IA, SLA, atendimento humano, onboarding e acompanhamento das unidades.', telas:[
-    {id:'suporte',     t:'Central de atendimento',   ic:'☎', mvp:1, badge:()=>ROLE==='corretor'?0:S.tickets.filter(t=>!/Resolvido/.test(t.st)).length},
-    {id:'implantacao', t:'Implantação e CS',         ic:'⚑', mvp:1, papeis:['brasil','master']}]},
-  {n:6, id:'intel',   nome:'Intelligence & Gamification', ic:'▦', desc:'Indicadores da rede, desempenho de marketing, ranking, pontuação e Programa de Excelência.', telas:[
-    {id:'painel',      t:'Painel da rede',           ic:'▦', mvp:1, papeis:['brasil','master']},
-    {id:'marketing',   t:'Desempenho de marketing',  ic:'◔', mvp:1},
-    {id:'excelencia',  t:'Programa de Excelência',   ic:'✦', mvp:1, badge:()=>S.excelencia.provas.filter(p=>p.st==='pendente'&&ROLE!=='corretor').length},
-    {id:'ranking',     t:'Ranking e Grand Champion', ic:'★', mvp:2}]}
+  {n:1, id:'brand', nome:'Brand Center', desc:'Identidade da marca: guia, logos, fontes, cores, o Estúdio de Arte e os modelos oficiais.', telas:[
+    {id:'guia',        t:'Guia da marca',            mvp:1},
+    {id:'estudio',     t:'Estúdio de Arte',          mvp:1},
+    {id:'biblioteca',  t:'Biblioteca de materiais',  mvp:1}]},
+  {n:2, id:'content', nome:'Social Hub', desc:'Postagens e agendamentos: campanhas da rede, contas conectadas e os indicadores das redes sociais.', telas:[
+    {id:'prontos',     t:'Campanhas da rede',        mvp:1},
+    {id:'redes',       t:'Redes sociais',            mvp:1},
+    {id:'marketing',   t:'Indicadores de redes sociais', mvp:1}]},
+  {n:3, id:'gov',     nome:'Compliance & Governance', desc:'Jornadas de adequação, prazos, evidências, aprovações em alçadas e usuários.', telas:[
+    {id:'jornada',     t:'Jornada de adequação',     mvp:1},
+    {id:'jornadas',    t:'Gestão de jornadas',       mvp:1, papeis:['brasil','construtor']},
+    {id:'fachadas',    t:'Fachadas',                 mvp:1},
+    {id:'aprovacoes',  t:'Aprovações',               mvp:1, papeis:['brasil','master','franquia','construtor'], badge:()=>pendentesAprov().length},
+    {id:'usuarios',    t:'Usuários e permissões',    mvp:1, papeis:['brasil','master','franquia','construtor']}]},
+  {n:4, id:'comm',    nome:'Communication Center', desc:'Comunicados com confirmação de leitura, avisos por e-mail e WhatsApp, RE/MAX TV e pessoas da rede.', telas:[
+    {id:'comunicados', t:'Comunicados',              mvp:1, badge:()=>naoLidos().length},
+    {id:'tv',          t:'RE/MAX TV',                mvp:1},
+    {id:'pessoas',     t:'Pessoas da rede',          mvp:1}]},
+  {n:5, id:'sup',     nome:'Support & Success', desc:'Help Desk com tutoriais, assistente da marca e chamados com SLA.', telas:[
+    {id:'helpdesk',    t:'Help Desk',                mvp:1},
+    {id:'suporte',     t:'Chamados e assistente',    mvp:1, badge:()=>ROLE==='corretor'?0:S.tickets.filter(t=>!/Resolvido/.test(t.st)).length}]},
+  {n:6, id:'intel',   nome:'Intelligence (BI)', desc:'Indicadores da rede: adesão, jornada, marketing digital e tradicional, com exportação para planilha.', telas:[
+    {id:'painel',      t:'Painel da rede',           mvp:1, papeis:['brasil','master','construtor']},
+    {id:'bi',          t:'Marketing digital e tradicional', mvp:1, papeis:['brasil','master','franquia','construtor']}]},
+  {n:7, id:'pex',     nome:'Programa de Excelência', desc:'PEX: regras e pesos, comprovações validadas, faixas de bonificação e o ranking Grand Champion.', telas:[
+    {id:'excelencia',  t:'Visão do programa',        mvp:1, badge:()=>S.excelencia.provas.filter(p=>p.st==='pendente'&&ROLE!=='corretor').length},
+    {id:'pexregras',   t:'Regras e pontuação',       mvp:1},
+    {id:'ranking',     t:'Ranking e Grand Champion', mvp:1}]},
+  {n:8, id:'bmag',    nome:'Operação BMAG', interno:true, desc:'Uso interno da BMAG: parametrização por cliente, auditoria, implantação e o mapa do escopo.', telas:[
+    {id:'param',       t:'Parametrização',           mvp:1, papeis:['construtor']},
+    {id:'registros',   t:'Registros e auditoria',    mvp:1, papeis:['construtor']},
+    {id:'implantacao', t:'Implantação e CS',         mvp:1, papeis:['construtor']},
+    {id:'escopo',      t:'Mapa do escopo',           mvp:1, papeis:['construtor']}]}
 ];
 const TELAS={};
 MODULOS.forEach(m=>m.telas.forEach(t=>{ TELAS[t.id]=Object.assign({mod:m},t); }));
-const podeVer = t => !t || !t.papeis || t.papeis.indexOf(ROLE)>=0;
+const podeVer = t => {
+  if(!t) return true;
+  const x=TELAS[t.id]||t;
+  if(x.papeis && x.papeis.indexOf(ROLE)<0) return false;
+  const off=(typeof S!=='undefined' && S && S.param && S.param.modulosOff)||[];   // módulos desligados pelo Construtor
+  return !(x.mod && off.indexOf(x.mod.id)>=0);
+};
 const telasDe = m => m.telas.filter(podeVer);
 
 /* =======================================================================
    ACESSO — contas de teste, uma por nível
    ======================================================================= */
 const CONTAS=[
-  {papel:'brasil',   email:'brasil@prontosemrede.test',   senha:'Rede@2026', nome:'Marketing RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
-  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital II',    desc:'Acompanha a regional · aprova projetos e evidências'},
+  {papel:'brasil',   email:'matriz@prontosemrede.test',   alias:['brasil@prontosemrede.test'], senha:'Rede@2026', nome:'Matriz RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
+  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital III',   desc:'Acompanha a regional · aprova projetos e evidências'},
   {papel:'franquia', email:'loja@prontosemrede.test',     senha:'Rede@2026', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
-  {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'}
+  {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'},
+  {papel:'construtor', email:'construtor@prontosemrede.test', senha:'Rede@2026', nome:'Construtor · BMAG',  desc:'Uso interno · parametriza a plataforma · auditoria e implantação'}
 ];
 function telaLogin(){
   document.body.style.overflow='hidden';
@@ -49,7 +66,7 @@ function telaLogin(){
     '<div class="lgtop"><button id="lgIdi">'+IDIOMAS[LANG].sig+'</button><button id="lgTema">'+(temaEfetivo()==='escuro'?'\u263e':'\u2600')+'</button></div>'+
     '<div class="box"><div class="lado">'+
       '<div class="lockup-lg"><span class="bl"><img src="'+BALAO+'" alt=""></span><img class="wm" src="'+WORD_BRANCO+'" alt="RE/MAX"></div>'+
-      '<h2>Prontos<b>em Rede.</b></h2>'+
+      '<h2>'+(GENERICA? esc(S.param.plataforma.split(' ')[0])+'<b>'+esc(S.param.plataforma.split(' ').slice(1).join(' '))+'.</b>' : 'Prontos<b>em Rede.</b>')+'</h2>'+
       '<p>'+esc(T('A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.'))+'</p>'+
       '<div class="mods">'+MODULOS.map(m=>'<span>'+esc(m.nome)+'</span>').join('')+'</div>'+
     '</div>'+
@@ -65,16 +82,17 @@ function telaLogin(){
       '<div id="lgErro"></div>'+
       '<button class="entrar" id="lgOk">'+esc(T('Entrar'))+'<span style="width:17px;height:17px;display:grid">'+ICO.seta+'</span></button>'+
       '<div class="rod">'+(LANG==='en'?'Password for every test account':LANG==='es'?'Contraseña de todas las cuentas de prueba':'Senha de todas as contas de teste')+': <b>'+esc(CONTAS[0].senha)+'</b><br>'+
-      (LANG==='en'?'Platform developed by':LANG==='es'?'Plataforma desarrollada por':'Plataforma desenvolvida por')+' <b>BMAG SERVIÇOS DIGITAIS</b></div>'+
+      (LANG==='en'?'Platform developed by':LANG==='es'?'Plataforma desarrollada por':'Plataforma desenvolvida por')+' <b>BMAG SERVIÇOS DIGITAIS</b><br>© 2026 BMAG Serviços Digitais · '+(LANG==='en'?'All rights reserved.':LANG==='es'?'Todos los derechos reservados.':'Todos os direitos reservados.')+'</div>'+
     '</div></div>';
   document.body.appendChild(el);
+  if(typeof aplicarTermos==='function') aplicarTermos(el);
   const m={parar(){}};
   const preencher=c=>{ $('#lgEmail').value=c.email; $('#lgSenha').value=c.senha;
     $$('#contas .conta').forEach(b=>b.classList.toggle('on', b.dataset.p===c.papel)); };
   $$('#contas .conta',el).forEach(b=>b.addEventListener('click',()=>preencher(CONTAS.find(c=>c.papel===b.dataset.p))));
   const entrar=()=>{
     const e=($('#lgEmail').value||'').trim().toLowerCase(), sn=($('#lgSenha').value||'').trim();
-    const c=CONTAS.find(x=>x.email===e && x.senha===sn);
+    const c=CONTAS.find(x=>(x.email===e||(x.alias||[]).indexOf(e)>=0) && x.senha===sn);
     if(!c){ $('#lgErro').innerHTML='<div class="erro">'+esc(T('E-mail ou senha inválidos. Clique em um dos acessos acima para preencher.'))+'</div>'; return; }
     LS.set('pr_sessao', c.papel); LS.set('pr_role', c.papel); ROLE=c.papel;
     el.style.transition='opacity .5s var(--ease)'; el.style.opacity='0';
@@ -115,7 +133,7 @@ function mostrarFly(row, m){
   f.innerHTML='<div class="ft">'+esc(T('Módulo'))+' '+m.n+' · '+esc(m.nome)+'</div>'+
     ts.map(t=>{ const b=t.badge?t.badge():0;
       return '<a href="#/'+t.id+'" class="'+(t.id===atual?'on':'')+'">'+esc(T(t.t))+
-      (b?'<span class="pill">'+b+'</span>':(t.mvp===2?'<span class="o2">'+esc(T('2ª onda'))+'</span>':''))+'</a>'; }).join('')+
+      (b?'<span class="pill">'+b+'</span>':(t.mvp===2&&ROLE==='construtor'?'<span class="o2">'+esc(T('2ª onda'))+'</span>':''))+'</a>'; }).join('')+
     '<div class="fd">'+esc(T(m.desc))+'</div>';
   document.body.appendChild(f);
   f.style.transition='opacity .2s var(--e2), transform .2s var(--e2)';
@@ -147,22 +165,28 @@ function moveIndicador(){
   ind.style.opacity='1';
   ind.style.transform='translateY('+(a.top-n.top+nav.scrollTop+(a.height-22)/2)+'px)';
 }
+const DIRETAS=['estudio','helpdesk'];     // telas com atalho próprio no menu principal
 function renderNav(){
   const atual=telaAtual();
   let h='<div class="modrow '+(atual==='inicio'?'on':'')+'" data-go="inicio"><span class="num">—</span>'+
     '<span class="n">'+esc(T('Início'))+'</span><span class="rule"></span></div>'+
+    '<div class="modrow '+(atual==='estudio'?'on':'')+'" data-go="estudio"><span class="num">—</span>'+
+    '<span class="n">'+esc(T('Estúdio de Arte'))+'</span><span class="rule"></span></div>'+
     '<div class="navsep"></div>';
   MODULOS.forEach(m=>{
     const ts=telasDe(m); if(!ts.length) return;
     const b=ts.reduce((a,t)=>a+(t.badge?t.badge():0),0);
-    const on=ts.some(t=>t.id===atual);
+    const on=ts.some(t=>t.id===atual && DIRETAS.indexOf(atual)<0);
     h+='<div class="modrow '+(on?'on':'')+'" data-mod="'+m.id+'"><span class="num">'+('0'+m.n)+'</span>'+
        '<span class="n">'+esc(m.nome)+'</span>'+(b?'<span class="pill">'+b+'</span>':'')+'<span class="rule"></span></div>';
   });
   h+='<div class="navsep"></div>'+
-     '<div class="modrow '+(atual==='escopo'?'on':'')+'" data-go="escopo"><span class="num">—</span>'+
-     '<span class="n">'+esc(T('Mapa do escopo'))+'</span><span class="rule"></span></div>';
+     '<div class="modrow '+(atual==='helpdesk'?'on':'')+'" data-go="helpdesk"><span class="num">—</span>'+
+     '<span class="n">'+esc(T('Help Desk'))+'</span><span class="rule"></span></div>';
   $('#nav').innerHTML=h;
+  if(typeof aplicarTermos==='function') aplicarTermos($('#nav'));
+  const pn=$('.side .brand .pn'); if(pn && S && S.param) pn.textContent=S.param.plataforma||'Prontos em Rede';
+  if(GENERICA && S && S.param) document.title=S.param.plataforma+' · demonstração';
   $$('#nav .modrow').forEach(row=>{
     const m=MODULOS.find(x=>x.id===row.dataset.mod);
     if(m){
@@ -187,15 +211,27 @@ function renderNav(){
   $('#btnTema').innerHTML= temaEfetivo()==='escuro'? ICO.lua : ICO.tema;
   $('#btnIdioma').innerHTML=ICO.idioma;
   $('#burger').innerHTML=ICO.menu;
+  $('#btnVoltar').innerHTML='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>';
+  $('#btnVoltar').classList.toggle('on', atual!=='inicio');
+  $('#btnBusca').innerHTML=ICO.busca;
   $('#siBusca').innerHTML=ICO.busca;
 }
 window.addEventListener('scroll',esconderFly,{passive:true});
 document.addEventListener('click',e=>{ if($('#fly') && !e.target.closest('#fly') && !e.target.closest('.modrow')) esconderFly(); });
 
 /* ---------- menus flutuantes do topo ---------- */
+/* um único "fechador" por vez: antes, o fechador de um menu já escolhido ficava pendurado
+   e apagava o próximo menu no mesmo toque — no celular parecia que o botão não funcionava */
+function fecharPop(){ const q=$('#pop'); if(q) q.remove(); document.removeEventListener('click', popFora, true); }
+function popFora(e){
+  const p=$('#pop'); if(!p) return fecharPop();
+  if(e.target.closest('#pop')) return;
+  const dono=document.getElementById(p.dataset.dono); if(dono && dono.contains(e.target)) return;
+  fecharPop();
+}
 function popMenu(botao, titulo, itens){
   const ja=$('#pop'); const mesmo = ja && ja.dataset.dono===botao.id;
-  if(ja) ja.remove();
+  fecharPop();
   if(mesmo) return;
   const p=document.createElement('div'); p.className='pop'; p.id='pop'; p.dataset.dono=botao.id;
   p.innerHTML='<div class="pt">'+esc(titulo)+'</div>'+itens.map(i=>
@@ -204,8 +240,8 @@ function popMenu(botao, titulo, itens){
   const r=botao.getBoundingClientRect();
   p.style.top=(r.bottom+10)+'px';
   p.style.left=Math.max(12, Math.min(window.innerWidth-p.offsetWidth-12, r.right-p.offsetWidth))+'px';
-  $$('button',p).forEach(b=>b.addEventListener('click',()=>{ const v=b.dataset.v; p.remove(); itens.find(i=>i.v===v).fn(); }));
-  setTimeout(()=>document.addEventListener('click',function f(e){ if(!e.target.closest('#pop')){ const q=$('#pop'); if(q) q.remove(); document.removeEventListener('click',f);} }),10);
+  $$('button',p).forEach(b=>b.addEventListener('click',ev=>{ ev.stopPropagation(); const v=b.dataset.v; fecharPop(); itens.find(i=>i.v===v).fn(); }));
+  setTimeout(()=>document.addEventListener('click', popFora, true), 0);
 }
 $('#btnTema').addEventListener('click',()=>popMenu($('#btnTema'), T('Tema'), [
   {v:'claro', n:T('Claro'), ic:'○', on:TEMA==='claro', fn:()=>trocaTema('claro')},
@@ -220,19 +256,20 @@ function renderWho(){
   $('#whoNm').textContent = p.nome.length>26? primeiro(p.nome)+' '+(p.nome.split(' ')[1]||'') : T(p.nome);
   $('#whoRl').textContent = T(p.papel);
   $('#whoAv').innerHTML = p.foto? '<img src="'+p.foto+'" alt="">' : iniciais(p.nome);
+  if(typeof aplicarTermos==='function') aplicarTermos($('#whoBtn'));
 }
 $('#whoBtn').addEventListener('click',()=>{
   const linhas=CONTAS.map(c=>{
     const p=P[c.papel];
     const n = c.papel==='brasil'? BASE.lojas.length+' · '+TOTAL_USUARIOS()
-            : c.papel==='master'? String(BASE.lojas.filter(l=>l.master==='m2').length)
+            : c.papel==='master'? String(BASE.lojas.filter(l=>l.master===MASTER_DEMO).length)
             : c.papel==='franquia'? String(corretoresDe('l18').length) : '';
     return '<div class="li" data-r="'+c.papel+'" style="display:flex;gap:13px;padding:13px 15px;border:1px solid var(--line);border-radius:13px;cursor:pointer;align-items:center;margin-bottom:9px;'+(c.papel===ROLE?'border-color:var(--brand-line);background:var(--brand-soft)':'')+'">'+
       '<span class="avph">'+iniciais(p.nome)+'</span><div><div style="font-weight:600;font-size:13.5px;font-family:var(--font-d)">'+esc(T(p.nome))+'</div>'+
       '<div class="mini">'+esc(T(p.papel))+' '+esc(n)+'</div></div>'+(c.papel===ROLE?'<span class="tag" style="margin-left:auto">'+esc(T('Ativo'))+'</span>':'')+'</div>';
   }).join('');
   const ov=modal(T('Trocar de acesso'),linhas,
-    '<button class="btn" id="btSair">'+esc(T('Sair da conta'))+'</button><button class="btn pri" onclick="fechaModal()">'+esc(T('Fechar'))+'</button>');
+    '<a class="btn" href="#/perfil" onclick="fechaModal()">'+esc(T('Meu perfil'))+'</a><button class="btn" id="btSair">'+esc(T('Sair da conta'))+'</button><button class="btn pri" onclick="fechaModal()">'+esc(T('Fechar'))+'</button>');
   $$('.li',ov).forEach(el=>el.addEventListener('click',()=>{
     ROLE=el.dataset.r; LS.set('pr_role',ROLE); LS.set('pr_sessao',ROLE);
     fechaModal(); renderWho(); renderNav();
@@ -241,6 +278,14 @@ $('#whoBtn').addEventListener('click',()=>{
   $('#btSair',ov).addEventListener('click',sair);
 });
 $('#burger').addEventListener('click',()=>document.body.classList.toggle('menu'));
+/* voltar: refaz o caminho dentro da plataforma; sem histórico, volta ao Início */
+let HIST=[];
+function voltar(){ if(HIST.length>1) history.back(); else location.hash='#/inicio'; }
+$('#btnVoltar').addEventListener('click',voltar);
+/* no celular a busca fica atrás de um ícone e abre por cima do topo */
+$('#btnBusca').addEventListener('click',()=>{ document.body.classList.add('buscando'); setTimeout(()=>$('#q').focus(),30); });
+$('#q').addEventListener('blur',()=>setTimeout(()=>{ if(!$('#q').value.trim()) document.body.classList.remove('buscando'); },180));
+$('#q').addEventListener('keydown',e=>{ if(e.key==='Escape'){ $('#q').value=''; srBox.innerHTML=''; document.body.classList.remove('buscando'); $('#q').blur(); } });
 $('#btnAlert').addEventListener('click',()=>viewAlertas());
 $('#btnCfg').addEventListener('click',()=>viewConfig());
 
@@ -304,7 +349,7 @@ function respostaIA(t){
   const low=t.toLowerCase();
   const f=FAQ.find(x=> low.split(/\s+/).some(w=>w.length>3 && (x.q.toLowerCase().includes(w)||x.a.toLowerCase().includes(w))));
   if(f) return {tx:f.a, fonte:f.fonte};
-  if(/cart[aã]o/.test(low)) return {tx:'O cartão de visita da nova identidade está na Biblioteca, em Papelaria. Para personalizar com o seu nome e CRECI, use o Estúdio de peças — o arquivo sai em 90×50 mm, pronto para a gráfica.', fonte:'Brand Center · Biblioteca'};
+  if(/cart[aã]o/.test(low)) return {tx:'O cartão de visita da nova identidade está na Biblioteca, em Papelaria. Para personalizar com o seu nome e CRECI, use o Estúdio de Arte — o arquivo sai em 90×50 mm, pronto para a gráfica.', fonte:'Brand Center · Biblioteca'};
   if(/fachad/.test(low)) return {tx:'A adequação de fachada tem duas etapas: projeto aprovado até 30/01/2027 e instalação até 15/03/2027. O passo a passo, o envio do projeto e a foto final estão em Compliance · Fachadas.', fonte:'Compliance & Governance'};
   if(/logo|marca/.test(low)) return {tx:'As versões homologadas do logotipo, a área de proteção e o tamanho mínimo estão no Guia da marca. Alterar cor, proporção ou aplicar sombra é vedado.', fonte:'Brand Center · Guia da marca'};
   if(/bonific|excel|pr[êe]mio/.test(low)) return {tx:'O Programa de Excelência dá pontos por entrega comprovada. Você envia a foto da prova, a RE/MAX valida e os pontos entram na sua faixa de bonificação.', fonte:'Intelligence · Programa de Excelência'};
@@ -331,7 +376,9 @@ function buscar(){
 /* ---------- rotas ---------- */
 const VIEWS={};
 function route(){
-  const [id,arg]=(location.hash||'#/inicio').slice(2).split('/');
+  const h_=location.hash||'#/inicio';
+  if(HIST[HIST.length-2]===h_) HIST.pop(); else if(HIST[HIST.length-1]!==h_) HIST.push(h_);
+  const [id,arg]=h_.slice(2).split('/');
   if(TELAS[id] && !podeVer(TELAS[id])){ location.hash='#/inicio'; return; }
   esconderFly();
   const fn=VIEWS[id]||VIEWS.inicio;
@@ -339,6 +386,7 @@ function route(){
   fn(v,arg);
   renderNav();
   if(typeof aplicarIdioma==='function') aplicarIdioma(v);
+  if(typeof aplicarTermos==='function') aplicarTermos(v);
   if(typeof animaNumeros==='function') animaNumeros(v);
   setTimeout(()=>{ v.classList.remove('fade'); v.classList.add('visivel'); },1500);
   document.body.classList.remove('menu');
@@ -348,8 +396,9 @@ window.addEventListener('hashchange',route);
 /* ---------- blocos ---------- */
 function ph(titulo, sub, acts, telaId){
   const t=TELAS[telaId||telaAtual()];
-  const eye=t? '<div class="eyebrow-mod"><span class="m">'+esc(T('Módulo'))+' '+t.mod.n+' · '+esc(t.mod.nome)+'</span>'+
-        (t.mvp===2?'<span class="tag warn">'+esc(T('2ª onda'))+'</span>':'<span class="tag ok">MVP</span>')+'</div>':'';
+  // a onda de entrega (roadmap) é informação interna: só o Construtor vê
+  const eye=t? '<div class="eyebrow-mod"><span class="m">'+(t.mod.interno? 'BMAG · '+esc(T('uso interno')) : esc(T('Módulo'))+' '+t.mod.n+' · '+esc(t.mod.nome))+'</span>'+
+        (ROLE==='construtor'? (t.mvp===2?'<span class="tag warn">'+esc(T('2ª onda'))+'</span>':'<span class="tag ok">MVP</span>') : '')+'</div>':'';
   return '<div class="ph"><div>'+eye+'<h1>'+titulo+'</h1>'+(sub?'<div class="sub">'+sub+'</div>':'')+'</div>'+
          (acts?'<div class="acts">'+acts+'</div>':'')+'</div>';
 }

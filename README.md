@@ -1,52 +1,76 @@
 # Prontos em Rede — protótipo
 
-Protótipo funcional da plataforma Prontos em Rede para a RE/MAX: 6 módulos, 4 níveis de acesso,
+Protótipo funcional da plataforma Prontos em Rede para a RE/MAX: 7 módulos, 5 perfis de acesso,
 tema claro e escuro, português, inglês e espanhol. Desenvolvido por **BMAG SERVIÇOS DIGITAIS**.
+© 2026 BMAG Serviços Digitais. Todos os direitos reservados.
 
-O site inteiro é um arquivo só — `index.html` —, sem banco de dados nem servidor: o que cada
-usuário faz fica gravado no próprio navegador (`localStorage`).
+O site é um arquivo só — `index.html` —, sem banco de dados: o que cada usuário faz fica gravado no
+próprio navegador (`localStorage`). As integrações reais (publicação no Instagram, e-mail e WhatsApp)
+ficam na pasta `api/`, em PHP, e só funcionam no servidor, com as chaves configuradas (veja abaixo).
 
 > A base de demonstração traz nome, CRECI, foto e telefone de corretores reais, tirados das páginas
 > públicas da RE/MAX. O login do protótipo é só de tela: quem abre o site consegue ver esses dados.
 
 ## Contas de teste
 
-E-mails fictícios, uma conta por nível. Senha de todas: `Rede@2026`
+Senha de todas: `Rede@2026`
 
 | Acesso | E-mail |
 |---|---|
-| RE/MAX Brasil (visão nacional) | brasil@prontosemrede.test |
-| Master regional | master@prontosemrede.test |
+| Matriz RE/MAX Brasil (visão nacional) | matriz@prontosemrede.test *(o antigo brasil@ continua entrando)* |
+| Master Regional | master@prontosemrede.test |
 | Gestor da unidade | loja@prontosemrede.test |
 | Associado (corretor) | corretor@prontosemrede.test |
+| Construtor · BMAG (uso interno: parametrização, auditoria, implantação) | construtor@prontosemrede.test |
+
+## Versões no ar
+
+| Endereço | O que é |
+|---|---|
+| `/` | Prontos em Rede, com a marca RE/MAX (`index.html`) |
+| `/demo/` | Demonstração genérica, sem a marca RE/MAX e com nomes fictícios — para apresentar a outras empresas (`demo/index.html`). Os dados dela ficam separados dos da versão RE/MAX. |
+
+A versão anterior a esta (v2) está guardada na branch `v2`.
 
 ## Publicar na Hostinger
 
 1. No hPanel, abra o site e escolha **Implante de GitHub**.
-2. Conecte a conta do GitHub e escolha o repositório **RemaxTestv1**.
-3. Branch: **main**.
-4. Diretório: `public_html` publica na raiz do domínio. Para não misturar com um site que já exista
-   no domínio, use **Alterar** e aponte para uma pasta vazia — por exemplo `public_html/remax`, que
-   abre em `seudominio.com/remax` — ou para um subdomínio.
-5. Clique em **Implantar**. O `index.html` da raiz vira a página inicial.
+2. Conecte a conta do GitHub e escolha o repositório **RemaxTestv1**, branch **main**, diretório `public_html`.
+3. Clique em **Implantar**. Depois de cada push na `main`, a Hostinger atualiza sozinha em cerca de um minuto.
 
-Para atualizar: novo push na `main` e implantar de novo.
+Para voltar à versão anterior: escolha a branch `v2` e implante.
 
-A vinheta de abertura são os arquivos `splash.mp4` e `splash.webm`, na raiz, ao lado do
-`index.html` — os três precisam ir juntos para a hospedagem. Sem ele, o site abre com a animação de reserva.
-O `.htaccess` da raiz ensina a hospedagem a servir o WebM como vídeo e faz o navegador sempre
-conferir se há versão nova da página.
+A vinheta de abertura são os arquivos `splash.mp4` e `splash.webm`, ao lado do `index.html`.
+O `.htaccess` ensina a hospedagem a servir o WebM como vídeo, faz o navegador sempre conferir se há
+versão nova da página e bloqueia o acesso direto a arquivos de configuração.
 
-## Arquitetura
+## Integrações (publicação, e-mail e WhatsApp)
 
-O desenho da arquitetura da plataforma está em `docs/arquitetura-prontos-em-rede.html` — abre no
-navegador, com zoom, busca e visões guiadas. A fonte do desenho é
-`docs/arquitetura-prontos-em-rede.architecture.json`, gerada com o archify.
+A plataforma chama `api/social.php` (publicação pela bundle.social) e `api/notificar.php`
+(e-mail pelo servidor e WhatsApp Cloud API). **As chaves nunca entram neste repositório**, que é público:
+
+1. Copie `api/prontos-config.exemplo.php` com o nome `prontos-config.php`.
+2. Preencha as chaves (bundle.social, e-mail do domínio, WhatsApp Cloud) e uma `chave_painel` secreta.
+3. Suba o arquivo para **a pasta acima do `public_html`** pelo Gerenciador de Arquivos da Hostinger —
+   lá ele não é acessível pela web e o deploy do GitHub não o apaga.
+4. Entre como Construtor → Operação BMAG → **Parametrização**, digite a `chave_painel` e use
+   “Testar conexão”, “Publicar teste”, “Enviar e-mail de teste” e “Enviar WhatsApp de teste”.
+
+Para conferir se o servidor está pronto: `https://seudominio/api/social.php?acao=ping`.
+
+## Documentos
+
+- `docs/Manual-do-Usuario-Prontos-em-Rede-v3.pdf` — hierarquia e permissões de cada perfil.
+- `docs/Tutorial-de-Testes-Prontos-em-Rede-v3.pdf` — roteiro de testes, perfil por perfil.
+- `docs/Requisitos-de-Indicadores-Prontos-em-Rede-v3.pdf` — definição, fórmula e fonte de cada indicador.
+- `docs/Historico-de-Alteracoes-Prontos-em-Rede-v3.pdf` — o que mudou na versão 3.
+- `docs/arquitetura-prontos-em-rede.html` — desenho da arquitetura (gerado com o archify).
 
 ## Como alterar
 
 Edite as partes em `src/` e reconstrua a partir da raiz do repositório:
 
     python src/build.py index.html
+    python src/build.py demo/index.html --generica
 
-Nunca edite o `index.html` à mão: ele é gerado. O que cada parte faz está em `src/LEIAME.md`.
+Nunca edite os `index.html` à mão: eles são gerados. O que cada parte faz está em `src/LEIAME.md`.

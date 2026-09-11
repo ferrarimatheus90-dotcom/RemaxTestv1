@@ -1,0 +1,180 @@
+<style>
+/* ---------- v3: Help Desk, pessoas e perfil ---------- */
+.hd-in{display:flex;gap:10px;margin-top:12px}
+.hd-in input{flex:1;height:44px;border:0;border-radius:12px;background:var(--fill-2);padding:0 14px;font-size:15px}
+.hd-resp{margin-top:14px;padding:14px 16px;border-radius:14px;background:var(--azul-soft,var(--brand-soft));font-size:14px;line-height:1.6}
+.hd-at{display:flex;flex-direction:column;gap:6px;padding:20px;border-radius:18px;background:var(--surface);color:var(--ink);text-decoration:none;min-height:118px}
+.hd-at b{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.hd-at span{font-size:12.8px;color:var(--muted);line-height:1.5}
+a.hd-at:hover b{color:var(--azul)}
+.plano{padding:22px 24px}
+.plano h3{font-size:19px;letter-spacing:-.02em}
+.plano ul{margin:12px 0 0;padding:0 0 0 18px;font-size:13.4px;line-height:1.75;color:var(--ink-2)}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.pcard{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:20px 14px 18px;border-radius:18px;background:var(--surface);cursor:pointer}
+.pcard b{font-size:14px;font-weight:600;line-height:1.3}
+.pcard span{font-size:12px;color:var(--muted)}
+.pcard:hover{box-shadow:0 0 0 1.5px var(--azul) inset}
+.perfil-top{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+.perfil-top .avat,.perfil-top .avph{border-radius:50%}
+@media(max-width:640px){ .hd-in{flex-direction:column} .pgrid{grid-template-columns:1fr 1fr} }
+</style>
+<script>
+/* =======================================================================
+   v3 — Help Desk, Pessoas da rede, Meu perfil, aviso de comunicado ao entrar
+   ======================================================================= */
+function marcarAcesso(){
+  if(souCorretor()){ if(S.usuarios[euId()]) S.usuarios[euId()].ultimo=agora(); }
+  else S.perfis[ROLE]=Object.assign(S.perfis[ROLE]||{}, {ultimo:agora()});
+  saveState();
+}
+function popupComunicado(){
+  try{ if(sessionStorage.getItem('pr_popup_'+ROLE)) return; sessionStorage.setItem('pr_popup_'+ROLE,'1'); }catch(e){}
+  const k=S.comunicados.find(x=>x.popup && (S.leituras[x.id]||[]).indexOf(euId())<0); if(!k) return;
+  const ov=modal(esc(k.tit),
+    (k.midia&&k.midia.img?'<img src="'+k.midia.img+'" alt="" style="width:100%;border-radius:12px;margin-bottom:14px">':'')+
+    '<div class="mini" style="margin-bottom:10px">'+esc(k.area)+' · '+esc(k.autor||'')+(k.obr?' · '+esc(T('leitura obrigatória')):'')+'</div>'+
+    '<div style="font-size:14px;line-height:1.65;color:var(--ink-2)">'+k.corpo+'</div>',
+    '<button class="btn" onclick="fechaModal()">'+esc(T('Ler depois'))+'</button><a class="btn" href="#/comunicados/'+k.id+'" onclick="fechaModal()">'+esc(T('Abrir comunicado'))+'</a><button class="btn pri" id="ppOk">'+esc(T('Confirmar leitura'))+'</button>');
+  $('#ppOk',ov).addEventListener('click',()=>{
+    commit('Confirmou leitura', k.tit+' · aviso ao entrar', s=>{ s.leituras[k.id]=(s.leituras[k.id]||[]).concat([euId()]); });
+    fechaModal(); renderNav(); route(); toast(T('Leitura confirmada, com data e hora.'),1);
+  });
+}
+
+/* ---------- Help Desk ---------- */
+const TUTORIAIS=[
+  {id:'tu1', mod:'Primeiros passos', tit:'Primeiro acesso, senha e perfil', dur:'3 min'},
+  {id:'tu2', mod:'Brand Center', tit:'Guia da marca e downloads', dur:'4 min'},
+  {id:'tu3', mod:'Estúdio de Arte', tit:'Criar uma peça com a foto do imóvel', dur:'5 min'},
+  {id:'tu4', mod:'Social Hub', tit:'Conectar o Instagram e agendar a campanha', dur:'5 min'},
+  {id:'tu5', mod:'Compliance', tit:'Enviar evidência e acompanhar a jornada', dur:'4 min'},
+  {id:'tu6', mod:'Comunicados', tit:'Ler, confirmar e cobrar leitura', dur:'3 min'},
+  {id:'tu7', mod:'Programa de Excelência', tit:'Comprovar uma entrega e subir de faixa', dur:'4 min'},
+  {id:'tu8', mod:'Gestão da unidade', tit:'Cadastrar a equipe pela planilha', dur:'4 min'}
+];
+VIEWS.helpdesk=function(v){
+  const zap=(S.param&&S.param.whatsSuporte)||'';
+  v.innerHTML=
+    ph('Help Desk', T('Tutoriais em vídeo por módulo, respostas na hora e chamados com prazo — tudo o que é preciso para usar a plataforma sem treinamento presencial.'),
+      '<a class="btn pri" href="#/suporte">'+esc(T('Abrir chamado'))+'</a>','helpdesk')+
+    '<div class="card pad"><h3>'+esc(T('Como podemos ajudar?'))+'</h3>'+
+      '<div class="hd-in"><input id="hdQ" placeholder="'+esc(T('Ex.: como troco a foto do meu perfil?'))+'"><button class="btn pri" id="hdGo">'+esc(T('Perguntar'))+'</button></div><div id="hdR"></div></div>'+
+    '<div class="grid g3" style="margin:16px 0">'+
+      '<a class="hd-at" href="#/suporte"><b>'+esc(T('Chamados'))+'</b><span>'+esc(T('Abra e acompanhe: responsável, prazo e histórico. N1 atende, N2 assume o que é complexo.'))+'</span></a>'+
+      (zap?'<a class="hd-at" href="https://wa.me/'+esc(zap.replace(/\D/g,''))+'" target="_blank" rel="noopener"><b>WhatsApp do suporte</b><span>'+esc(zap)+' · '+esc(T('a conversa vira chamado'))+'</span></a>'
+          :'<div class="hd-at"><b>WhatsApp do suporte</b><span>'+esc(T('O número oficial é definido na implantação. A mensagem vira chamado, com SLA.'))+'</span></div>')+
+      '<div class="hd-at"><b>'+esc(T('Prazos de resposta'))+'</b><span>'+esc(T('Marca fora do padrão 2h · fachada e prazos 4h · erro 8h · dúvida 24h · arte fora do padrão 3 dias úteis'))+'</span></div>'+
+    '</div>'+
+    '<div class="card"><div class="ch"><h3>'+esc(T('Tutoriais em vídeo'))+'</h3><div class="r"><span class="mini">'+esc(T('tela e voz, por módulo'))+'</span></div></div><div class="cb"><div class="tvgrid" id="hdTut"></div></div></div>'+
+    '<div class="grid g2" style="margin-top:16px">'+
+      '<div class="card plano"><span class="tag ok">'+esc(T('Incluído'))+'</span><h3 style="margin-top:10px">'+esc(T('Suporte padrão'))+'</h3><ul>'+
+        ['Assistente da marca a qualquer hora','Chamados N1 e N2 com SLA por tipo','Horário comercial, em português','Acompanhamento de 3 meses na implantação de cada unidade','Tutoriais em vídeo de todos os módulos'].map(x=>'<li>'+esc(T(x))+'</li>').join('')+'</ul></div>'+
+      '<div class="card plano"><span class="tag" style="background:var(--azul);color:#fff">Prime</span><h3 style="margin-top:10px">'+esc(T('Licença corporativa Prime'))+'</h3><ul>'+
+        ['Para a Matriz e a diretoria','Atendimento estendido, inclusive fusos horários diferentes','Telefone direto com a equipe BMAG','Gerente de conta e prioridade no N3','Relatório mensal de uso e de SLA'].map(x=>'<li>'+esc(T(x))+'</li>').join('')+'</ul></div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:16px"><div class="ch"><h3>'+esc(T('Dúvidas frequentes'))+'</h3></div><div class="cb">'+
+      FAQ.map(f=>'<details style="border-bottom:1px solid var(--line);padding:10px 0"><summary style="cursor:pointer;font-size:13.6px;font-weight:600">'+esc(f.q)+'</summary>'+
+        '<div style="font-size:13.2px;color:var(--ink-2);margin-top:7px;line-height:1.6">'+esc(f.a)+'<div class="mini" style="margin-top:5px">'+esc(f.fonte)+'</div></div></details>').join('')+'</div></div>';
+  const pinta=()=>{
+    $('#hdTut').innerHTML=TUTORIAIS.map(t=>{ const link=(S.tutoriais||{})[t.id], yt=ytId(link||''), ig=yt?'':igCodigo(link||'');
+      return '<div class="tvcard"'+(yt||ig?' data-tut="'+t.id+'"':'')+'>'+(yt||ig?capaHTML({yt,ig}):'<span class="capa"></span>')+
+      '<div class="tx"><b>'+esc(T(t.tit))+'</b><span>'+esc(T(t.mod))+' · '+esc(t.dur)+'</span><div class="acoes">'+
+      (yt||ig?'<span class="tag ok">'+esc(T('Disponível'))+'</span>':'<span class="tag warn">'+esc(T('Em gravação'))+'</span>')+
+      (souMatriz()?'<button class="btn sm" data-vinc="'+t.id+'">'+esc(T(yt||ig?'Trocar vídeo':'Vincular vídeo'))+'</button>':'')+'</div></div></div>'; }).join('');
+    $$('[data-tut]',v).forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('[data-vinc]')) return;
+      const t=TUTORIAIS.find(x=>x.id===c.dataset.tut), link=S.tutoriais[t.id]; abrirVideo({yt:ytId(link), ig:ytId(link)?'':igCodigo(link), tit:t.tit}); }));
+    $$('[data-vinc]',v).forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
+      const t=TUTORIAIS.find(x=>x.id===b.dataset.vinc);
+      const ov=modal(T('Vincular vídeo')+' · '+esc(T(t.tit)),'<div class="field"><label>'+esc(T('Link do YouTube ou do Instagram'))+'</label><input id="vkU" value="'+esc(S.tutoriais[t.id]||'')+'"></div>',
+        '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn pri" id="vkOk">'+esc(T('Salvar'))+'</button>');
+      $('#vkOk',ov).addEventListener('click',()=>{ const u=$('#vkU',ov).value.trim(); if(u && !ytId(u) && !igCodigo(u)) return toast(T('Cole um link do YouTube ou do Instagram.'));
+        commit('Vinculou vídeo de tutorial', t.tit, s=>{ s.tutoriais[t.id]=u; }); fechaModal(); pinta(); });
+    }));
+  };
+  pinta();
+  const pergunta=()=>{ const q=$('#hdQ').value.trim(); if(!q) return; const r=respostaIA(q);
+    $('#hdR').innerHTML='<div class="hd-resp">'+esc(r.tx)+(r.fonte?'<div class="mini" style="margin-top:6px">'+esc(T('Fonte'))+': '+esc(r.fonte)+'</div>':
+      '<div style="margin-top:10px"><a class="btn sm pri" href="#/suporte">'+esc(T('Abrir chamado com uma pessoa'))+'</a></div>')+'</div>'; };
+  $('#hdGo').addEventListener('click',pergunta);
+  $('#hdQ').addEventListener('keydown',e=>{ if(e.key==='Enter') pergunta(); });
+};
+
+/* ---------- Pessoas da rede (consulta, sem bate-papo) ---------- */
+let PS={q:'', loja:'todas'};
+VIEWS.pessoas=function(v){
+  v.innerHTML=
+    ph('Pessoas da rede', T('Encontre associados e gestores: foto, unidade, CRECI e Instagram. O contato segue pelos canais oficiais — a plataforma não tem bate-papo entre associados.'),'','pessoas')+
+    '<div class="filtros"><div class="f" style="flex:2"><label>'+esc(T('Buscar'))+'</label><input id="psQ" value="'+esc(PS.q)+'" placeholder="'+esc(T('Nome, CRECI ou bairro'))+'"></div>'+
+    '<div class="f"><label>'+esc(T('Unidade'))+'</label><select id="psL"><option value="todas">'+esc(T('Todas as unidades'))+'</option>'+
+      BASE.lojas.map(l=>'<option value="'+l.id+'"'+(PS.loja===l.id?' selected':'')+'>'+esc(l.nome)+'</option>').join('')+'</select></div></div>'+
+    '<div class="mini" id="psN" style="margin:0 0 12px"></div><div class="pgrid" id="psG"></div>';
+  const pinta=()=>{
+    const q=PS.q.toLowerCase();
+    const arr=Object.values(S.usuarios).filter(u=>u.nivel==='associado' && (PS.loja==='todas'||u.loja===PS.loja) &&
+      (!q || (u.nome+' '+u.creci+' '+((lojaDe(u.loja)||{}).bairro||'')).toLowerCase().includes(q)));
+    $('#psN').textContent=arr.length+' '+T('pessoas');
+    $('#psG').innerHTML=arr.slice(0,60).map(u=>'<div class="pcard" data-p="'+u.id+'">'+avatar(u,64)+'<b>'+esc(u.nome)+'</b>'+
+      '<span>'+esc((lojaDe(u.loja)||{}).nome||'')+(u.creci?' · CRECI '+esc(u.creci):'')+'</span>'+
+      (u.insta?'<span style="color:var(--azul)">@'+esc(u.insta)+'</span>':'')+'</div>').join('')||'<div class="empty">'+esc(T('Ninguém encontrado.'))+'</div>';
+    $$('#psG .pcard').forEach(c=>c.addEventListener('click',()=>location.hash='#/perfil/'+c.dataset.p));
+  };
+  pinta();
+  $('#psQ').addEventListener('input',e=>{ PS.q=e.target.value; pinta(); });
+  $('#psL').addEventListener('change',e=>{ PS.loja=e.target.value; pinta(); });
+};
+
+/* ---------- perfil: o próprio (editável) ou o de outra pessoa (consulta) ---------- */
+VIEWS.perfil=function(v,arg){
+  if(arg && arg!==euId() && S.usuarios[arg]) return perfilDe(v, S.usuarios[arg]);
+  const conta=CONTAS.find(c=>c.papel===ROLE)||{};
+  const r = souCorretor()? Object.assign({}, S.usuarios[euId()]) : Object.assign({nome:eu().nome, email:conta.email}, S.perfis[ROLE]||{});
+  let foto=r.foto||eu().foto||'';
+  const temCreci = ROLE==='corretor'||ROLE==='franquia';
+  v.innerHTML=
+    ph(T('Meu perfil'), T('Seus dados aparecem nas peças do Estúdio, no diretório da rede e nos relatórios. Mantenha foto, CRECI e Instagram em dia.'),'','perfil')+
+    '<div class="grid g23"><div class="card pad">'+
+      '<div class="perfil-top"><span id="pfAv">'+avatar({nome:r.nome, foto},88)+'</span><div><button class="btn" id="pfFoto">'+esc(T(foto?'Trocar foto':'Enviar foto'))+'</button>'+
+        '<div class="mini" style="margin-top:6px">'+esc(eu().papel)+(r.ultimo?' · '+esc(T('último acesso'))+' '+quando(r.ultimo):'')+'</div></div></div>'+
+      '<div class="divider"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>'+esc(T('Nome completo'))+'</label><input id="pfN" value="'+esc(r.nome||'')+'"></div>'+
+      '<div class="field"><label>'+esc(T('E-mail de acesso'))+'</label><input id="pfE" type="email" value="'+esc(r.email||'')+'"></div></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>'+esc(T('Celular (WhatsApp)'))+'</label><input id="pfT" value="'+esc(r.tel||'')+'" placeholder="(11) 99999-0000"></div>'+
+      '<div class="field"><label>Instagram</label><input id="pfI" value="'+esc(r.insta||'')+'" placeholder="@seuperfil"></div></div>'+
+      (temCreci?'<div class="field"><label>CRECI</label><input id="pfC" value="'+esc(r.creci||'')+'"></div>':'')+
+      '<div class="field"><label>'+esc(T('Sobre você'))+'</label><textarea id="pfB" rows="2" placeholder="'+esc(T('Especialidade, região de atuação…'))+'">'+esc(r.bio||'')+'</textarea></div>'+
+      '<button class="btn pri" id="pfOk">'+esc(T('Salvar perfil'))+'</button></div>'+
+    '<div class="card pad"><h3>'+esc(T('Senha'))+'</h3><div class="mini" style="margin:6px 0 12px">'+esc(T('Mínimo de 8 caracteres, com letras e números.'))+(r.senhaEm?' '+esc(T('Última troca'))+': '+quando(r.senhaEm):'')+'</div>'+
+      '<div class="field"><label>'+esc(T('Nova senha'))+'</label><input id="pfS1" type="password" autocomplete="new-password"></div>'+
+      '<div class="field"><label>'+esc(T('Repita a nova senha'))+'</label><input id="pfS2" type="password" autocomplete="new-password"></div>'+
+      '<button class="btn" id="pfSOk">'+esc(T('Trocar senha'))+'</button></div></div>';
+  $('#pfFoto').addEventListener('click',()=>escolherImagem(420,.8,url=>{ foto=url; $('#pfAv').innerHTML=avatar({nome:r.nome,foto},88); toast(T('Foto pronta. Clique em Salvar perfil.'),1); }));
+  $('#pfOk').addEventListener('click',()=>{
+    const d={nome:$('#pfN').value.trim()||r.nome, email:$('#pfE').value.trim(), tel:$('#pfT').value.trim(), insta:$('#pfI').value.trim().replace(/^@/,''),
+             bio:$('#pfB').value.trim(), foto};
+    if(temCreci && $('#pfC')) d.creci=$('#pfC').value.trim();
+    if(d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) return toast(T('E-mail inválido.'));
+    commit('Atualizou o próprio perfil', d.nome, s=>{ if(souCorretor()) Object.assign(s.usuarios[euId()], d); else s.perfis[ROLE]=Object.assign(s.perfis[ROLE]||{}, d); });
+    P=personas(); renderWho(); toast(T('Perfil salvo.'),1); route();
+  });
+  $('#pfSOk').addEventListener('click',()=>{
+    const a=$('#pfS1').value, b=$('#pfS2').value;
+    if(a.length<8 || !/\d/.test(a) || !/[a-z]/i.test(a)) return toast(T('A senha precisa de 8 caracteres, com letras e números.'));
+    if(a!==b) return toast(T('As duas senhas não conferem.'));
+    commit('Trocou a própria senha', eu().nome, s=>{ if(souCorretor()) s.usuarios[euId()].senhaEm=agora(); else s.perfis[ROLE]=Object.assign(s.perfis[ROLE]||{}, {senhaEm:agora()}); });
+    $('#pfS1').value=''; $('#pfS2').value=''; toast(T('Senha trocada.'),1);
+  });
+};
+function perfilDe(v,u){
+  const l=lojaDe(u.loja)||{};
+  v.innerHTML=
+    '<a class="btn sm" href="#/pessoas" style="margin-bottom:14px">← '+esc(T('Pessoas da rede'))+'</a>'+
+    '<div class="card pad"><div class="perfil-top">'+avatar(u,96)+'<div><h1 style="font-size:30px;letter-spacing:-.03em">'+esc(u.nome)+'</h1>'+
+      '<div class="mini" style="font-size:14px;margin-top:4px">'+esc(u.nivel==='franquia'?T('Gestor da unidade'):T('Associado'))+' · '+esc(l.nome||'')+(l.bairro?' · '+esc(l.bairro):'')+'</div>'+
+      (u.creci?'<div class="mini">CRECI '+esc(u.creci)+'</div>':'')+
+      (u.insta?'<a href="https://www.instagram.com/'+encodeURIComponent(u.insta)+'/" target="_blank" rel="noopener">@'+esc(u.insta)+'</a>':'')+'</div></div>'+
+      (u.bio?'<p style="margin:16px 0 0;color:var(--ink-2)">'+esc(u.bio)+'</p>':'')+
+      '<div class="grid g3" style="margin-top:18px">'+kpi(T('Pontos'), pontosC(u.id), T('na régua da rede'))+kpi(T('Peças'), (u.pecasFeitas||0)+S.pecas.filter(p=>p.uid===u.id).length, T('geradas no Estúdio'))+
+        kpi(T('Instagram'), u.ig?T('Conectado'):T('Pendente'), T('publicação automática'), u.ig?'k-ok':'k-warn')+'</div></div>';
+}
+</script>

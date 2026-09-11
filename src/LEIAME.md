@@ -24,16 +24,38 @@ python build.py
 Gera `../prontos-em-rede-app.html` (arquivo único, ~360 KB, abre com duplo clique).
 **Editar as partes desta pasta e reconstruir** — nunca editar o HTML final, que é gerado.
 
-## Os 6 módulos
+## Versão 3 (11/09/2026) — ajustes da reunião de 10/09
+
+A versão anterior está em `../v2/` e na branch `v2` do repositório. O que mudou, item a item, está em
+`../documentos-v3/historico-de-alteracoes-v3.html` (e o PDF ao lado). Em resumo: perfil **Matriz**
+(ex-Marketing), perfil **Construtor** (BMAG, uso interno), botão Voltar, direitos reservados BMAG,
+Estúdio de Arte no menu, Help Desk, RE/MAX TV e banner na home, comunicados com mídia e avisos por
+e-mail/WhatsApp, alçadas N1/N2/N3, importação de usuários por planilha, PEX como módulo, BI digital e
+tradicional, Parametrização (nomenclatura por cliente), camada `api/` em PHP e a **versão genérica**:
+
+```bash
+python build.py ../demo/index.html --generica     # sem a marca RE/MAX, nomes fictícios, estado separado
+```
+
+Na genérica o `build.py` troca a base por nomes fictícios, gera um logo neutro em SVG, marca a
+constante `GENERICA` (chave de estado `hub_state_v1`, sem vinheta em vídeo, sem os vídeos da RE/MAX TV)
+e a camada de nomenclatura (`aplicarTermos`, em `q19.html`) troca “RE/MAX” por “Rede Exemplo” na tela.
+
+## Os 7 módulos (+ Operação BMAG)
 
 | # | Módulo | Telas |
 |---|--------|-------|
-| 1 | Brand Center | Guia da marca · Biblioteca de materiais |
-| 2 | Content & Social Hub | Estúdio de peças · Prontos em Rede · Redes sociais |
-| 3 | Compliance & Governance | Jornada de adequação · Fachadas · Aprovações · Usuários e permissões · Registros e plataforma |
-| 4 | Communication Center | Comunicados (e a busca do topo) |
-| 5 | Support & Success | Central de atendimento · Implantação e CS |
-| 6 | Intelligence & Gamification | Painel da rede · Desempenho de marketing · Programa de Excelência · Ranking e Grand Champion |
+| 1 | Brand Center | Guia da marca · Estúdio de Arte · Biblioteca de materiais |
+| 2 | Social Hub | Campanhas da rede · Redes sociais · Indicadores de redes sociais |
+| 3 | Compliance & Governance | Jornada de adequação · Gestão de jornadas (Matriz) · Fachadas · Aprovações · Usuários e permissões |
+| 4 | Communication Center | Comunicados · RE/MAX TV · Pessoas da rede |
+| 5 | Support & Success | Help Desk · Chamados e assistente |
+| 6 | Intelligence (BI) | Painel da rede · Marketing digital e tradicional |
+| 7 | Programa de Excelência | Visão do programa · Regras e pontuação · Ranking e Grand Champion |
+| 8 | Operação BMAG (só Construtor) | Parametrização · Registros e auditoria · Implantação e CS · Mapa do escopo |
+
+Atalhos diretos no menu: Início, Estúdio de Arte e Help Desk. A Master de teste é a da regional da
+unidade de teste (`MASTER_DEMO = 'm3'`, em `q2.html`), para o fluxo gestor → N1 → N2 fechar na demonstração.
 
 As 40 frentes da minuta da RE/MAX estão mapeadas na tela **Mapa do escopo**
 (`q14.html`), com o módulo, a tela e a onda de cada uma: 35 no MVP,

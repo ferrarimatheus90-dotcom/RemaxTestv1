@@ -36,7 +36,7 @@ VIEWS.estudio=function(v,arg){
   const aceitaImovel = t.fmt!=='cartao' && t.fmt!=='email';
 
   v.innerHTML =
-    ph('Estúdio de peças', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
+    ph('Estúdio de Arte', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
       '<a class="btn" href="#/biblioteca">Ver biblioteca</a>','estudio')+
     '<div class="studio">'+
       '<div class="card pad st-form">'+
@@ -136,7 +136,24 @@ VIEWS.estudio=function(v,arg){
       dados:{titulo:ST.titulo, sub:ST.sub, tema:ST.tema}}); });
     toast('Peça salva. Ela conta pontos para você e para a unidade.',1); route();
   });
-  $('#dPub')&&$('#dPub').addEventListener('click',()=>{ location.hash='#/redes'; setTimeout(()=>toast('Peça enviada para a fila de publicação.',1),250); });
+  $('#dPub')&&$('#dPub').addEventListener('click',()=>{
+    if(!cvAtual) return;
+    const amanha=new Date(Date.now()+86400000), d0=amanha.toISOString().slice(0,10);
+    const ov=modal('Agendar esta peça',
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="agD" value="'+d0+'"></div><div class="field"><label>Hora</label><input type="time" id="agH" value="10:00"></div></div>'+
+      '<div class="field"><label>Formato</label><select id="agF"><option>Feed</option><option>Story</option><option>Feed + Story</option></select></div>'+
+      '<div class="field"><label>Legenda</label><textarea id="agL" rows="3">'+esc((ST.titulo||'')+' — '+(ST.sub||'')+' · Fale comigo: '+(ST.tel||''))+'</textarea></div>'+
+      '<div class="hint">A peça sai pela integração de publicação direto no seu Instagram, na data marcada. '+(S.usuarios[u.id]&&S.usuarios[u.id].ig?'':'<b>Sua conta ainda não está conectada</b> — conecte em Social Hub · Redes sociais.')+'</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="agOk">Agendar</button>');
+    $('#agOk',ov).addEventListener('click',()=>{
+      const mini=document.createElement('canvas'); mini.width=300; mini.height=Math.round(300*cvAtual.height/cvAtual.width);
+      mini.getContext('2d').drawImage(cvAtual,0,0,mini.width,mini.height);
+      const quandoAg=$('#agD',ov).value+'T'+$('#agH',ov).value;
+      commit('Agendou peça do Estúdio', t.nome+' · '+new Date(quandoAg).toLocaleString('pt-BR'), s=>{ s.social.fila=(s.social.fila||[]).concat([{id:uid('f'), uid:u.id, tpl:t.id, tplNome:t.nome,
+        thumb:mini.toDataURL('image/jpeg',0.7), leg:$('#agL',ov).value.trim(), fmt:$('#agF',ov).value, quando:quandoAg, st:'agendada'}]); }, 'Integração de publicação');
+      fechaModal(); toast('<b>Agendada.</b> Aparece na fila de publicação do Social Hub.',1);
+    });
+  });
   $$('[data-rep]',v).forEach(b=>b.addEventListener('click',()=>{
     const p=S.pecas.find(x=>x.id===b.dataset.rep);
     ST.tema=p.dados.tema; ST.titulo=p.dados.titulo; ST.sub=p.dados.sub; location.hash='#/estudio/'+p.tpl; route();

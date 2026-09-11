@@ -1,0 +1,187 @@
+<script>
+/* =======================================================================
+   v3 — Gestão de jornadas (Matriz), alçadas N1/N2/N3, regras do PEX
+   e a camada de nomenclatura do Construtor
+   ======================================================================= */
+const NIVEIS_OPC=['Master Regional','Matriz · marketing','Matriz · coordenação','Diretoria','Jurídico'];
+const ALCADAS_PADRAO={'Evidência':['Master Regional','Matriz · marketing'], 'Fachada':['Master Regional','Matriz · marketing','Diretoria'], 'Peça fora do padrão':['Matriz · marketing']};
+function alcadasDe(tipo){ const a=(S.alcadas||ALCADAS_PADRAO)[tipo]||ALCADAS_PADRAO[tipo]||['Matriz · marketing']; return a.filter(Boolean); }
+/* quem decide cada nível: a Master decide o que é da Master; a Matriz, o resto; o Construtor, tudo */
+function podeDecidirNivel(rot){
+  if(ROLE==='construtor') return true;
+  if(/Master/.test(rot)) return ROLE==='master';
+  return ROLE==='brasil';
+}
+function critLista(){ return (S && S.pexCriterios && S.pexCriterios.length)? S.pexCriterios.filter(c=>c.ativo!==false) : CRITERIOS_EXC; }
+
+/* ---------- Gestão de jornadas ---------- */
+VIEWS.jornadas=function(v){
+  if(!S.alcadas) S.alcadas=JSON.parse(JSON.stringify(ALCADAS_PADRAO));
+  const ls=BASE.lojas;
+  const selNivel=(tipo,i)=>'<select data-alc="'+esc(tipo)+'" data-i="'+i+'"><option value="">—</option>'+NIVEIS_OPC.map(o=>'<option'+((S.alcadas[tipo]||[])[i]===o?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>';
+  v.innerHTML=
+    ph('Gestão de jornadas', T('Espaço exclusivo da Matriz: prazos, etapas e alçadas de aprovação de cada jornada de adequação. Uma nova jornada nasce de uma demanda e já sai com os níveis N1, N2 e N3 definidos.'),
+      '<button class="btn pri" id="jnNova">＋ '+esc(T('Nova jornada'))+'</button>','jornadas')+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>'+esc(T('Nova identidade visual 2026'))+' <span class="tag ok">'+esc(T('Em execução'))+'</span></h3>'+
+      '<div class="r"><span class="mini">'+ls.length+' '+esc(T('unidades'))+' · '+esc(T('adesão média'))+' '+pct(mediaAdesao(ls))+'</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>#</th><th>'+esc(T('Etapa'))+'</th><th>'+esc(T('Prazo'))+'</th><th>'+esc(T('Peso'))+'</th><th>'+esc(T('Concluída em'))+'</th></tr></thead><tbody>'+
+      ETAPAS.map((e,i)=>'<tr><td class="num">E'+(i+1)+'</td><td style="font-weight:600">'+esc(e.nome)+'</td>'+
+        '<td><input type="date" data-pz="'+e.id+'" value="'+e.prazo+'" style="border:1px solid var(--line);border-radius:8px;padding:5px 8px"></td>'+
+        '<td class="num">'+e.peso+'%</td><td class="num">'+ls.filter(l=>S.unidades[l.id].etapas[e.id].ok).length+'/'+ls.length+'</td></tr>').join('')+
+      '</tbody></table></div><div class="cb" style="border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+      '<button class="btn pri" id="jnPz">'+esc(T('Salvar prazos'))+'</button><span class="mini">'+esc(T('Mudar um prazo recalcula atrasos, alertas e adesão na hora, sem depender de desenvolvimento.'))+'</span></div></div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>'+esc(T('Alçadas de aprovação'))+'</h3><div class="r"><span class="mini">'+esc(T('cada item sobe N1 → N2 → N3 até a última alçada'))+'</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>'+esc(T('Tipo de item'))+'</th><th>N1</th><th>N2</th><th>N3</th></tr></thead><tbody>'+
+      Object.keys(ALCADAS_PADRAO).map(t=>'<tr><td style="font-weight:600">'+esc(T(t))+'</td><td>'+selNivel(t,0)+'</td><td>'+selNivel(t,1)+'</td><td>'+selNivel(t,2)+'</td></tr>').join('')+
+      '</tbody></table></div><div class="cb" style="border-top:1px solid var(--line)"><button class="btn" id="jnAlc">'+esc(T('Salvar alçadas'))+'</button></div></div>'+
+    '<div class="card"><div class="ch"><h3>'+esc(T('Outras jornadas'))+'</h3><div class="r"><span class="mini">'+(S.jornadas||[]).length+'</span></div></div><div class="lst">'+
+      ((S.jornadas||[]).map(j=>'<div class="li" style="cursor:default"><span class="ico">'+(j.etapas||[]).length+'</span><div class="bd"><div class="t">'+esc(j.nome)+
+        ' <span class="tag '+(j.st==='publicada'?'ok':'mut')+'">'+esc(T(j.st==='publicada'?'Publicada':'Rascunho'))+'</span></div>'+
+        '<div class="s">'+esc(j.objetivo||'')+' · '+esc(j.publico)+' · '+esc(T('alçadas'))+': '+esc((j.alcadas||[]).filter(Boolean).map((a,i)=>'N'+(i+1)+' '+a).join(' → '))+'</div>'+
+        '<div class="s">'+(j.etapas||[]).map(e=>esc(e.nome)+(e.prazo?' ('+dataBR(dt(e.prazo))+')':'')).join(' · ')+'</div></div>'+
+        '<div class="rt">'+(j.st!=='publicada'?'<button class="btn sm pri" data-jpub="'+j.id+'">'+esc(T('Publicar'))+'</button>':'<span class="mini">'+quando(j.pub||j.criada)+'</span>')+'</div></div>').join('')||
+        '<div class="empty">'+esc(T('Nenhuma outra jornada. Use “Nova jornada” para abrir uma demanda — por exemplo, a troca de uniformes ou de placas.'))+'</div>')+
+    '</div></div>';
+  $('#jnPz').addEventListener('click',()=>{
+    commit('Ajustou prazos da jornada','Nova identidade visual 2026', s=>{ $$('[data-pz]',v).forEach(i=>{ if(i.value){ s.prazos[i.dataset.pz]=i.value; const e=etapaDef(i.dataset.pz); if(e) e.prazo=i.value; } }); });
+    route(); renderNav(); toast(T('Prazos salvos. Atrasos e alertas recalculados.'),1);
+  });
+  $('#jnAlc').addEventListener('click',()=>{
+    commit('Ajustou alçadas de aprovação','', s=>{ s.alcadas=s.alcadas||{}; Object.keys(ALCADAS_PADRAO).forEach(t=>{ s.alcadas[t]=[0,1,2].map(i=>($('[data-alc="'+t+'"][data-i="'+i+'"]',v)||{}).value||'').filter(Boolean); if(!s.alcadas[t].length) s.alcadas[t]=['Matriz · marketing']; }); });
+    route(); toast(T('Alçadas salvas. Valem para os próximos envios.'),1);
+  });
+  $$('[data-jpub]',v).forEach(b=>b.addEventListener('click',()=>{
+    commit('Publicou jornada', (S.jornadas.find(j=>j.id===b.dataset.jpub)||{}).nome, s=>{ const j=s.jornadas.find(x=>x.id===b.dataset.jpub); j.st='publicada'; j.pub=agora(); }); route(); toast(T('Jornada publicada para as unidades.'),1); }));
+  $('#jnNova').addEventListener('click',()=>{
+    const linha=i=>'<div class="grid g2 jn-et" style="gap:10px"><div class="field" style="margin:0 0 8px"><input placeholder="'+esc(T('Etapa'))+' '+(i+1)+'"></div><div class="field" style="margin:0 0 8px"><input type="date"></div></div>';
+    const ov=modal(T('Nova jornada'),
+      '<div class="field"><label>'+esc(T('Nome'))+'</label><input id="jN" placeholder="Ex.: Troca de placas de venda 2027"></div>'+
+      '<div class="field"><label>'+esc(T('Objetivo'))+'</label><input id="jO" placeholder="O que muda e por quê"></div>'+
+      '<div class="field"><label>'+esc(T('Público'))+'</label><select id="jP"><option>Toda a rede</option>'+BASE.masters.map(m=>'<option>'+esc(m.nome)+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>'+esc(T('Etapas e prazos'))+'</label><div id="jE">'+[0,1,2].map(linha).join('')+'</div><button class="btn sm" id="jMais">＋ '+esc(T('etapa'))+'</button></div>'+
+      '<div class="field"><label>'+esc(T('Alçadas de aprovação'))+'</label><div class="grid g3" style="gap:8px">'+[0,1,2].map(i=>'<select data-ja="'+i+'"><option value="">N'+(i+1)+' —</option>'+NIVEIS_OPC.map((o,k)=>'<option'+(k===[0,1,3][i]?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>').join('')+'</div></div>',
+      '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn" id="jRas">'+esc(T('Salvar rascunho'))+'</button><button class="btn pri" id="jOk">'+esc(T('Criar e publicar'))+'</button>');
+    $('#jMais',ov).addEventListener('click',()=>{ const d=document.createElement('div'); d.innerHTML=linha($$('.jn-et',ov).length); $('#jE',ov).appendChild(d.firstChild); });
+    const salvar=st=>{
+      const nome=$('#jN',ov).value.trim(); if(!nome) return toast(T('Dê um nome à jornada.'));
+      const etapas=$$('.jn-et',ov).map(r=>{ const ins=$$('input',r); return {nome:ins[0].value.trim(), prazo:ins[1].value}; }).filter(e=>e.nome);
+      if(!etapas.length) return toast(T('Inclua pelo menos uma etapa.'));
+      commit(st==='publicada'?'Criou e publicou jornada':'Criou rascunho de jornada', nome, s=>{ s.jornadas.unshift({id:uid('j'), nome, objetivo:$('#jO',ov).value.trim(), publico:$('#jP',ov).value,
+        etapas, alcadas:[0,1,2].map(i=>$('[data-ja="'+i+'"]',ov).value), st, criada:agora(), pub:st==='publicada'?agora():null, autor:eu().nome}); });
+      fechaModal(); route(); toast(st==='publicada'?T('Jornada publicada para as unidades.'):T('Rascunho salvo.'),1);
+    };
+    $('#jOk',ov).addEventListener('click',()=>salvar('publicada'));
+    $('#jRas',ov).addEventListener('click',()=>salvar('rascunho'));
+  });
+};
+
+/* ---------- Programa de Excelência · regras e pontuação ---------- */
+VIEWS.pexregras=function(v){
+  const pode=souMatriz(), todas=S.pexCriterios||[], ativas=todas.filter(c=>c.ativo!==false);
+  const PESOS=[['etapa','Etapa concluída no prazo'],['etapaAtraso','Etapa concluída em atraso'],['evidencia','Etapa com evidência aprovada'],
+    ['campanha','Participação em campanha da rede'],['leitura','Leitura obrigatória confirmada'],['peca','Peça oficial gerada no Estúdio'],['fachada','Fachada instalada e validada']];
+  v.innerHTML=
+    ph('Regras e pontuação', T('As regras do Programa de Excelência vêm dos manuais da RE/MAX — até 50 regras, cada uma com o seu peso. A Matriz cadastra, ajusta os pesos ou importa a planilha de regras, e o ranking recalcula na hora.'),
+      pode?'<button class="btn" id="rgMod">↓ '+esc(T('Modelo CSV'))+'</button><button class="btn" id="rgImp">'+esc(T('Importar regras'))+'</button><button class="btn pri" id="rgNova">＋ '+esc(T('Nova regra'))+'</button>':'','pexregras')+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi(T('Regras ativas'), ativas.length+'/50', T('capacidade do programa'))+
+      kpi(T('Pontos possíveis'), nf(ativas.reduce((a,c)=>a+(+c.pts||0),0)), T('somando todas as regras'))+
+      kpi(T('Faixa Ouro'), S.excelencia.faixas.find(f=>f.id==='ouro').min, T('pontos no ciclo'),'k-ok')+
+      kpi(T('Comprovações validadas'), S.excelencia.provas.filter(p=>p.st==='aprovado').length, esc(S.excelencia.ciclo))+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="tw"><table><thead><tr><th>#</th><th>'+esc(T('Regra'))+'</th><th>'+esc(T('Categoria'))+'</th><th>'+esc(T('Prova exigida'))+'</th><th>'+esc(T('Pontos'))+'</th><th>'+esc(T('Situação'))+'</th>'+(pode?'<th></th>':'')+'</tr></thead><tbody>'+
+      todas.map((c,i)=>'<tr'+(c.ativo===false?' style="opacity:.5"':'')+'><td class="num">'+(i+1)+'</td><td style="font-weight:600">'+esc(c.nome)+'<div class="mini">'+esc(c.desc||'')+'</div></td>'+
+        '<td class="mini">'+esc(c.cat||'—')+'</td><td class="mini">'+esc(c.prova||'—')+'</td><td class="num" style="font-weight:700">'+c.pts+'</td>'+
+        '<td>'+(c.ativo===false?'<span class="tag mut">'+esc(T('Inativa'))+'</span>':'<span class="tag ok">'+esc(T('Ativa'))+'</span>')+'</td>'+
+        (pode?'<td style="white-space:nowrap"><button class="btn sm" data-rged="'+c.id+'">'+esc(T('Editar'))+'</button> <button class="btn sm" data-rgat="'+c.id+'">'+esc(T(c.ativo===false?'Ativar':'Desativar'))+'</button></td>':'')+'</tr>').join('')+
+    '</tbody></table></div></div>'+
+    '<div class="grid g2">'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Pesos da régua do ranking'))+'</h3></div><div class="cb">'+
+        PESOS.map(p=>'<div style="display:flex;align-items:center;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="flex:1;font-size:13.2px">'+esc(T(p[1]))+'</span>'+
+          (pode?'<input type="number" min="0" data-peso="'+p[0]+'" value="'+PONTOS[p[0]]+'" style="width:84px;border:1px solid var(--line);border-radius:8px;padding:5px 8px;text-align:right">':'<b class="num">'+PONTOS[p[0]]+'</b>')+'</div>').join('')+
+        (pode?'<button class="btn pri" id="rgPesos" style="margin-top:12px">'+esc(T('Salvar pesos'))+'</button>':'')+'</div></div>'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Faixas de bonificação'))+'</h3><div class="r"><a class="btn sm" href="#/excelencia">'+esc(T('Configurar'))+'</a></div></div><div class="cb">'+
+        S.excelencia.faixas.slice().sort((a,b)=>b.min-a.min).map(f=>'<div style="padding:9px 0;border-bottom:1px solid var(--line)"><b>'+esc(f.nome)+'</b> <span class="mini">· '+esc(T('a partir de'))+' '+f.min+' '+esc(T('pontos'))+'</span><div class="mini">'+esc(f.premio)+'</div></div>').join('')+
+        '<div class="hint" style="margin-top:12px">'+esc(T('O ranking Grand Champion soma a régua acima com as comprovações validadas no programa.'))+' <a href="#/ranking">'+esc(T('Abrir o ranking'))+'</a></div></div></div>'+
+    '</div>';
+  if(!pode) return;
+  const editar=c=>{
+    const ov=modal(T(c?'Editar regra':'Nova regra'),
+      '<div class="field"><label>'+esc(T('Regra'))+'</label><input id="rN" value="'+esc(c?c.nome:'')+'"></div>'+
+      '<div class="field"><label>'+esc(T('Descrição'))+'</label><input id="rD" value="'+esc(c?c.desc||'':'')+'"></div>'+
+      '<div class="grid g3" style="gap:10px"><div class="field"><label>'+esc(T('Pontos'))+'</label><input id="rP" type="number" min="1" value="'+(c?c.pts:50)+'"></div>'+
+      '<div class="field"><label>'+esc(T('Categoria'))+'</label><input id="rC" value="'+esc(c?c.cat||'':'Adequação')+'"></div>'+
+      '<div class="field"><label>'+esc(T('Prova exigida'))+'</label><input id="rV" value="'+esc(c?c.prova||'':'Foto')+'"></div></div>',
+      '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn pri" id="rOk">'+esc(T('Salvar'))+'</button>');
+    $('#rOk',ov).addEventListener('click',()=>{
+      const d={nome:$('#rN',ov).value.trim(), desc:$('#rD',ov).value.trim(), pts:Math.max(1,parseInt($('#rP',ov).value,10)||1), cat:$('#rC',ov).value.trim(), prova:$('#rV',ov).value.trim()};
+      if(!d.nome) return toast(T('Dê um nome à regra.'));
+      if(!c && (S.pexCriterios||[]).length>=50) return toast(T('O programa comporta até 50 regras.'));
+      commit(c?'Editou regra do PEX':'Criou regra do PEX', d.nome, s=>{ if(c) Object.assign(s.pexCriterios.find(x=>x.id===c.id), d); else s.pexCriterios.push(Object.assign({id:uid('x'), ativo:true}, d)); });
+      fechaModal(); route(); toast(T('Regra salva. O ranking já considera a mudança.'),1);
+    });
+  };
+  $('#rgNova').addEventListener('click',()=>editar(null));
+  $$('[data-rged]',v).forEach(b=>b.addEventListener('click',()=>editar(S.pexCriterios.find(x=>x.id===b.dataset.rged))));
+  $$('[data-rgat]',v).forEach(b=>b.addEventListener('click',()=>{ const c=S.pexCriterios.find(x=>x.id===b.dataset.rgat);
+    commit(c.ativo===false?'Ativou regra do PEX':'Desativou regra do PEX', c.nome, s=>{ const x=s.pexCriterios.find(y=>y.id===c.id); x.ativo = x.ativo===false; }); route(); }));
+  $('#rgPesos').addEventListener('click',()=>{
+    commit('Ajustou os pesos da régua','Programa de Excelência', s=>{ $$('[data-peso]',v).forEach(i=>{ const n=parseInt(i.value,10); if(n>=0){ s.pesos[i.dataset.peso]=n; PONTOS[i.dataset.peso]=n; } }); });
+    route(); toast(T('Pesos salvos. O ranking recalculou.'),1);
+  });
+  $('#rgMod').addEventListener('click',()=>{
+    const txt='regra;pontos;prova;categoria;descricao\nFachada instalada e comprovada;150;Foto da fachada;Adequação;Foto diurna e frontal\nParticipação na convenção;80;Lista de presença;Engajamento;Presença da equipe da unidade\n';
+    baixarBlob(new Blob(['﻿'+txt],{type:'text/csv;charset=utf-8'}),'modelo-regras-pex.csv'); toast(T('Modelo baixado.'),1);
+  });
+  $('#rgImp').addEventListener('click',()=>{
+    const inp=$('#filePicker'); inp.value=''; inp.accept='.csv,text/csv'; inp.multiple=false;
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const fr=new FileReader();
+      fr.onload=()=>{ const linhas=lerCSV(fr.result); const cab=(linhas.shift()||[]).map(normCab);
+        const ix=k=>cab.findIndex(h=>h===k||h.indexOf(k)===0);
+        const iN=ix('regra')>=0?ix('regra'):ix('nome'), iP=ix('pontos'), iV=ix('prova'), iC=ix('categoria'), iD=ix('descricao');
+        if(iN<0||iP<0) return toast(T('A planilha precisa das colunas regra e pontos.'));
+        const novas=linhas.filter(r=>r[iN]&&r[iN].trim()).map(r=>({id:uid('x'), ativo:true, nome:r[iN].trim(), pts:Math.max(1,parseInt(r[iP],10)||1),
+          prova:iV>=0?(r[iV]||'').trim():'', cat:iC>=0?(r[iC]||'').trim():'', desc:iD>=0?(r[iD]||'').trim():''}));
+        const cabe=Math.max(0,50-(S.pexCriterios||[]).length), entram=novas.slice(0,cabe);
+        commit('Importou regras do PEX', entram.length+' regras', s=>{ s.pexCriterios=s.pexCriterios.concat(entram); });
+        route(); toast('<b>'+entram.length+' '+T('regras importadas.')+'</b>'+(novas.length>cabe?'<br>'+(novas.length-cabe)+' '+T('ficaram de fora: o limite é 50.'):''),1); };
+      fr.readAsText(f,'utf-8'); };
+    inp.click();
+  });
+};
+
+/* ---------- planilhas (CSV com ; , ou tabulação) ---------- */
+function lerCSV(txt){
+  txt=String(txt||'').replace(/^﻿/,'');
+  const prim=txt.split(/\r?\n/)[0]||'', sep=[';','\t',','].sort((a,b)=>prim.split(b).length-prim.split(a).length)[0];
+  const out=[]; let lin=[], cel='', aspas=false;
+  for(let i=0;i<txt.length;i++){ const ch=txt[i];
+    if(aspas){ if(ch==='"'){ if(txt[i+1]==='"'){ cel+='"'; i++; } else aspas=false; } else cel+=ch; }
+    else if(ch==='"') aspas=true;
+    else if(ch===sep){ lin.push(cel); cel=''; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&txt[i+1]==='\n') i++; lin.push(cel); cel=''; if(lin.some(x=>x.trim())) out.push(lin); lin=[]; }
+    else cel+=ch; }
+  lin.push(cel); if(lin.some(x=>x.trim())) out.push(lin);
+  return out;
+}
+const normCab = h => String(h||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+
+/* ---------- nomenclatura por cliente (definida pelo Construtor, sem mexer no código) ---------- */
+function termosAtivos(){
+  const pr=(S&&S.param)||{}, t=pr.termos||{}, pares=[];
+  Object.keys(t).forEach(de=>{ const para=t[de]; if(para && para!==de){ pares.push([de,para]); pares.push([de.toLowerCase(), para.toLowerCase()]); } });
+  if(pr.plataforma && pr.plataforma!=='Prontos em Rede') pares.push(['Prontos em Rede', pr.plataforma]);
+  if(GENERICA) pares.push(['Matriz RE/MAX Brasil','Matriz'],['RE/MAX Brasil','Matriz'],['RE/MAX TV','TV da Rede'],['Master SP Capital III','Regional Sul'],
+                          ['RE/MAX','Rede Exemplo'],['REMAX','Rede Exemplo'],['Remax','Rede Exemplo'],['#RemaxBrasil','#RedeExemplo']);
+  return pares.sort((a,b)=>b[0].length-a[0].length);
+}
+function trocaTermos(txt, pares){ let v=txt; pares.forEach(p=>{ if(v.indexOf(p[0])>=0) v=v.split(p[0]).join(p[1]); }); return v; }
+function aplicarTermos(root){
+  const pares=termosAtivos(); if(!pares.length || !root) return;
+  const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode(n){ const p=n.parentNode;
+    return p && !/^(SCRIPT|STYLE|TEXTAREA)$/.test(p.nodeName) && n.nodeValue.trim()? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT; }});
+  const alvos=[]; let n; while((n=w.nextNode())) alvos.push(n);
+  alvos.forEach(t=>{ const nv=trocaTermos(t.nodeValue,pares); if(nv!==t.nodeValue) t.nodeValue=nv; });
+  $$('[placeholder]',root).forEach(el=>{ const nv=trocaTermos(el.getAttribute('placeholder'),pares); if(nv!==el.getAttribute('placeholder')) el.setAttribute('placeholder',nv); });
+}
+</script>

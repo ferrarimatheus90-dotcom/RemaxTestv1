@@ -1,0 +1,128 @@
+<script>
+/* =======================================================================
+   v3 — Intelligence (BI): marketing digital e tradicional
+        Operação BMAG: Parametrização (perfil Construtor)
+   ======================================================================= */
+let BI_F='todas';
+function tradicionalDe(lid){
+  const U=S.unidades[lid];
+  const impressas=S.pecas.filter(p=>{ const u=S.usuarios[p.uid]; const t=TPLS().find(x=>x.id===p.tpl)||{}; return u&&u.loja===lid && /Papelaria|Placas/.test(t.cat||''); }).length;
+  return {papelaria:U.etapas.e3.ok, placas:U.etapas.e4.ok, fachada:U.fachada.st, interior:U.etapas.e7.ok, impressas};
+}
+VIEWS.bi=function(v){
+  let ls=lojasVisiveis(); if(BI_F!=='todas') ls=ls.filter(l=>l.master===BI_F); if(!ls.length) ls=lojasVisiveis();
+  const M=metricasRede(ls), curt=Math.round(M.alcance*M.eng/100);
+  const tr=ls.map(l=>({l, t:tradicionalDe(l.id), m:metricasLoja(l.id)}));
+  const n=k=>tr.filter(x=>x.t[k]===true).length;
+  v.innerHTML=
+    ph('Marketing digital e tradicional', T('Os dois lados do marketing da rede no mesmo lugar: o digital (publicações, alcance e engajamento) e o tradicional (papelaria, placas, fachada e interior). Os indicadores detalhados de cada área continuam no seu módulo.'),
+      '<button class="btn pri" id="biExp">↓ '+esc(T('Exportar planilha'))+'</button>','bi')+
+    (souMatriz()?'<div class="filtros"><div class="f"><label>'+esc(T('Regional'))+'</label><select id="biReg"><option value="todas">'+esc(T('Todas as regionais'))+'</option>'+
+      BASE.masters.map(m=>'<option value="'+m.id+'"'+(BI_F===m.id?' selected':'')+'>'+esc(m.nome)+'</option>').join('')+'</select></div></div>':'')+
+    '<h2 class="bi-h">'+esc(T('Digital'))+' <a class="btn sm" href="#/marketing">'+esc(T('Indicadores de redes sociais'))+' →</a></h2>'+
+    '<div class="grid g4" style="margin-bottom:22px">'+
+      kpi(T('Publicações'), nf(M.posts), T('últimas 12 semanas'))+kpi(T('Alcance'), compacto(M.alcance), T('contas conectadas'),'k-ok')+
+      kpi(T('Curtidas'), compacto(curt), T('estimadas sobre o alcance'))+kpi(T('Engajamento'), M.eng.toFixed(1).replace('.',',')+'%', T('média das peças'))+'</div>'+
+    '<h2 class="bi-h">'+esc(T('Tradicional'))+' <a class="btn sm" href="#/jornada">'+esc(T('Jornada de adequação'))+' →</a></h2>'+
+    '<div class="grid g4" style="margin-bottom:16px">'+
+      kpi(T('Papelaria nova'), n('papelaria')+'/'+ls.length, T('unidades com cartões e papelaria'), n('papelaria')/ls.length>.5?'k-ok':'k-warn')+
+      kpi(T('Placas e faixas'), n('placas')+'/'+ls.length, T('materiais de campo trocados'))+
+      kpi(T('Fachadas instaladas'), tr.filter(x=>x.t.fachada==='instalada').length+'/'+ls.length, T('nova identidade na rua'))+
+      kpi(T('Peças impressas'), tr.reduce((a,x)=>a+x.t.impressas,0), T('papelaria e placas geradas no Estúdio'))+'</div>'+
+    '<div class="card"><div class="tw"><table><thead><tr><th>'+esc(T('Unidade'))+'</th><th>'+esc(T('Publicações'))+'</th><th>'+esc(T('Alcance'))+'</th><th>'+esc(T('Engajamento'))+'</th>'+
+      '<th>'+esc(T('Papelaria'))+'</th><th>'+esc(T('Placas'))+'</th><th>'+esc(T('Fachada'))+'</th><th>'+esc(T('Interior'))+'</th></tr></thead><tbody>'+
+      tr.map(x=>{ const ok=b=>b?'<span class="tag ok">OK</span>':'<span class="tag mut">'+esc(T('pendente'))+'</span>';
+        return '<tr><td style="font-weight:600">'+esc(x.l.nome)+'<div class="mini">'+esc(masterDe(x.l.master).nome)+'</div></td><td class="num">'+nf(x.m.posts)+'</td><td class="num">'+compacto(x.m.alcance)+'</td>'+
+        '<td class="num">'+x.m.eng.toFixed(1).replace('.',',')+'%</td><td>'+ok(x.t.papelaria)+'</td><td>'+ok(x.t.placas)+'</td>'+
+        '<td>'+(x.t.fachada==='instalada'?'<span class="tag ok">OK</span>':'<span class="tag warn">'+esc(T(FACH_LABEL[x.t.fachada]))+'</span>')+'</td><td>'+ok(x.t.interior)+'</td></tr>'; }).join('')+
+    '</tbody></table></div></div>';
+  $('#biReg')&&$('#biReg').addEventListener('change',e=>{ BI_F=e.target.value; route(); });
+  $('#biExp').addEventListener('click',()=>{
+    const lin=[['unidade','regional','publicacoes','alcance','curtidas_estimadas','engajamento_%','papelaria','placas','fachada','interior','pecas_impressas']];
+    tr.forEach(x=>lin.push([x.l.nome, masterDe(x.l.master).nome, x.m.posts, x.m.alcance, Math.round(x.m.alcance*x.m.eng/100), x.m.eng.toFixed(1).replace('.',','),
+      x.t.papelaria?'sim':'nao', x.t.placas?'sim':'nao', FACH_LABEL[x.t.fachada], x.t.interior?'sim':'nao', x.t.impressas]));
+    baixarBlob(new Blob(['﻿'+lin.map(r=>r.join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),'marketing-digital-e-tradicional.csv');
+    commit('Exportou marketing digital e tradicional', ls.length+' unidades'); toast(T('Planilha exportada.'),1);
+  });
+};
+
+/* ---------- Parametrização (Construtor · BMAG) ---------- */
+const TERMOS_BASE=[['Associado','Associados'],['Corretor','Corretores'],['Unidade','Unidades'],['Franquia','Franquias'],['Master Regional','Masters Regionais'],['Matriz','Matrizes']];
+const PRESETS_TERMOS={
+  'Imobiliária (padrão)':{},
+  'Varejo':{Associado:'Vendedor',Associados:'Vendedores',Corretor:'Vendedor',Corretores:'Vendedores',Unidade:'Loja',Unidades:'Lojas',Franquia:'Loja',Franquias:'Lojas','Master Regional':'Gerente Regional','Masters Regionais':'Gerentes Regionais'},
+  'Logística':{Associado:'Motorista',Associados:'Motoristas',Corretor:'Motorista',Corretores:'Motoristas',Unidade:'Base',Unidades:'Bases',Franquia:'Base',Franquias:'Bases','Master Regional':'Coordenador Regional','Masters Regionais':'Coordenadores Regionais'},
+  'Delivery':{Associado:'Entregador',Associados:'Entregadores',Corretor:'Entregador',Corretores:'Entregadores',Unidade:'Hub',Unidades:'Hubs',Franquia:'Hub',Franquias:'Hubs'}
+};
+async function chamarApi(arq, acao, corpo){
+  const chave=LS.get('pr_chave_api')||'';
+  try{
+    const r=await fetch('api/'+arq+'?acao='+encodeURIComponent(acao),{method:corpo?'POST':'GET', cache:'no-store',
+      headers:Object.assign({'X-Prontos-Chave':chave}, corpo?{'Content-Type':'application/json'}:{}), body:corpo?JSON.stringify(corpo):undefined});
+    const t=await r.text();
+    try{ return JSON.parse(t); }catch(e){ return {ok:false, erro:'Resposta inesperada do servidor (HTTP '+r.status+').'}; }
+  }catch(e){ return {ok:false, erro:'Sem conexão com o servidor: '+e.message}; }
+}
+VIEWS.param=function(v){
+  const pr=S.param, t=pr.termos||{}, off=pr.modulosOff||[];
+  const noServidor = /^https?:/.test(location.protocol) && !EM_QUADRO;
+  v.innerHTML=
+    ph('Parametrização', T('O mesmo sistema, ajustado por cliente sem mexer no código: nome da plataforma, nomenclaturas, módulos ligados e as integrações. Visível só para o Construtor da BMAG.'),
+      '<button class="btn pri" id="pmSalvar">'+esc(T('Salvar parametrização'))+'</button>','param')+
+    '<div class="grid g2" style="margin-bottom:16px">'+
+      '<div class="card pad"><h3>'+esc(T('Identidade do cliente'))+'</h3>'+
+        '<div class="field" style="margin-top:12px"><label>'+esc(T('Nome da plataforma'))+'</label><input id="pmPlat" value="'+esc(pr.plataforma||'Prontos em Rede')+'"></div>'+
+        '<div class="field"><label>'+esc(T('Marca do cliente'))+'</label><input id="pmMarca" value="'+esc(pr.marca||'RE/MAX')+'"></div>'+
+        '<div class="field"><label>'+esc(T('WhatsApp do suporte'))+'</label><input id="pmZap" value="'+esc(pr.whatsSuporte||'')+'" placeholder="+55 11 90000-0000"></div></div>'+
+      '<div class="card pad"><h3>'+esc(T('Módulos ligados'))+'</h3><div class="mini" style="margin:6px 0 10px">'+esc(T('Módulo desligado some do menu de todos os perfis deste cliente.'))+'</div>'+
+        MODULOS.filter(m=>!m.interno).map(m=>'<label style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.4px">'+
+          '<input type="checkbox" data-mod="'+m.id+'" style="width:auto"'+(off.indexOf(m.id)<0?' checked':'')+'> '+m.n+' · '+esc(m.nome)+'</label>').join('')+'</div>'+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>'+esc(T('Nomenclaturas'))+'</h3><div class="r"><select id="pmPreset"><option value="">'+esc(T('Aplicar um modelo…'))+'</option>'+
+      Object.keys(PRESETS_TERMOS).map(k=>'<option>'+esc(k)+'</option>').join('')+'</select></div></div>'+
+      '<div class="tw"><table><thead><tr><th>'+esc(T('Termo padrão'))+'</th><th>'+esc(T('Singular neste cliente'))+'</th><th>'+esc(T('Plural neste cliente'))+'</th></tr></thead><tbody>'+
+      TERMOS_BASE.map(p=>'<tr><td style="font-weight:600">'+p[0]+' / '+p[1]+'</td><td><input data-ts="'+esc(p[0])+'" value="'+esc(t[p[0]]||p[0])+'"></td><td><input data-tp="'+esc(p[1])+'" value="'+esc(t[p[1]]||p[1])+'"></td></tr>').join('')+
+      '</tbody></table></div><div class="cb mini" style="border-top:1px solid var(--line)">'+esc(T('A troca vale para menus, telas, avisos e janelas. Exemplo: “corretor” vira “vendedor”, “unidade” vira “loja”.'))+'</div></div>'+
+    '<div class="grid g2">'+
+      '<div class="card pad"><h3>'+esc(T('Integração de publicação'))+'</h3><div class="mini" style="margin:6px 0 12px">'+esc(T('O fornecedor fica só aqui: o cliente vê a plataforma, não o fornecedor.'))+'</div>'+
+        '<div class="field"><label>'+esc(T('Fornecedor em uso'))+'</label><select id="pmProv">'+PROVEDORES.map(p=>'<option value="'+p.id+'"'+(pr.provedor===p.id?' selected':'')+'>'+esc(p.nome)+' · '+esc(p.tipo)+'</option>').join('')+'</select></div>'+
+        '<div class="field"><label>'+esc(T('Chave de operação deste navegador'))+'</label><input id="pmChave" type="password" value="'+esc(LS.get('pr_chave_api')||'')+'" placeholder="'+esc(T('a mesma do arquivo de configuração no servidor'))+'"></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="pmTestSoc">'+esc(T('Testar conexão'))+'</button><button class="btn" id="pmPostTeste">'+esc(T('Publicar teste'))+'</button></div>'+
+        '<div id="pmResSoc" class="mini" style="margin-top:10px"></div></div>'+
+      '<div class="card pad"><h3>'+esc(T('Avisos por e-mail e WhatsApp'))+'</h3><div class="mini" style="margin:6px 0 12px">'+esc(T('Comunicados, cobranças de leitura e alertas de prazo saem por aqui.'))+'</div>'+
+        '<div class="grid g2" style="gap:10px"><div class="field"><label>'+esc(T('E-mail de teste'))+'</label><input id="pmMail" type="email" placeholder="voce@empresa.com.br"></div>'+
+        '<div class="field"><label>'+esc(T('WhatsApp de teste'))+'</label><input id="pmFone" placeholder="5511900000000"></div></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="pmTestNot">'+esc(T('Ver situação'))+'</button><button class="btn" id="pmEnvMail">'+esc(T('Enviar e-mail de teste'))+'</button><button class="btn" id="pmEnvZap">'+esc(T('Enviar WhatsApp de teste'))+'</button></div>'+
+        '<div id="pmResNot" class="mini" style="margin-top:10px"></div></div>'+
+    '</div>'+
+    (noServidor?'':'<div class="hint warn" style="margin-top:16px">'+esc(T('Os testes de integração funcionam no site publicado (connectagendapro.com), onde o servidor guarda as chaves. Aberto do computador, eles não têm com quem falar.'))+'</div>');
+  $('#pmPreset').addEventListener('change',e=>{ const p=PRESETS_TERMOS[e.target.value]; if(!p) return;
+    TERMOS_BASE.forEach(b=>{ $('[data-ts="'+b[0]+'"]',v).value=p[b[0]]||b[0]; $('[data-tp="'+b[1]+'"]',v).value=p[b[1]]||b[1]; }); });
+  $('#pmSalvar').addEventListener('click',()=>{
+    const termos={}; $$('[data-ts]',v).forEach(i=>{ if(i.value.trim() && i.value.trim()!==i.dataset.ts) termos[i.dataset.ts]=i.value.trim(); });
+    $$('[data-tp]',v).forEach(i=>{ if(i.value.trim() && i.value.trim()!==i.dataset.tp) termos[i.dataset.tp]=i.value.trim(); });
+    const offN=$$('[data-mod]',v).filter(c=>!c.checked).map(c=>c.dataset.mod);
+    commit('Salvou a parametrização do cliente', $('#pmPlat').value.trim(), s=>{ Object.assign(s.param, {plataforma:$('#pmPlat').value.trim()||'Prontos em Rede', marca:$('#pmMarca').value.trim(),
+      whatsSuporte:$('#pmZap').value.trim(), termos, modulosOff:offN, provedor:$('#pmProv').value}); s.social.provedor=$('#pmProv').value; });
+    LS.set('pr_chave_api', $('#pmChave').value.trim());
+    renderNav(); route(); toast(T('Parametrização salva. Menus e textos já seguem o cliente.'),1);
+  });
+  const mostra=(alvo,r)=>{ $(alvo).innerHTML= r.ok? '<span class="tag ok">OK</span> '+esc(r.msg||'')+(r.contas?'<br>'+r.contas.map(c=>esc(c.tipo+' · '+(c.nome||''))).join('<br>'):'')
+    : '<span class="tag warn">'+esc(T('Atenção'))+'</span> '+esc(r.erro||r.msg||'')+(r.configurado===false?'<br>'+esc(T('Falta criar o arquivo prontos-config.php no servidor (veja o README).')):''); };
+  const salvaChave=()=>LS.set('pr_chave_api', $('#pmChave').value.trim());
+  $('#pmTestSoc').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Consultando…'); mostra('#pmResSoc', await chamarApi('social.php','status')); });
+  $('#pmPostTeste').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Publicando…');
+    const cv=await montarPeca({fmt:'feed', tema:'azul', titulo:'TESTE DE PUBLICAÇÃO', sub:(S.param.plataforma||'')+' · '+new Date().toLocaleDateString('pt-BR'),
+      nome:eu().nome, creci:'', tel:'', unidade:S.param.marca||'', foto:''});
+    mostra('#pmResSoc', await chamarApi('social.php','publicar',{legenda:'Teste de publicação da plataforma '+(S.param.plataforma||'')+' · '+new Date().toLocaleString('pt-BR'),
+      imagem:cv.toDataURL('image/jpeg',0.86)})); });
+  $('#pmTestNot').addEventListener('click',async()=>{ salvaChave(); mostra('#pmResNot', await chamarApi('notificar.php','status')); });
+  $('#pmEnvMail').addEventListener('click',async()=>{ salvaChave(); const to=$('#pmMail').value.trim(); if(!to) return toast(T('Informe o e-mail de teste.'));
+    mostra('#pmResNot', await chamarApi('notificar.php','email',{para:to, assunto:'Teste da plataforma '+(S.param.plataforma||''), texto:'Se você recebeu esta mensagem, os avisos por e-mail estão funcionando.'})); });
+  $('#pmEnvZap').addEventListener('click',async()=>{ salvaChave(); const to=$('#pmFone').value.replace(/\D/g,''); if(!to) return toast(T('Informe o WhatsApp de teste.'));
+    mostra('#pmResNot', await chamarApi('notificar.php','whatsapp',{para:to, texto:'Teste da plataforma '+(S.param.plataforma||'')+': os avisos por WhatsApp estão funcionando.'})); });
+};
+</script>
+<style>
+.bi-h{font-size:20px;font-weight:600;letter-spacing:-.02em;margin:6px 0 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+</style>

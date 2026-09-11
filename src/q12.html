@@ -12,10 +12,10 @@ function abrirTicket(o){
 VIEWS.suporte=function(v){
   const ls=lojasVisiveis();
   const meus = ROLE==='corretor'||ROLE==='franquia';
-  const lista = ROLE==='brasil'? S.tickets : S.tickets.filter(t=>ls.some(l=>l.id===t.loja));
+  const lista = souMatriz()? S.tickets : S.tickets.filter(t=>ls.some(l=>l.id===t.loja));
   const abertos=lista.filter(t=>!/Resolvido/.test(t.st));
   v.innerHTML =
-    ph('Central de atendimento','Suporte de verdade, não só chatbot. O assistente resolve a dúvida recorrente na hora; quando não resolve, vira chamado com responsável, prazo e histórico — e uma pessoa da operação assume.',
+    ph('Chamados e assistente','Suporte de verdade, não só chatbot. O assistente resolve a dúvida recorrente na hora; quando não resolve, vira chamado com responsável, prazo e histórico — e uma pessoa da operação assume.',
       '<button class="btn pri" id="novoT">+ Abrir chamado</button><button class="btn" id="zap">Simular WhatsApp</button>','suporte')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Chamados abertos', abertos.length, meus?'seus e da sua unidade':'na rede', abertos.length>4?'k-warn':'')+
@@ -107,7 +107,7 @@ VIEWS.suporte=function(v){
 
 function detalheTicket(id, apos){
   const t=S.tickets.find(x=>x.id===id);
-  const podeAgir = ROLE==='brasil'||ROLE==='master'||ROLE==='franquia';
+  const podeAgir = souMatriz()||ROLE==='master'||ROLE==='franquia';
   const ov=modal('Chamado '+t.id,
     '<div class="kv"><span class="k">Assunto</span><span class="v"><b>'+esc(t.assunto)+'</b></span></div>'+
     '<div class="kv"><span class="k">Unidade</span><span class="v">'+esc((lojaDe(t.loja)||{}).nome||'—')+' · aberto por '+esc(t.autor||'—')+'</span></div>'+
@@ -150,7 +150,7 @@ VIEWS.implantacao=function(v){
     '</div>'+
     '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Expansão por ondas</h3><div class="r"><span class="mini">cada onda repete o mesmo kit de implantação</span></div></div><div class="cb">'+
       '<div class="grid g4" style="gap:12px">'+
-      [['Primeira onda','20 unidades · 200 usuários','em execução','ok'],['Onda 1','primeiras regionais completas','planejada',''],
+      [['Primeira onda','60 unidades · ~420 usuários em 30 dias','meta alinhada','ok'],['Onda 1','primeiras regionais completas','planejada',''],
        ['Onda 2','novas Masters','planejada',''],['Rede','~600 unidades','projetada','mut']].map(o=>
       '<div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;'+(o[3]==='ok'?'border-top:3px solid var(--ok)':'')+'">'+
       '<div class="tag '+(o[3]||'mut')+'">'+o[2]+'</div><div style="font-family:var(--font-d);font-weight:800;font-size:16px;margin-top:8px">'+o[0]+'</div>'+
@@ -161,8 +161,8 @@ VIEWS.implantacao=function(v){
       '<div class="card"><div class="ch"><h3>Carteira de unidades</h3><div class="r"><span class="mini">avance o onboarding pelo botão</span></div></div>'+
       '<div class="tw"><table><thead><tr><th>Unidade</th><th>Onboarding</th><th>Ativos</th><th>Adesão</th><th>Risco</th><th></th></tr></thead><tbody id="tbo"></tbody></table></div></div>'+
       '<div class="card"><div class="ch"><h3>Kit de onboarding</h3></div><div class="cb"><div class="tl">'+
-        [['Reunião de abertura com o gestor','done'],['Importação da base e criação dos acessos','done'],
-         ['Treinamento de 40 minutos com a equipe','now'],['Primeira peça publicada por cada associado','pendente'],
+        [['Reunião de abertura de 30 minutos com o gestor','done'],['Cadastro da loja e da equipe pela planilha (≈15 min)','done'],
+         ['Primeiro acesso de cada associado (≈5 min) e videoaulas do Help Desk','now'],['Primeira peça publicada por cada associado','pendente'],
          ['Checklist da jornada iniciado','pendente'],['Revisão de 30 dias com o CS','pendente']]
         .map(p=>'<div class="it '+(p[1]==='done'?'done':p[1]==='now'?'now':'')+'"><div class="t" style="font-size:12.9px">'+p[0]+'</div></div>').join('')+
       '</div><div class="hint">Meta de ativação: 80% dos associados com pelo menos uma peça gerada em 15 dias.</div></div></div>'+

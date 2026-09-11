@@ -3,3 +3,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+# chaves das integrações: ficam só no servidor, nunca no repositório público
+prontos-config.php
+api/config.php

@@ -2,6 +2,11 @@
 /* =======================================================================
    MÓDULO 1 · BRAND CENTER
    ======================================================================= */
+const rgbDe = h => [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)).join(' · ');
+function cmykDe(h){ const [r,g,b]=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255), k=1-Math.max(r,g,b);
+  if(k>=1) return '0 · 0 · 0 · 100'; return [r,g,b].map(x=>Math.round((1-x-k)/(1-k)*100)).concat([Math.round(k*100)]).join(' · '); }
+const ARQ_MARCA=[['ai','Illustrator (.AI)','Logotipos e peças editáveis em vetor'],['psd','Photoshop (.PSD)','Modelos de peça em camadas'],
+  ['svg','Vetor (.SVG / .EPS)','Para gráfica, plotter e comunicação visual'],['canva','Canva','Modelos compartilhados com a equipe da unidade'],['fonte','Fontes (Windows e Mac)','Família tipográfica institucional para instalar']];
 VIEWS.guia=function(v){
   v.innerHTML =
     ph('Guia da marca','Fonte única da identidade RE/MAX: versões do logotipo, cores, tipografia e regras de aplicação. Quando a RE/MAX Brasil atualiza aqui, a rede inteira passa a ver a versão nova — e o assistente do suporte responde por estas mesmas regras.',
@@ -20,10 +25,16 @@ VIEWS.guia=function(v){
         REGRAS.map(r=>'<div style="display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)"><span class="tag '+(r.t==='Proibido'?'bad':'mut')+'" style="min-width:118px;justify-content:center">'+esc(r.t)+'</span><div style="font-size:13px;color:var(--ink-2)">'+esc(r.d)+'</div></div>').join('')+
       '</div></div>'+
     '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Arquivos para designers e gráficas</h3><div class="r"><span class="mini">'+(souMatriz()?'envie os arquivos oficiais; a rede baixa daqui':'formatos para quem edita e imprime')+'</span></div></div><div class="lst">'+
+      ARQ_MARCA.map(a=>{ const f=(S.arquivosMarca||[]).find(x=>x.tipo===a[0]);
+        return '<div class="li" style="cursor:default"><span class="ico">'+a[0].toUpperCase().slice(0,3)+'</span><div class="bd"><div class="t">'+esc(a[1])+'</div><div class="s">'+esc(a[2])+(f?' · '+esc(f.nome)+' · '+kb(f.tam):'')+'</div></div>'+
+          '<div class="rt" style="display:flex;gap:6px">'+(f&&f.src?'<button class="btn sm pri" data-arqdl="'+a[0]+'">↓ Baixar</button>':'')+
+          (souMatriz()?'<button class="btn sm" data-arqenv="'+a[0]+'">'+(f?'Trocar':'Enviar arquivo')+'</button>':(!f?'<button class="btn sm" data-arqsol="'+a[0]+'">Solicitar</button>':''))+'</div></div>'; }).join('')+
+    '</div></div>'+
     '<div class="grid g2">'+
       '<div class="card"><div class="ch"><h3>Cores institucionais</h3><div class="r"><span class="mini">clique para copiar</span></div></div><div class="cb"><div class="grid" style="grid-template-columns:repeat(3,1fr);gap:10px">'+
         CORES.map(c=>'<div data-hex="'+c.hex+'" style="cursor:pointer"><div style="height:56px;border-radius:9px;background:'+c.hex+';border:1px solid var(--line)"></div>'+
-        '<div style="font-size:12.3px;font-weight:600;margin-top:6px">'+esc(c.n)+'</div><div class="mini num">'+c.hex+'</div></div>').join('')+
+        '<div style="font-size:12.3px;font-weight:600;margin-top:6px">'+esc(c.n)+'</div><div class="mini num" style="line-height:1.5">'+c.hex+'<br>RGB '+rgbDe(c.hex)+'<br>CMYK '+cmykDe(c.hex)+'<br>Pantone: a confirmar</div></div>').join('')+
       '</div></div></div>'+
       '<div class="card"><div class="ch"><h3>Tipografia e dúvidas frequentes</h3></div><div class="cb">'+
         '<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px">'+
@@ -34,6 +45,19 @@ VIEWS.guia=function(v){
       '</div></div>'+
     '</div>';
 
+  $$('[data-arqdl]',v).forEach(b=>b.addEventListener('click',()=>{ const f=S.arquivosMarca.find(x=>x.tipo===b.dataset.arqdl);
+    fetch(f.src).then(r=>r.blob()).then(bl=>{ baixarBlob(bl,f.nome); commit('Baixou arquivo da marca', f.nome); }); }));
+  $$('[data-arqsol]',v).forEach(b=>b.addEventListener('click',()=>{ const a=ARQ_MARCA.find(x=>x[0]===b.dataset.arqsol);
+    commit('Solicitou arquivo da marca', a[1], s=>{ s.solicitacoes.unshift({id:uid('s'), tipo:'arquivo', nome:a[1], quem:eu().nome, q:agora(), st:'aberta'}); });
+    abrirTicket({assunto:'Arquivo da marca: '+a[1], canal:'Plataforma', prio:'Baixa', sla:'24h'}); renderNav(); toast('<b>Pedido enviado.</b> A Matriz recebe e publica o arquivo aqui.',1); }));
+  $$('[data-arqenv]',v).forEach(b=>b.addEventListener('click',()=>{ const a=ARQ_MARCA.find(x=>x[0]===b.dataset.arqenv);
+    const inp=$('#filePicker'); inp.value=''; inp.accept=''; inp.multiple=false;
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+      const grava=src=>{ commit('Publicou arquivo da marca', a[1]+' · '+f.name, s=>{ s.arquivosMarca=(s.arquivosMarca||[]).filter(x=>x.tipo!==a[0]).concat([{tipo:a[0], nome:f.name, tam:f.size, src, q:agora()}]); });
+        route(); toast(src?'Arquivo publicado para a rede.':'Arquivo registrado. Acima de 3 MB, o download fica no servidor na versão final.',1); };
+      if(f.size>3*1048576) return grava('');
+      const fr=new FileReader(); fr.onload=()=>grava(fr.result); fr.readAsDataURL(f); };
+    inp.click(); }));
   $$('[data-hex]',v).forEach(el=>el.addEventListener('click',()=>{ try{navigator.clipboard.writeText(el.dataset.hex);}catch(e){} toast('Cor '+el.dataset.hex+' copiada.',1); }));
   $$('[data-logo]',v).forEach(b=>b.addEventListener('click',()=>{
     const cv=document.createElement('canvas'), esc_=4;
@@ -61,11 +85,16 @@ VIEWS.guia=function(v){
 };
 
 /* ---------- Biblioteca de materiais ---------- */
-let CAT_ATUAL='Todos';
+let CAT_ATUAL='Todos', SOL_ATUAL=null;
 VIEWS.biblioteca=function(v){
   v.innerHTML =
     ph('Biblioteca de materiais','Tudo o que a rede pode publicar, imprimir ou instalar, sempre na versão vigente da marca. Cada modelo abre no Estúdio já preenchido com os seus dados.',
-      ROLE==='brasil'?'<button class="btn pri" id="novoT">+ Publicar modelo</button>':'','biblioteca')+
+      '<button class="btn'+(ROLE==='construtor'?'':' pri')+'" id="pedT">Solicitar novo modelo</button>'+(ROLE==='construtor'?'<button class="btn pri" id="novoT">+ Publicar modelo</button>':''),'biblioteca')+
+    (ROLE==='construtor'&&(S.solicitacoes||[]).some(x=>x.tipo==='modelo'&&x.st==='aberta')?
+      '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Pedidos de modelo</h3><div class="r"><span class="tag warn">'+S.solicitacoes.filter(x=>x.tipo==='modelo'&&x.st==='aberta').length+' abertos</span></div></div><div class="lst">'+
+      S.solicitacoes.filter(x=>x.tipo==='modelo'&&x.st==='aberta').map(x=>'<div class="li" style="cursor:default"><span class="ico">'+esc((x.fmt||'').slice(0,2).toUpperCase())+'</span><div class="bd"><div class="t">'+esc(x.nome)+'</div>'+
+        '<div class="s">'+esc(x.fin||'')+' · '+esc(x.quem)+' · '+quando(x.q)+'</div></div><div class="rt"><button class="btn sm pri" data-atende="'+x.id+'">Criar e publicar</button></div></div>').join('')+'</div></div>':'')+
+    '<div class="hint" style="margin-bottom:16px">Modelos novos passam pela equipe de design para manter a rede no padrão: peça pelo botão “Solicitar novo modelo” e acompanhe em Chamados.</div>'+
     '<div class="chips" id="cats" style="margin-bottom:16px">'+CATS.map(c=>'<button class="chip '+(c===CAT_ATUAL?'on':'')+'" data-c="'+c+'">'+c+'</button>').join('')+'</div>'+
     '<div class="grid g4" id="tpls"></div>';
   const pinta=()=>{
@@ -88,11 +117,28 @@ VIEWS.biblioteca=function(v){
   };
   pinta();
   $$('#cats .chip').forEach(b=>b.addEventListener('click',()=>{CAT_ATUAL=b.dataset.c;$$('#cats .chip').forEach(x=>x.classList.toggle('on',x===b));pinta();}));
+  $('#pedT').addEventListener('click',()=>{
+    const ov=modal('Solicitar novo modelo',
+      '<div class="field"><label>O que você precisa</label><input id="pdN" placeholder="Ex.: Convite para o feirão do bairro"></div>'+
+      '<div class="field"><label>Para que vai ser usado</label><input id="pdF" placeholder="Onde vai circular, público, prazo"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Formato</label><select id="pdT"><option value="feed">Post 1080×1080</option><option value="story">Story 1080×1920</option><option value="placa46">Placa 40×60 cm</option><option value="placa">Placa 80×60 cm</option><option value="cartao">Cartão 90×50 mm</option><option value="a4">A4</option></select></div>'+
+      '<div class="field"><label>Precisa até</label><input type="date" id="pdD"></div></div>'+
+      '<div class="hint">O pedido vira chamado com SLA de 3 dias úteis. Quando o modelo fica pronto, ele aparece na biblioteca para toda a rede.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="pdOk">Enviar pedido</button>');
+    $('#pdOk',ov).addEventListener('click',()=>{
+      const nome=$('#pdN',ov).value.trim(); if(!nome) return toast('Descreva o modelo que você precisa.');
+      commit('Solicitou novo modelo', nome, s=>{ s.solicitacoes.unshift({id:uid('s'), tipo:'modelo', nome, fin:$('#pdF',ov).value.trim(), fmt:$('#pdT',ov).value, ate:$('#pdD',ov).value, quem:eu().nome, q:agora(), st:'aberta'}); });
+      abrirTicket({assunto:'Novo modelo: '+nome, canal:'Plataforma', prio:'Média', sla:'3 dias úteis'});
+      fechaModal(); renderNav(); route(); toast('<b>Pedido enviado.</b> Vira chamado com SLA de 3 dias úteis.',1);
+    });
+  });
+  $$('[data-atende]',v).forEach(b=>b.addEventListener('click',()=>{ SOL_ATUAL=b.dataset.atende; $('#novoT').click();
+    const x=S.solicitacoes.find(y=>y.id===SOL_ATUAL); if(x){ $('#mN').value=x.nome; const f=$('#mF'); if(f && [...f.options].some(o=>o.value===x.fmt)) f.value=x.fmt; } }));
   $('#novoT')&&$('#novoT').addEventListener('click',()=>{
     const ov=modal('Publicar novo modelo',
       '<div class="field"><label>Nome do modelo</label><input id="mN" placeholder="Ex.: Convite para feirão"></div>'+
       '<div class="grid g2" style="gap:12px"><div class="field"><label>Categoria</label><select id="mC">'+CATS.filter(c=>c!=='Todos').map(c=>'<option>'+c+'</option>').join('')+'</select></div>'+
-      '<div class="field"><label>Formato</label><select id="mF"><option value="feed">Feed 1080×1080</option><option value="story">Story 1080×1920</option><option value="cartao">Cartão 90×50 mm</option><option value="placa">Placa 80×60 cm</option><option value="slide">16:9</option></select></div></div>'+
+      '<div class="field"><label>Formato</label><select id="mF"><option value="feed">Feed 1080×1080</option><option value="story">Story 1080×1920</option><option value="cartao">Cartão 90×50 mm</option><option value="placa">Placa 80×60 cm</option><option value="placa46">Placa 40×60 cm</option><option value="slide">16:9</option></select></div></div>'+
       '<div class="field"><label>Título da arte</label><input id="mT" placeholder="Texto grande da peça"></div>'+
       '<div class="field"><label>Linha de apoio</label><input id="mS" placeholder="Texto menor"></div>'+
       '<div class="hint">O modelo entra na biblioteca de toda a rede e já abre no Estúdio com os dados de quem for usar.</div>',
@@ -100,8 +146,9 @@ VIEWS.biblioteca=function(v){
     $('#mOk',ov).addEventListener('click',()=>{
       const nome=$('#mN',ov).value.trim(); if(!nome) return toast('Dê um nome ao modelo.');
       const fmt=$('#mF',ov).value;
-      const dims={feed:'1080 × 1080',story:'1080 × 1920',cartao:'90 × 50 mm · 300 dpi',placa:'80 × 60 cm',slide:'16:9'};
+      const dims={feed:'1080 × 1080',story:'1080 × 1920',cartao:'90 × 50 mm · 300 dpi',placa:'80 × 60 cm',placa46:'40 × 60 cm',slide:'16:9'};
       commit('Publicou modelo na biblioteca', nome, s=>{
+        if(SOL_ATUAL){ const x=(s.solicitacoes||[]).find(y=>y.id===SOL_ATUAL); if(x){ x.st='atendida'; x.atendida=agora(); } SOL_ATUAL=null; }
         s.templatesExtra=(s.templatesExtra||[]).concat([{id:uid('t'), nome, cat:$('#mC',ov).value, fmt, dim:dims[fmt],
           tag:'Novo', txt:($('#mT',ov).value.trim()||nome).toUpperCase(), sub:$('#mS',ov).value.trim()}]);
       });

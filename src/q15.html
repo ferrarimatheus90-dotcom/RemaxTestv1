@@ -3,7 +3,7 @@
    MÓDULO 6 · PROGRAMA DE EXCELÊNCIA
    Entrega comprovada com foto, guardada e validada — vira ponto e bonificação.
    ======================================================================= */
-const critDe = id => CRITERIOS_EXC.find(c=>c.id===id) || {nome:'Critério', pts:0};
+const critDe = id => ((S&&S.pexCriterios)||CRITERIOS_EXC).find(c=>c.id===id) || {nome:'Critério', pts:0};
 const provasDe = lid => S.excelencia.provas.filter(p=>p.loja===lid);
 function pontosExcLoja(lid){ return provasDe(lid).filter(p=>p.st==='aprovado').reduce((a,p)=>a+p.pts,0); }
 function pontosExcUser(id){ return S.excelencia.provas.filter(p=>p.uid===id&&p.st==='aprovado').reduce((a,p)=>a+p.pts,0); }
@@ -17,7 +17,7 @@ function proximaFaixa(pts){
 }
 
 VIEWS.excelencia=function(v){
-  const eGestor = ROLE==='brasil'||ROLE==='master';
+  const eGestor = souMatriz()||ROLE==='master';
   const alvoLoja = escopoLoja();
   const ls=lojasVisiveis();
   const provas = eGestor ? S.excelencia.provas.filter(p=>ls.some(l=>l.id===p.loja)) : provasDe(alvoLoja);
@@ -29,7 +29,7 @@ VIEWS.excelencia=function(v){
   v.innerHTML =
     ph('Programa de Excelência','Cada entrega feita vale ponto — desde que comprovada. O associado ou a unidade envia a foto da prova, a RE/MAX valida, o arquivo fica guardado com autor, data e hora, e os pontos entram na faixa de bonificação do ciclo.',
       (ROLE!=='brasil'?'<button class="btn pri" id="envProva">＋ Enviar comprovação</button>':'')+
-      (ROLE==='brasil'?'<button class="btn" id="editFaixas">Configurar faixas</button><button class="btn pri" id="expExc">↓ Exportar comprovações</button>':''),'excelencia')+
+      (souMatriz()?'<button class="btn" id="editFaixas">Configurar faixas</button><button class="btn pri" id="expExc">↓ Exportar comprovações</button>':''),'excelencia')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi(eGestor?'Pontos validados':'Meus pontos', nf(meusPts), 'no ciclo '+esc(S.excelencia.ciclo), faixa?'k-ok':'')+
       kpi('Faixa atual', faixa? esc(faixa.nome) : '—', prox? 'faltam '+(prox.min-meusPts)+' pontos para '+prox.nome : 'faixa máxima alcançada', faixa&&faixa.id==='ouro'?'k-ok':'k-warn')+
@@ -46,8 +46,8 @@ VIEWS.excelencia=function(v){
     '</div>'+
     (eGestor&&pend.length?'<div class="hint warn" style="margin-bottom:16px"><b>'+pend.length+' comprovações aguardando validação.</b> Validar credita os pontos na hora e move o ranking da rede.</div>':'')+
     '<div class="grid g23" style="margin-bottom:16px">'+
-      '<div class="card"><div class="ch"><h3>Critérios do ciclo</h3><div class="r"><span class="mini">'+CRITERIOS_EXC.length+' formas de pontuar</span></div></div><div class="cb">'+
-        CRITERIOS_EXC.map(c=>{
+      '<div class="card"><div class="ch"><h3>Critérios do ciclo</h3><div class="r"><span class="mini">'+critLista().length+' formas de pontuar</span></div></div><div class="cb">'+
+        critLista().map(c=>{
           const feita = provas.some(p=>p.criterio===c.id && p.st==='aprovado');
           return '<div class="crit"><div class="pt">'+c.pts+'</div><div class="cn"><b>'+esc(c.nome)+(feita?' <span class="tag ok">validado</span>':'')+'</b>'+
           '<span>'+esc(c.desc)+' · prova: '+esc(c.prova)+'</span></div>'+
@@ -117,7 +117,7 @@ VIEWS.excelencia=function(v){
   const abrirEnvio=(critId)=>{
     let arq=null;
     const ov=modal('Enviar comprovação',
-      '<div class="field"><label>Critério</label><select id="xC">'+CRITERIOS_EXC.map(c=>'<option value="'+c.id+'"'+(c.id===critId?' selected':'')+'>'+esc(c.nome)+' · '+c.pts+' pts</option>').join('')+'</select></div>'+
+      '<div class="field"><label>Critério</label><select id="xC">'+critLista().map(c=>'<option value="'+c.id+'"'+(c.id===critId?' selected':'')+'>'+esc(c.nome)+' · '+c.pts+' pts</option>').join('')+'</select></div>'+
       '<div class="field"><label>Unidade</label><select id="xL">'+(alvoLoja? '<option value="'+alvoLoja+'">'+esc(lojaDe(alvoLoja).nome)+'</option>' : lojasVisiveis().map(l=>'<option value="'+l.id+'">'+esc(l.nome)+'</option>').join(''))+'</select></div>'+
       '<div class="drop" id="dx"><div class="ic">📷</div><div class="t">Enviar a foto da prova</div><div class="mini">JPG ou PNG · fica guardada com autor, data e hora</div></div>'+
       '<div id="xLista"></div>'+
@@ -138,7 +138,7 @@ VIEWS.excelencia=function(v){
       toast('<b>Comprovação enviada.</b> Fica guardada e aguarda a validação da RE/MAX.',1);
     });
   };
-  $('#envProva')&&$('#envProva').addEventListener('click',()=>abrirEnvio(CRITERIOS_EXC[0].id));
+  $('#envProva')&&$('#envProva').addEventListener('click',()=>abrirEnvio(critLista()[0].id));
   $$('[data-crit]',v).forEach(b=>b.addEventListener('click',()=>abrirEnvio(b.dataset.crit)));
 
   $('#editFaixas')&&$('#editFaixas').addEventListener('click',()=>{

@@ -6,7 +6,7 @@ let AREA_ATUAL='Todas';
 VIEWS.comunicados=function(v,arg){
   if(arg) return comunicadoDetalhe(v,arg);
   const ls=lojasVisiveis();
-  const podePublicar = ROLE==='brasil'||ROLE==='master';
+  const podePublicar = souMatriz()||ROLE==='master';
   const meus=S.comunicados.length, obr=S.comunicados.filter(k=>k.obr).length;
   const minhaLeitura=S.comunicados.length-naoLidos().length;
   const redeLeitura=Math.round(ls.reduce((a,l)=>a+leituraDe(l.id),0)/Math.max(1,ls.length));
@@ -35,24 +35,41 @@ VIEWS.comunicados=function(v,arg){
   pinta();
   $$('#areas .chip').forEach(b=>b.addEventListener('click',()=>{AREA_ATUAL=b.dataset.a;$$('#areas .chip').forEach(x=>x.classList.toggle('on',x===b));pinta();}));
   $('#novoC')&&$('#novoC').addEventListener('click',()=>{
+    let img='';
+    const dests = souMatriz()? ['Toda a rede','Masters Regionais','Franquias','Associados'].concat(BASE.masters.map(m=>'Regional · '+m.nome))
+                             : ['Toda a regional','Franquias da regional','Associados da regional'];
     const ov=modal('Novo comunicado',
       '<div class="field"><label>Título</label><input id="cT" placeholder="Ex.: Etapa de papelaria — prorrogação de prazo"></div>'+
       '<div class="grid g2" style="gap:12px"><div class="field"><label>Área</label><select id="cA">'+AREAS.map(a=>'<option>'+a+'</option>').join('')+'</select></div>'+
-      '<div class="field"><label>Destinatários</label><select id="cD"><option>Toda a rede</option><option>Masters Regionais</option><option>Franquias</option><option>Associados</option></select></div></div>'+
+      '<div class="field"><label>Destinatários</label><select id="cD">'+dests.map(d=>'<option>'+esc(d)+'</option>').join('')+'</select></div></div>'+
       '<div class="field"><label>Resumo</label><input id="cR" placeholder="Uma linha que aparece na lista"></div>'+
       '<div class="field"><label>Texto</label><textarea id="cC" rows="4" placeholder="Conteúdo do comunicado…"></textarea></div>'+
+      '<div class="field"><label>Imagem ou vídeo (opcional)</label><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="cImg">Anexar imagem</button>'+
+        '<input id="cVid" placeholder="ou o link de um vídeo do YouTube ou do Instagram" style="flex:1;min-width:200px"></div><div id="cImgP" style="margin-top:8px"></div></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Evento (opcional)</label><input type="date" id="cEv"></div>'+
+      '<div class="field"><label>Local do evento</label><input id="cEvL" placeholder="Ex.: São Paulo · SP"></div></div>'+
+      '<div class="field"><label>Avisar por</label><div class="chips" id="cCan"><button class="chip on" data-c="plataforma" disabled>Plataforma</button>'+
+        '<button class="chip on" data-c="email">E-mail</button><button class="chip on" data-c="whatsapp">WhatsApp</button><button class="chip" data-c="popup">Aviso ao entrar</button></div></div>'+
       '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="cO" checked style="width:auto"> Exigir confirmação de leitura</label>',
       '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="cOk">Publicar</button>');
+    $$('#cCan .chip:not([disabled])',ov).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+    $('#cImg',ov).addEventListener('click',()=>escolherImagem(1200,.8,url=>{ img=url; $('#cImgP',ov).innerHTML='<img src="'+url+'" alt="" style="max-height:110px;border-radius:10px">'; }));
     $('#cOk',ov).addEventListener('click',()=>{
       const tit=$('#cT',ov).value.trim(); if(!tit) return toast('Dê um título ao comunicado.');
-      const id=uid('k');
-      commit('Publicou comunicado', tit, s=>{
+      const lk=$('#cVid',ov).value.trim(), yt=ytId(lk), ig=yt?'':igCodigo(lk);
+      if(lk && !yt && !ig) return toast('O link de vídeo precisa ser do YouTube ou do Instagram.');
+      const canais=['plataforma'].concat($$('#cCan .chip.on:not([disabled])',ov).map(c=>c.dataset.c));
+      const dest=$('#cD',ov).value, n=destinatariosN(dest), id=uid('k'), ev=$('#cEv',ov).value;
+      commit('Publicou comunicado', tit+' · '+dest, s=>{
         s.comunicados.unshift({id, area:$('#cA',ov).value, tit, dt:new Date().toISOString().slice(0,10),
           obr:$('#cO',ov).checked, res:$('#cR',ov).value.trim()||tit, corpo:esc($('#cC',ov).value.trim()).replace(/\n/g,'<br>'),
-          autor:eu().nome, dest:$('#cD',ov).value});
+          autor:eu().nome, dest, canais, popup:canais.indexOf('popup')>=0,
+          midia:(img||yt||ig)?{img, yt, ig}:null, evento:ev?{data:ev, hora:'09:00', fim:'18:00', local:$('#cEvL',ov).value.trim()}:null});
         s.leituras[id]=[];
+        s.envios.unshift({k:id, q:agora(), tipo:'publicacao', canais, n, quem:eu().nome});
       });
-      fechaModal(); route(); toast('<b>Comunicado publicado.</b> A rede recebe agora e a leitura passa a ser medida.',1);
+      const ext=canais.filter(c=>c==='email'||c==='whatsapp').map(c=>c==='email'?'e-mail':'WhatsApp');
+      fechaModal(); route(); toast('<b>Comunicado publicado</b> para '+n+' pessoas'+(ext.length?', com aviso por '+ext.join(' e '):'')+'. A leitura passa a ser medida.',1);
     });
   });
 };
@@ -66,7 +83,7 @@ function comunicadoDetalhe(v,id){
     ph(esc(k.tit),'<span class="tag mut">'+esc(k.area)+'</span> &nbsp; publicado em '+dt(k.dt).toLocaleDateString('pt-BR')+' por '+esc(k.autor||'RE/MAX Brasil')+
       (k.obr?' &nbsp; <span class="tag red">Leitura obrigatória</span>':''),'','comunicados')+
     '<div class="grid '+(verLeitura?'g23':'')+'">'+
-      '<div class="card pad"><div style="font-size:14.2px;line-height:1.7;color:var(--ink-2)">'+k.corpo+'</div><div class="divider"></div>'+
+      '<div class="card pad">'+midiaComunicado(k)+'<div style="font-size:14.2px;line-height:1.7;color:var(--ink-2)">'+k.corpo+'</div>'+eventoComunicado(k)+'<div class="divider"></div>'+
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
         (lido?'<span class="tag ok">✓ Leitura confirmada</span>':'<button class="btn pri" id="okLer">Confirmar leitura</button>')+
         '<button class="btn" id="dlK">↓ Baixar</button><a class="btn" href="#/jornada">Ir para a jornada</a></div></div>'+
@@ -76,15 +93,36 @@ function comunicadoDetalhe(v,id){
           const p=Math.round(n/Math.max(1,cs.length)*100);
           return '<div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12.7px"><span style="font-weight:600">'+esc(l.nome)+'</span><span class="mini num">'+n+'/'+cs.length+'</span></div>'+barra(p)+'</div>';
         }).join('')+
-        '<div class="divider"></div><button class="btn sm" id="cobrar">Cobrar quem não leu</button></div></div>':'')+
+        '<div class="divider"></div>'+enviosComunicado(k)+'<button class="btn sm" id="cobrar">Cobrar quem não leu</button></div></div>':'')+
     '</div>';
   $('#okLer')&&$('#okLer').addEventListener('click',()=>{
     commit('Confirmou leitura', k.tit, s=>{ s.leituras[k.id]=(s.leituras[k.id]||[]).concat([euId()]); });
     route(); renderNav(); toast('Leitura confirmada, com data e hora.',1);
   });
+  $('#icsK')&&$('#icsK').addEventListener('click',()=>{ baixarBlob(new Blob([icsDe(k)],{type:'text/calendar;charset=utf-8'}),'evento-'+k.id+'.ics'); toast('Convite baixado: abre em qualquer agenda.',1); });
   $('#cobrar')&&$('#cobrar').addEventListener('click',()=>{
-    const falta=ls.reduce((a,l)=>a+corretoresDe(l.id).filter(u=>(S.leituras[k.id]||[]).indexOf(u.id)<0).length,0);
-    commit('Cobrou leitura', k.tit+' · '+falta+' pessoas'); toast('Lembrete enviado a '+falta+' pessoas por e-mail e WhatsApp.',1);
+    const faltam=[]; ls.forEach(l=>corretoresDe(l.id).forEach(u=>{ if((S.leituras[k.id]||[]).indexOf(u.id)<0) faltam.push(u); }));
+    const link=location.href.split('#')[0]+'#/comunicados/'+k.id;
+    const msg='Olá! Você ainda não confirmou a leitura do comunicado "'+k.tit+'". Leva menos de um minuto: '+link;
+    const ov=modal('Cobrar quem não leu',
+      '<p style="margin:0 0 12px;font-size:13.4px;color:var(--ink-2)"><b>'+faltam.length+' pessoas</b> ainda não confirmaram. A cobrança sai pelos canais marcados e fica registrada neste comunicado.</p>'+
+      '<div class="field"><label>Canais</label><div class="chips" id="cbC"><button class="chip on" data-c="email">E-mail</button><button class="chip on" data-c="whatsapp">WhatsApp</button><button class="chip" data-c="popup">Aviso ao entrar</button></div></div>'+
+      '<div class="field"><label>Mensagem</label><textarea id="cbM" rows="4">'+esc(msg)+'</textarea></div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn sm" id="cbZap" target="_blank" rel="noopener">Testar no meu WhatsApp</a><a class="btn sm" id="cbMail">Testar no meu e-mail</a></div>'+
+      '<div class="hint" style="margin-top:12px">Os botões de teste abrem o seu WhatsApp e o seu e-mail com a mensagem pronta — é o que cada pessoa vai receber.</div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="cbOk">Enviar cobrança a '+faltam.length+'</button>');
+    const atualiza=()=>{ const t=$('#cbM',ov).value;
+      $('#cbZap',ov).href='https://wa.me/?text='+encodeURIComponent(t);
+      $('#cbMail',ov).href='mailto:?subject='+encodeURIComponent('Leitura pendente: '+k.tit)+'&body='+encodeURIComponent(t); };
+    atualiza(); $('#cbM',ov).addEventListener('input',atualiza);
+    $$('#cbC .chip',ov).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
+    $('#cbOk',ov).addEventListener('click',()=>{
+      const canais=$$('#cbC .chip.on',ov).map(c=>c.dataset.c); if(!canais.length) return toast('Marque pelo menos um canal.');
+      commit('Cobrou leitura', k.tit+' · '+faltam.length+' pessoas · '+canais.join(', '), s=>{
+        s.envios.unshift({k:k.id, q:agora(), tipo:'cobranca', canais, n:faltam.length, quem:eu().nome});
+        if(canais.indexOf('popup')>=0){ const x=s.comunicados.find(y=>y.id===k.id); x.popup=true; } });
+      fechaModal(); route(); toast('<b>Cobrança enviada</b> a '+faltam.length+' pessoas por '+canais.map(c=>c==='email'?'e-mail':c==='whatsapp'?'WhatsApp':'aviso ao entrar').join(' e ')+'.',1);
+    });
   });
   $('#dlK').addEventListener('click',()=>{
     const txt=k.tit+'\n'+dt(k.dt).toLocaleDateString('pt-BR')+' · '+k.area+' · '+(k.autor||'RE/MAX Brasil')+'\n\n'+k.corpo.replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'');
@@ -92,11 +130,55 @@ function comunicadoDetalhe(v,id){
   });
 }
 
+/* ---------- comunicados: mídia, evento e envios ---------- */
+function destinatariosN(dest){
+  const us=Object.values(S.usuarios), daReg=mid=>us.filter(u=>(lojaDe(u.loja)||{}).master===mid).length;
+  if(dest==='Masters Regionais') return BASE.masters.length;
+  if(dest==='Franquias') return BASE.lojas.length;
+  if(dest==='Associados') return us.filter(u=>u.nivel==='associado').length;
+  if(/^Regional · /.test(dest)){ const m=BASE.masters.find(x=>'Regional · '+x.nome===dest); return m?daReg(m.id):0; }
+  if(/regional/.test(dest)){ const f=/Franquias/.test(dest)? u=>u.nivel==='franquia' : /Associados/.test(dest)? u=>u.nivel==='associado' : ()=>true;
+    return us.filter(u=>(lojaDe(u.loja)||{}).master===MASTER_DEMO && f(u)).length; }
+  return us.length + BASE.masters.length;
+}
+function midiaComunicado(k){
+  const m=k.midia; if(!m) return '';
+  if(m.yt||m.ig) return '<div class="video-inst k-video">'+capaBotao({yt:m.yt, ig:m.ig, tit:k.tit})+'</div>';
+  return m.img? '<img src="'+m.img+'" alt="" data-lupa style="display:block;width:100%;border-radius:14px;margin-bottom:16px;cursor:zoom-in">' : '';
+}
+const dataIcs = (d,h) => d.replace(/-/g,'')+'T'+String(h||'09:00').replace(':','')+'00';
+function eventoComunicado(k){
+  const e=k.evento; if(!e) return '';
+  const g='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(k.tit)+'&dates='+dataIcs(e.data,e.hora)+'/'+dataIcs(e.data,e.fim||e.hora)+
+    '&ctz=America/Sao_Paulo&location='+encodeURIComponent(e.local||'')+'&details='+encodeURIComponent(k.res||'');
+  return '<div class="k-evento"><div><b>'+dataLonga(dt(e.data))+'</b> · '+esc(e.hora||'')+(e.fim?'–'+esc(e.fim):'')+(e.local?' · '+esc(e.local):'')+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a class="btn sm pri" href="'+g+'" target="_blank" rel="noopener">Adicionar ao Google Agenda</a>'+
+    '<button class="btn sm" id="icsK">↓ Convite para Outlook e celular (.ics)</button></div></div>';
+}
+function icsDe(k){
+  const e=k.evento, limpa=s=>String(s||'').replace(/[,;]/g,' ').replace(/<[^>]+>/g,' ');
+  return ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//BMAG//Prontos em Rede//PT','BEGIN:VEVENT','UID:'+k.id+'@prontosemrede',
+    'DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').slice(0,15)+'Z','DTSTART;TZID=America/Sao_Paulo:'+dataIcs(e.data,e.hora),
+    'DTEND;TZID=America/Sao_Paulo:'+dataIcs(e.data,e.fim||e.hora),'SUMMARY:'+limpa(k.tit),'LOCATION:'+limpa(e.local),'DESCRIPTION:'+limpa(k.res),
+    'BEGIN:VALARM','TRIGGER:-P1D','ACTION:DISPLAY','DESCRIPTION:'+limpa(k.tit),'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+}
+function enviosComunicado(k){
+  const es=(S.envios||[]).filter(x=>x.k===k.id);
+  const can=c=>c==='email'?'E-mail':c==='whatsapp'?'WhatsApp':c==='popup'?'Aviso ao entrar':'Plataforma';
+  return '<div style="margin-bottom:12px"><div style="font-size:12.5px;font-weight:600;margin-bottom:6px">Envios</div>'+
+    (es.length? es.map(x=>{ const r=seed('env'+x.k+x.q);
+      return '<div class="mini" style="padding:5px 0;border-bottom:1px solid var(--line)"><b>'+(x.tipo==='cobranca'?'Cobrança':'Publicação')+'</b> · '+quando(x.q)+' · '+x.n+' pessoas<br>'+
+        x.canais.filter(c=>c!=='plataforma').map(c=>can(c)+(c==='email'?': '+Math.round(x.n*(.95+r()*.04))+' entregues, '+Math.round(x.n*(.48+r()*.2))+' abertos'
+          : c==='whatsapp'?': '+Math.round(x.n*(.93+r()*.05))+' entregues, '+Math.round(x.n*(.62+r()*.2))+' lidos':'')).join(' · ')+'</div>'; }).join('')+
+      '<div class="mini" style="margin-top:6px;opacity:.8">Entregas e aberturas simuladas na demonstração; com a integração ativa, vêm do provedor de e-mail e da API do WhatsApp.</div>'
+    : '<div class="mini">Publicado antes do registro de envios.</div>')+'</div>';
+}
+
 /* =======================================================================
    MÓDULO 3 · USUÁRIOS E PERMISSÕES
    ======================================================================= */
 const PERMISSOES=[
-  ['Publicar comunicado nacional',1,0,0,0],['Criar campanha Prontos em Rede',1,0,0,0],
+  ['Publicar comunicado nacional',1,0,0,0],['Criar campanha da rede',1,0,0,0],
   ['Definir prazos da jornada',1,0,0,0],['Aprovar projeto e evidência',1,1,0,0],
   ['Ver painel da rede',1,1,0,0],['Ver painel da unidade',1,1,1,0],
   ['Enviar evidência da unidade',1,1,1,0],['Gerenciar usuários da unidade',1,1,1,0],
@@ -104,94 +186,200 @@ const PERMISSOES=[
   ['Abrir chamado no suporte',1,1,1,1]
 ];
 function matrizPerm(){ return (S.permissoes && S.permissoes.length===PERMISSOES.length)? S.permissoes : PERMISSOES.map(r=>r.slice()); }
+let PERM_REG='rede';
+function matrizPermDe(reg){ const o=(S.permRegiao||{})[reg]; return (reg!=='rede' && o && o.length===PERMISSOES.length)? o : matrizPerm(); }
+function cnpjOk(c){ c=String(c||'').replace(/\D/g,''); if(c.length!==14 || /^(\d)\1+$/.test(c)) return false;
+  const dv=n=>{ let s=0, p=n-7; for(let i=0;i<n;i++){ s+=(+c[i])*p--; if(p<2) p=9; } const r=s%11; return r<2?0:11-r; };
+  return dv(12)===+c[12] && dv(13)===+c[13]; }
+const emailOk = e => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e||'').trim());
 VIEWS.usuarios=function(v){
   const ls=lojasVisiveis();
   const us=Object.values(S.usuarios).filter(u=>ls.some(l=>l.id===u.loja));
-  const assoc=us.filter(u=>u.nivel==='associado');
-  const ativos=assoc.filter(u=>u.ativo).length;
+  const assoc=us.filter(u=>u.nivel==='associado'), ativos=us.filter(u=>u.ativo).length, nunca=us.filter(u=>!u.ultimo).length;
+  const gere=ROLE!=='corretor';
   v.innerHTML =
-    ph('Usuários e permissões','Quatro níveis hierárquicos, cada um enxergando apenas o seu escopo. Essa estrutura nasce no primeiro dia do desenvolvimento — refazer escopo de permissão depois não é ajuste, é reescrita.',
-      ROLE!=='corretor'?'<button class="btn pri" id="conv">+ Convidar usuário</button>':'','usuarios')+
+    ph('Usuários e permissões','Quatro níveis, cada um vendo só o que é seu. Cadastro individual ou pela planilha (nome, e-mail e celular), último acesso de cada pessoa e troca de senha — por e-mail ou direto.',
+      gere?'<button class="btn" id="uMod">↓ Modelo da planilha</button><button class="btn" id="uImp">Importar planilha (CSV)</button>'+(souMatriz()?'<button class="btn" id="uLoja">＋ Nova unidade</button>':'')+'<button class="btn pri" id="conv">＋ Novo usuário</button>':'','usuarios')+
     '<div class="grid g4" style="margin-bottom:16px">'+
-      kpi('Usuários no escopo', us.length, ls.length+' gestores + '+assoc.length+' associados')+
-      kpi('Ativos', ativos, pct(ativos/Math.max(1,assoc.length)*100)+' dos associados', ativos/Math.max(1,assoc.length)>.7?'k-ok':'k-warn')+
-      kpi('Contas sociais conectadas', assoc.filter(u=>u.ig).length, 'pré-requisito da publicação automatizada')+
-      kpi('Convites enviados', S.convites, 'pela equipe de implantação')+
+      kpi('Usuários ativos', ativos+'/'+us.length, pct(ativos/Math.max(1,us.length)*100)+' dos cadastrados', ativos/Math.max(1,us.length)>.7?'k-ok':'k-warn')+
+      kpi('Nunca acessaram', nunca, 'recebem o convite de novo pelo CS', nunca?'k-warn':'k-ok')+
+      kpi('Contas sociais conectadas', assoc.filter(u=>u.ig).length, 'pré-requisito da publicação automática')+
+      kpi('Convites enviados', S.convites, S.ultimaImportacao?'última planilha: '+S.ultimaImportacao.n+' pessoas em '+(S.ultimaImportacao.ms/1000).toFixed(1).replace('.',',')+' s':'por e-mail e WhatsApp')+
     '</div>'+
     '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Hierarquia da rede</h3><div class="r"><span class="mini">a mesma modelagem vale da primeira unidade às 600</span></div></div><div class="cb"><div class="hier">'+
-      '<div class="hl"><span class="c">1</span><span class="nm">RE/MAX Brasil</span><span class="nt">visão nacional · publica comunicados e campanhas</span></div>'+
-      '<div class="hl"><span class="c">16</span><span class="nm">Masters Regionais</span><span class="nt">acompanham a adesão da regional e aprovam</span></div>'+
-      '<div class="hl"><span class="c">~600</span><span class="nm">Franquias</span><span class="nt">executam o checklist e enviam evidências</span></div>'+
-      '<div class="hl"><span class="c">milhares</span><span class="nm">Associados</span><span class="nt">consomem, personalizam e publicam</span></div>'+
-    '</div><div class="hint" style="margin-top:14px"><b>Nesta fase:</b> '+BASE.masters.length+' regionais de demonstração, '+BASE.lojas.length+' unidades e '+TOTAL_USUARIOS()+' usuários.</div></div></div>'+
+      '<div class="hl"><span class="c">1</span><span class="nm">Matriz</span><span class="nt">visão nacional · publica comunicados e campanhas · define alçadas</span></div>'+
+      '<div class="hl"><span class="c">16</span><span class="nm">Masters Regionais</span><span class="nt">acompanham a regional e aprovam no N1</span></div>'+
+      '<div class="hl"><span class="c">~600</span><span class="nm">Franquias</span><span class="nt">executam o checklist e cadastram a equipe</span></div>'+
+      '<div class="hl"><span class="c">milhares</span><span class="nm">Associados</span><span class="nt">personalizam, publicam e comprovam entregas</span></div>'+
+    '</div></div></div>'+
     '<div class="grid g23">'+
-      '<div class="card"><div class="ch"><h3>Usuários</h3><div class="r"><input id="fq" placeholder="Buscar nome ou unidade…" style="border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px"></div></div>'+
-      '<div class="tw" style="max-height:520px;overflow:auto"><table><thead><tr><th>Usuário</th><th>Unidade</th><th>Nível</th><th>Situação</th><th></th></tr></thead><tbody id="tbc"></tbody></table></div></div>'+
-      '<div class="card"><div class="ch"><h3>Matriz de permissões</h3><div class="r"><span class="mini">'+(ROLE==='brasil'?'clique para mudar quem tem acesso':'definida pela RE/MAX Brasil')+'</span></div></div>'+
+      '<div class="card"><div class="ch"><h3>Usuários</h3><div class="r"><input id="fq" placeholder="Buscar nome, e-mail ou unidade…" style="border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12.5px"></div></div>'+
+      '<div class="tw" style="max-height:540px;overflow:auto"><table><thead><tr><th>Usuário</th><th>Unidade</th><th>Nível</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead><tbody id="tbc"></tbody></table></div></div>'+
+      '<div class="card"><div class="ch"><h3>Matriz de permissões</h3><div class="r">'+(souMatriz()?'<select id="pmReg"><option value="rede">Toda a rede</option>'+
+        BASE.masters.map(m=>'<option value="'+m.id+'"'+(PERM_REG===m.id?' selected':'')+'>'+esc(m.nome)+'</option>').join('')+'</select>':'<span class="mini">definida pela Matriz</span>')+'</div></div>'+
       '<div class="cb" style="overflow-x:auto"><div class="pm" id="pm">'+
-        '<div class="hd">Ação</div><div class="hd">Brasil</div><div class="hd">Master</div><div class="hd">Franquia</div><div class="hd">Associado</div>'+
-        matrizPerm().map((p,i)=>'<div>'+esc(p[0])+'</div>'+p.slice(1).map((x,j)=>
-          '<div class="'+(x?'ck':'no')+'"'+(ROLE==='brasil'?' data-perm="'+i+'-'+j+'" style="cursor:pointer"':'')+'>'+(x?'✓':'—')+'</div>').join('')).join('')+
-      '</div>'+(ROLE==='brasil'?'<div class="mini" style="margin-top:10px">A alteração vale para toda a rede e fica registrada na auditoria.</div>':'')+'</div></div>'+
+        '<div class="hd">Ação</div><div class="hd">Matriz</div><div class="hd">Master</div><div class="hd">Franquia</div><div class="hd">Associado</div>'+
+        matrizPermDe(PERM_REG).map((p,i)=>'<div>'+esc(p[0])+'</div>'+p.slice(1).map((x,j)=>
+          '<div class="'+(x?'ck':'no')+'"'+(souMatriz()?' data-perm="'+i+'-'+j+'" style="cursor:pointer"':'')+'>'+(x?'✓':'—')+'</div>').join('')).join('')+
+      '</div>'+(souMatriz()?'<div class="mini" style="margin-top:10px">'+(PERM_REG==='rede'?'A alteração vale para toda a rede.':'Exceção só para '+esc(masterDe(PERM_REG).nome)+'; o resto da rede segue a regra geral.')+' Fica registrada na auditoria.</div>':'')+'</div></div>'+
     '</div>';
+  $('#pmReg')&&$('#pmReg').addEventListener('change',e=>{ PERM_REG=e.target.value; route(); });
   $$('[data-perm]',v).forEach(el=>el.addEventListener('click',()=>{
-    const [i,j]=el.dataset.perm.split('-').map(Number);
-    const m=matrizPerm(); const acao=m[i][0];
-    commit('Alterou permissão', acao+' · '+['Brasil','Master','Franquia','Associado'][j]+(m[i][j+1]?' removida':' concedida'), s=>{
-      const mm=(s.permissoes||PERMISSOES.map(r=>r.slice()));
-      mm[i][j+1]=mm[i][j+1]?0:1; s.permissoes=mm;
+    const [i,j]=el.dataset.perm.split('-').map(Number), m=matrizPermDe(PERM_REG), acao=m[i][0];
+    commit('Alterou permissão', acao+' · '+['Matriz','Master','Franquia','Associado'][j]+(m[i][j+1]?' removida':' concedida')+(PERM_REG==='rede'?'':' · '+masterDe(PERM_REG).nome), s=>{
+      if(PERM_REG==='rede'){ const mm=(s.permissoes||PERMISSOES.map(r=>r.slice())); mm[i][j+1]=mm[i][j+1]?0:1; s.permissoes=mm; }
+      else { s.permRegiao=s.permRegiao||{}; const mm=(s.permRegiao[PERM_REG]||matrizPerm().map(r=>r.slice())); mm[i][j+1]=mm[i][j+1]?0:1; s.permRegiao[PERM_REG]=mm; }
     });
-    route(); toast('Permissão atualizada para toda a rede.',1);
+    route(); toast('Permissão atualizada.',1);
   }));
-  const pinta=(f)=>{
-    const arr=us.filter(u=>!f||(u.nome+' '+lojaDe(u.loja).nome).toLowerCase().includes(f.toLowerCase())).slice(0,80);
+  const pinta=f=>{
+    const q=(f||'').toLowerCase();
+    const arr=us.filter(u=>!q||(u.nome+' '+(u.email||'')+' '+lojaDe(u.loja).nome).toLowerCase().includes(q)).slice(0,80);
     $('#tbc').innerHTML=arr.map(u=>'<tr><td><div class="stack">'+avatar(u,26)+
-      '<div><div style="font-weight:600">'+esc(u.nome)+'</div><div class="mini">'+(u.creci?'CRECI '+esc(u.creci):'gestor da unidade')+'</div></div></div></td>'+
+      '<div><div style="font-weight:600">'+esc(u.nome)+'</div><div class="mini">'+esc(u.email||'sem e-mail')+(u.creci?' · CRECI '+esc(u.creci):'')+'</div></div></div></td>'+
       '<td class="mini">'+esc(lojaDe(u.loja).nome)+'</td>'+
-      '<td><span class="tag mut">'+(u.nivel==='franquia'?'Franquia':'Associado')+'</span></td>'+
-      '<td>'+(u.ativo?'<span class="tag ok">Ativo</span>':'<span class="tag warn">Nunca acessou</span>')+'</td>'+
-      '<td>'+(ROLE!=='corretor'?'<button class="btn sm" data-u="'+u.id+'">'+(u.ativo?'Desativar':'Ativar')+'</button>':'')+'</td></tr>').join('');
-    $$('[data-u]').forEach(b=>b.addEventListener('click',()=>{
+      '<td><span class="tag mut">'+(u.nivel==='franquia'?'Gestor':'Associado')+'</span></td>'+
+      '<td class="mini num">'+(u.ultimo?quando(u.ultimo):'—')+'</td>'+
+      '<td>'+(u.ativo?'<span class="tag ok">Ativo</span>':u.ultimo?'<span class="tag mut">Desativado</span>':'<span class="tag warn">Nunca acessou</span>')+'</td>'+
+      '<td style="white-space:nowrap">'+(gere?'<button class="btn sm" data-sn="'+u.id+'">Senha</button> <button class="btn sm" data-u="'+u.id+'">'+(u.ativo?'Desativar':'Ativar')+'</button>':'')+'</td></tr>').join('');
+    $$('[data-u]',v).forEach(b=>b.addEventListener('click',()=>{
       const u=S.usuarios[b.dataset.u];
       commit(u.ativo?'Desativou usuário':'Ativou usuário', u.nome, s=>{ s.usuarios[b.dataset.u].ativo=!u.ativo; });
       pinta($('#fq').value); toast(u.nome+(u.ativo?' desativado.':' ativado.'),1);
     }));
+    $$('[data-sn]',v).forEach(b=>b.addEventListener('click',()=>senhaUsuario(S.usuarios[b.dataset.sn])));
   };
   pinta();
   $('#fq').addEventListener('input',e=>pinta(e.target.value));
-  $('#conv')&&$('#conv').addEventListener('click',()=>{
-    const ov=modal('Convidar usuário',
-      '<div class="grid g2" style="gap:12px"><div class="field"><label>Nome</label><input id="uN" placeholder="Nome completo"></div>'+
-      '<div class="field"><label>E-mail</label><input id="uE" type="email" placeholder="nome@remax.com.br"></div></div>'+
-      '<div class="grid g2" style="gap:12px"><div class="field"><label>Nível</label><select id="uL"><option value="associado">Associado</option><option value="franquia">Franquia (gestor)</option></select></div>'+
-      '<div class="field"><label>Unidade</label><select id="uU">'+ls.map(l=>'<option value="'+l.id+'">'+esc(l.nome)+'</option>').join('')+'</select></div></div>'+
-      '<div class="field"><label>CRECI</label><input id="uC" placeholder="Somente para associados"></div>'+
-      '<div class="hint">O convite chega por e-mail e WhatsApp. A ativação entra na esteira do CS, que acompanha até o primeiro uso real.</div>',
-      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="uOk">Convidar</button>');
-    $('#uOk',ov).addEventListener('click',()=>{
-      const nome=$('#uN',ov).value.trim(); if(!nome) return toast('Informe o nome.');
-      const id=uid('u');
-      commit('Convidou usuário', nome, s=>{
-        s.usuarios[id]={id, nome, creci:$('#uC',ov).value.trim(), tel:'', foto:'', loja:$('#uU',ov).value,
-          nivel:$('#uL',ov).value, ativo:false, ig:false, criado:agora(), pecasFeitas:0};
-        s.convites++;
-      });
-      fechaModal(); route(); toast('<b>Convite enviado.</b> O usuário aparece como “nunca acessou” até o primeiro login.',1);
-    });
+  $('#conv')&&$('#conv').addEventListener('click',()=>novoUsuario(ls));
+  $('#uImp')&&$('#uImp').addEventListener('click',()=>importarUsuarios(ls));
+  $('#uLoja')&&$('#uLoja').addEventListener('click',novaUnidade);
+  $('#uMod')&&$('#uMod').addEventListener('click',()=>{
+    const txt='nome completo;e-mail;celular;perfil;unidade;creci;instagram\n'+
+      'Maria da Silva;maria.silva@exemplo.com;(11) 98888-1111;corretor;'+ls[0].nome+';123456-F;@maria.imoveis\n'+
+      'João Pereira;joao.pereira@exemplo.com;(11) 97777-2222;gestor;'+ls[0].nome+';;\n';
+    baixarBlob(new Blob(['﻿'+txt],{type:'text/csv;charset=utf-8'}),'modelo-cadastro-equipe.csv'); toast('Modelo baixado. Abre no Excel.',1);
   });
 };
+function novoUsuario(ls){
+  const ov=modal('Novo usuário',
+    '<div class="grid g2" style="gap:12px"><div class="field"><label>Nome completo</label><input id="uN"></div>'+
+    '<div class="field"><label>E-mail</label><input id="uE" type="email" placeholder="nome@empresa.com.br"></div></div>'+
+    '<div class="grid g2" style="gap:12px"><div class="field"><label>Celular (WhatsApp)</label><input id="uT" placeholder="(11) 99999-0000"></div>'+
+    '<div class="field"><label>Instagram</label><input id="uI" placeholder="@perfil"></div></div>'+
+    '<div class="grid g2" style="gap:12px"><div class="field"><label>Perfil</label><select id="uL"><option value="associado">Corretor (associado)</option><option value="franquia">Gestor da unidade</option></select></div>'+
+    '<div class="field"><label>Unidade</label><select id="uU">'+ls.map(l=>'<option value="'+l.id+'">'+esc(l.nome)+'</option>').join('')+'</select></div></div>'+
+    '<div class="field"><label>CRECI</label><input id="uC" placeholder="Somente para corretores"></div>'+
+    '<div class="hint">O convite chega por e-mail e WhatsApp. A pessoa cria a senha no primeiro acesso e completa foto e CRECI no próprio perfil.</div>',
+    '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="uOk">Cadastrar e convidar</button>');
+  $('#uOk',ov).addEventListener('click',()=>{
+    const nome=$('#uN',ov).value.trim(), email=$('#uE',ov).value.trim(), tel=$('#uT',ov).value.trim();
+    if(!nome) return toast('Informe o nome.'); if(!emailOk(email)) return toast('Informe um e-mail válido.');
+    if(tel.replace(/\D/g,'').length<10) return toast('Informe o celular com DDD.');
+    if(Object.values(S.usuarios).some(u=>(u.email||'').toLowerCase()===email.toLowerCase())) return toast('Já existe alguém com esse e-mail.');
+    const id=uid('u');
+    commit('Cadastrou usuário', nome+' · '+email, s=>{
+      s.usuarios[id]={id, nome, email, tel, insta:$('#uI',ov).value.trim().replace(/^@/,''), creci:$('#uC',ov).value.trim(), foto:'', loja:$('#uU',ov).value,
+        nivel:$('#uL',ov).value, ativo:false, ig:false, criado:agora(), pecasFeitas:0, ultimo:null};
+      s.convites++;
+    });
+    fechaModal(); route(); toast('<b>Cadastrado.</b> O convite saiu por e-mail e WhatsApp; aparece como “nunca acessou” até o primeiro login.',1);
+  });
+}
+function senhaUsuario(u){
+  const ov=modal('Senha · '+esc(u.nome),
+    '<div class="kv"><span class="k">Por e-mail</span><span class="v">Envia um link de redefinição para <b>'+esc(u.email||'—')+'</b>. O link vale por 24 horas.<div style="margin-top:8px"><button class="btn sm pri" id="snLink"'+(u.email?'':' disabled')+'>Enviar link</button></div></span></div>'+
+    '<div class="kv"><span class="k">Direto</span><span class="v">Define uma senha provisória agora; a pessoa troca no próximo acesso.'+
+      '<div class="grid g2" style="gap:8px;margin-top:8px"><input id="snA" type="password" placeholder="Senha provisória" autocomplete="new-password"><input id="snB" type="password" placeholder="Repita" autocomplete="new-password"></div>'+
+      '<div style="margin-top:8px"><button class="btn sm" id="snDef">Definir senha</button></div></span></div>'+
+    (u.senhaEm?'<div class="mini" style="margin-top:8px">Última troca: '+quando(u.senhaEm)+'</div>':''),
+    '<button class="btn" onclick="fechaModal()">Fechar</button>');
+  $('#snLink',ov).addEventListener('click',()=>{ commit('Enviou link de redefinição de senha', u.nome+' · '+u.email); fechaModal(); toast('Link de redefinição enviado para '+esc(u.email)+'.',1); });
+  $('#snDef',ov).addEventListener('click',()=>{
+    const a=$('#snA',ov).value, b=$('#snB',ov).value;
+    if(a.length<8 || !/\d/.test(a) || !/[a-z]/i.test(a)) return toast('A senha precisa de 8 caracteres, com letras e números.');
+    if(a!==b) return toast('As duas senhas não conferem.');
+    commit('Definiu senha provisória', u.nome, s=>{ s.usuarios[u.id].senhaEm=agora(); s.usuarios[u.id].trocarSenha=true; });
+    fechaModal(); toast('Senha provisória definida. A troca será pedida no próximo acesso.',1);
+  });
+}
+function novaUnidade(){
+  const ov=modal('Nova unidade',
+    '<div class="field"><label>Nome da unidade</label><input id="nlN" placeholder="Ex.: RE/MAX Paulista"></div>'+
+    '<div class="grid g2" style="gap:12px"><div class="field"><label>Região (Master)</label><select id="nlM">'+BASE.masters.map(m=>'<option value="'+m.id+'">'+esc(m.nome)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>CNPJ</label><input id="nlC" placeholder="00.000.000/0000-00"></div></div>'+
+    '<div class="field"><label>Endereço</label><input id="nlE" placeholder="Rua, número"></div>'+
+    '<div class="field"><label>Bairro</label><input id="nlB"></div>'+
+    '<div class="hint">Depois de criar, cadastre a equipe pela planilha: uma unidade com 8 corretores entra em poucos minutos.</div>',
+    '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="nlOk">Criar unidade</button>');
+  $('#nlOk',ov).addEventListener('click',()=>{
+    const nome=$('#nlN',ov).value.trim(), cnpj=$('#nlC',ov).value.trim();
+    if(!nome) return toast('Informe o nome da unidade.');
+    if(!cnpjOk(cnpj)) return toast('CNPJ inválido — confira os 14 números.');
+    if(BASE.lojas.some(l=>l.nome.toLowerCase()===nome.toLowerCase())) return toast('Já existe uma unidade com esse nome.');
+    const id='lx'+(S.lojasExtra.length+1)+Math.random().toString(36).slice(2,5);
+    const loja={id, nome, master:$('#nlM',ov).value, bairro:$('#nlB',ov).value.trim()||'—', endereco:$('#nlE',ov).value.trim(), cnpj:cnpj.replace(/\D/g,''), n:0, extra:1};
+    commit('Criou unidade', nome+' · CNPJ '+cnpj, s=>{
+      s.lojasExtra.push(loja); BASE.lojas.push(loja);
+      const et={}; ETAPAS.forEach(e=>{ et[e.id]={ok:false, em:null, evid:[], enviado:false}; });
+      s.unidades[id]={id, etapas:et, fachada:{st:'nao_iniciada', projeto:null, foto:null}, onboard:'agendada', leitura:0, ultima:0};
+      s.usuarios['g-'+id]={id:'g-'+id, nome:'Gestor · '+nome, email:'', creci:'', tel:'', foto:'', loja:id, nivel:'franquia', ativo:false, ig:false, criado:agora(), pecasFeitas:0, ultimo:null};
+    });
+    fechaModal(); route(); toast('<b>Unidade criada.</b> Agora importe a planilha da equipe.',1);
+  });
+}
+function importarUsuarios(ls){
+  const inp=$('#filePicker'); inp.value=''; inp.accept='.csv,text/csv,.txt'; inp.multiple=false;
+  inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return; const t0=performance.now(); const fr=new FileReader();
+    fr.onload=()=>{
+      const linhas=lerCSV(fr.result), cab=(linhas.shift()||[]).map(normCab);
+      const col=(...ks)=>cab.findIndex(h=>ks.some(k=>h===k||h.indexOf(k)===0));
+      const c={nome:col('nome completo','nome'), email:col('e mail','email'), tel:col('celular','telefone','whatsapp'), perfil:col('perfil','nivel','cargo'),
+               loja:col('unidade','loja'), creci:col('creci'), insta:col('instagram')};
+      if(c.nome<0||c.email<0||c.tel<0) return toast('A planilha precisa das colunas nome completo, e-mail e celular. Baixe o modelo.');
+      const existentes=new Set(Object.values(S.usuarios).map(u=>(u.email||'').toLowerCase())), vistos=new Set();
+      const achaLoja=n=>{ const k=normCab(n); if(!k) return null; return ls.find(l=>normCab(l.nome)===k) || ls.find(l=>normCab(l.nome).includes(k)||k.includes(normCab(l.nome))) || null; };
+      const rows=linhas.map(r=>{ const g=i=>i>=0?String(r[i]||'').trim():'';
+        const x={nome:g(c.nome), email:g(c.email), tel:g(c.tel), perfil:/gest|franq|broker|dono/i.test(g(c.perfil))?'franquia':'associado',
+                 lojaTxt:g(c.loja), creci:g(c.creci), insta:g(c.insta).replace(/^@/,'')};
+        x.loja=achaLoja(x.lojaTxt);
+        x.erro=!x.nome?'sem nome':!emailOk(x.email)?'e-mail inválido':x.tel.replace(/\D/g,'').length<10?'celular sem DDD':
+               existentes.has(x.email.toLowerCase())?'já cadastrado':vistos.has(x.email.toLowerCase())?'repetido na planilha':'';
+        vistos.add(x.email.toLowerCase()); return x; });
+      const bons=rows.filter(x=>!x.erro);
+      const ov=modal('Importar planilha · '+esc(f.name),
+        '<div class="mini" style="margin-bottom:10px">'+rows.length+' linhas lidas · <b>'+bons.length+' prontas</b>'+(rows.length-bons.length?' · '+(rows.length-bons.length)+' com problema (não entram)':'')+'</div>'+
+        '<div class="field"><label>Unidade para quem veio sem unidade reconhecida</label><select id="imU">'+ls.map(l=>'<option value="'+l.id+'">'+esc(l.nome)+'</option>').join('')+'</select></div>'+
+        '<div class="tw" style="max-height:46vh;overflow:auto"><table><thead><tr><th></th><th>Nome</th><th>E-mail</th><th>Celular</th><th>Perfil</th><th>Unidade</th></tr></thead><tbody>'+
+        rows.map(x=>'<tr'+(x.erro?' style="opacity:.55"':'')+'><td>'+(x.erro?'<span class="tag bad">'+esc(x.erro)+'</span>':'<span class="tag ok">ok</span>')+'</td><td>'+esc(x.nome)+'</td><td class="mini">'+esc(x.email)+'</td>'+
+          '<td class="mini">'+esc(x.tel)+'</td><td class="mini">'+(x.perfil==='franquia'?'Gestor':'Corretor')+'</td><td class="mini">'+esc(x.loja?x.loja.nome:(x.lojaTxt||'—')+' → padrão')+'</td></tr>').join('')+
+        '</tbody></table></div>',
+        '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="imOk"'+(bons.length?'':' disabled')+'>Cadastrar '+bons.length+' e convidar</button>');
+      $('#imOk',ov).addEventListener('click',()=>{
+        const padrao=$('#imU',ov).value;
+        commit('Importou planilha de usuários', f.name+' · '+bons.length+' pessoas', s=>{
+          bons.forEach(x=>{ const id=uid('u'); s.usuarios[id]={id, nome:x.nome, email:x.email, tel:x.tel, insta:x.insta, creci:x.creci, foto:'', loja:x.loja?x.loja.id:padrao,
+            nivel:x.perfil, ativo:false, ig:false, criado:agora(), pecasFeitas:0, ultimo:null}; });
+          s.convites+=bons.length; s.ultimaImportacao={n:bons.length, ms:Math.round(performance.now()-t0), q:agora()};
+        });
+        fechaModal(); route(); toast('<b>'+bons.length+' pessoas cadastradas</b> em '+((performance.now()-t0)/1000).toFixed(1).replace('.',',')+' s. Os convites saíram por e-mail e WhatsApp.',1);
+      });
+    };
+    fr.readAsText(f,'utf-8'); };
+  inp.click();
+}
 
 /* =======================================================================
    MÓDULO 3 · REGISTROS E PLATAFORMA
    ======================================================================= */
 VIEWS.registros=function(v){
   v.innerHTML =
-    ph('Registros e plataforma','Rastreabilidade de tudo o que acontece na plataforma e o que sustenta a operação: capacidade, segurança e backup. Cada linha abaixo foi gerada por uma ação real nesta sessão ou na carga de demonstração.',
+    ph('Registros e auditoria','Rastreabilidade de tudo o que acontece na plataforma e o que sustenta a operação: capacidade, segurança e backup. Cada linha abaixo foi gerada por uma ação real nesta sessão ou na carga de demonstração.',
       '<button class="btn" id="expA">↓ Exportar auditoria</button>','registros')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Registros', S.audit.length, 'ações rastreadas')+
       kpi('Disponibilidade', '99,9%', 'meta contratual de disponibilidade','k-ok')+
-      kpi('Usuários simultâneos', '200 → 6.000', 'hoje → rede completa')+
+      kpi('Usuários simultâneos', '420 → 12.000', 'primeira onda → rede completa')+
       kpi('Backup', '24h', 'retenção de 30 dias, restauração testada','k-ok')+
     '</div>'+
     '<div class="grid g2" style="margin-bottom:16px">'+

@@ -15,7 +15,7 @@ function banner(o){
       '<div class="acts">'+o.acts+'</div>'+
     '</div>'+
     '<div class="stats">'+o.stats.map(s=>'<div class="st"><div class="l">'+esc(s[0])+'</div><div class="v">'+s[1]+'</div><div class="d">'+esc(s[2])+'</div></div>').join('')+'</div>'+
-    '</div></div>'+videoInstitucional();
+    '</div></div>'+blocoHome();
 }
 function ligarHero(){ /* o banner agora é tipográfico: sem canvas */ }
 
@@ -36,14 +36,14 @@ function videoInstitucional(){
   '</div>';
 }
 document.addEventListener('click', e=>{
-  const alvo=e.target.closest('.yt[data-yt], [data-yt-abrir]'); if(!alvo) return;
-  const card=alvo.closest('.video-inst'), yt=card&&card.querySelector('.yt[data-yt]'); if(!yt) return;
-  const id=yt.dataset.yt;
-  if(EM_QUADRO){ window.open('https://www.youtube.com/watch?v='+id, '_blank', 'noopener'); return; }
+  const alvo=e.target.closest('.yt[data-yt], .yt[data-ig], [data-yt-abrir]'); if(!alvo) return;
+  const card=alvo.closest('.video-inst'), yt=card&&card.querySelector('.yt[data-yt], .yt[data-ig]'); if(!yt) return;
+  const vv={yt:yt.dataset.yt||'', ig:yt.dataset.ig||'', tit:yt.dataset.tit||VIDEO_INST.titulo};
+  if(EM_QUADRO){ abrirVideo(vv); return; }
   const f=document.createElement('iframe');
   f.className='yt-frame';
-  f.src='https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0&modestbranding=1&playsinline=1';
-  f.title=VIDEO_INST.titulo+' — '+VIDEO_INST.canal;
+  f.src=srcVideo(vv);
+  f.title=vv.tit;
   f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
   f.allowFullscreen=true; f.referrerPolicy='strict-origin-when-cross-origin';
   yt.replaceWith(f);
@@ -64,7 +64,7 @@ VIEWS.inicio=function(v){
 
   v.innerHTML =
     banner({
-      eb:'Prontos em Rede · '+(ROLE==='brasil'?'RE/MAX Brasil':masterDe('m2').nome),
+      eb:'Prontos em Rede · '+(souMatriz()?'RE/MAX Brasil':masterDe(MASTER_DEMO).nome),
       h1:T('A rede inteira')+' <b>'+T('falando a mesma língua')+'</b>',
       rot:['<b>'+ls.length+'</b> '+T('unidades acompanhadas etapa a etapa, com evidência e prazo'),
            '<b>'+compacto(M.alcance)+'</b> '+T('de alcance somado no período pelas peças oficiais'),
@@ -210,7 +210,7 @@ function inicioCorretor(v){
              ['Meus pontos', pontosC(c.id), 'na régua da rede']]
     })+
     '<div class="grid g23">'+
-      '<div class="card"><div class="ch"><h3>Prontos em Rede · próxima publicação</h3><div class="r">'+(jaAg?'<span class="tag ok">Você já agendou</span>':'<span class="tag red">Em '+dias(new Date(camp.dt))+' dias</span>')+'</div></div>'+
+      '<div class="card"><div class="ch"><h3>Social Hub · próxima publicação</h3><div class="r">'+(jaAg?'<span class="tag ok">Você já agendou</span>':'<span class="tag red">Em '+dias(new Date(camp.dt))+' dias</span>')+'</div></div>'+
       '<div class="cb" style="display:grid;grid-template-columns:170px 1fr;gap:16px;align-items:start">'+
         '<canvas class="prev" id="cvCamp"></canvas>'+
         '<div><div style="font-family:var(--font-d);font-weight:700;font-size:15.5px">'+esc(camp.tit)+'</div>'+

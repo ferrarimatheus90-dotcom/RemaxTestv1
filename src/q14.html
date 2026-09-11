@@ -24,9 +24,9 @@ const FRENTES=[
  [19,'Compliance da marca','gov','painel',1],
  [20,'Dashboard executivo','intel','painel',1],
  [21,'Dashboard das Masters','intel','painel',1],
- [22,'Ranking','intel','ranking',2],
+ [22,'Ranking','intel','ranking',1],
  [23,'Gamificação','intel','excelencia',1],
- [24,'Grand Champion','intel','ranking',2],
+ [24,'Grand Champion','intel','ranking',1],
  [25,'Suporte ao usuário','sup','suporte',1],
  [26,'Atendimento via WhatsApp','sup','suporte',1],
  [27,'Gestão de tickets','sup','suporte',1],
@@ -45,28 +45,29 @@ const FRENTES=[
  [40,'Operação white-label RE/MAX','sup','implantacao',1]
 ];
 const NOVOS=[
- ['Redes sociais com provedor de publicação','redes','Publicação em massa por API direto da plataforma, pela bundle.social, com a Zernio de reserva e o app próprio da Meta em aprovação.'],
- ['Indicadores de marketing unificados','marketing','Frequência, alcance, engajamento, formatos e imóveis — os indicadores da apresentação agora dentro da estrutura, com filtro por regional, unidade e associado.'],
- ['Programa de Excelência com bonificação','excelencia','O funcionário envia a foto da prova, o arquivo fica guardado com autor e data, a RE/MAX valida e os pontos entram na faixa de bonificação.'],
- ['Acesso por login, um por nível','guia','Quatro contas de teste, cada uma abrindo a plataforma com o seu escopo de dados e permissões.'],
- ['Banner de abertura animado','inicio','Abertura da home com os números vivos da rede e atalho para as ações do dia.']
+ ['RE/MAX TV e banner na home','tv','Vídeos institucionais e da liderança (Peixoto Accyoli) na tela inicial e numa tela própria; a Matriz adiciona vídeos e áudios por link.'],
+ ['Programa de Excelência como módulo','pexregras','PEX no menu lateral, com regras e pesos editáveis, faixas de bonificação e o ranking Grand Champion.'],
+ ['Alçadas de aprovação N1, N2 e N3','aprovacoes','Cada aprovação sobe pelos níveis definidos na jornada, até a diretoria.'],
+ ['Comunicados com mídia, e-mail e WhatsApp','comunicados','Imagem ou vídeo no comunicado, aviso por e-mail e WhatsApp, popup ao entrar e cobrança de quem não leu.'],
+ ['Importação em lote e perfil','usuarios','Planilha CSV com nome, e-mail e celular; página de perfil com foto, CRECI e Instagram.'],
+ ['Perfil Construtor','param','Parametriza nomes, módulos e integrações por cliente sem mexer no código.']
 ];
 let FILTRO_F='todas';
 VIEWS.escopo=function(v){
   const o1=FRENTES.filter(f=>f[4]===1).length;
   v.innerHTML =
     '<div class="ph"><div><div class="eyebrow-mod"><span class="m">BMAG · visão interna</span></div>'+
-    '<h1>Mapa do escopo · 40 frentes em 6 módulos</h1>'+
+    '<h1>Mapa do escopo · 40 frentes em 7 módulos</h1>'+
     '<div class="sub">Cada frente da minuta da RE/MAX, o módulo onde vive e a tela que a materializa. Clique para abrir. O corte de MVP é o combinado: primeira versão útil sem virar projeto gigante, com a arquitetura já preparada para o resto.</div></div></div>'+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Frentes mapeadas','40/40','todas com tela definida','k-ok')+
       kpi('No MVP', o1, 'sem dependência externa')+
-      kpi('Na 2ª onda', 40-o1, 'Instagram automatizado, IA avançada e Grand Champion','k-warn')+
+      kpi('Na 2ª onda', 40-o1, 'Instagram automatizado e IA avançada','k-warn')+
       kpi('Pedidos novos', NOVOS.length, 'incorporados nesta versão','k-ok')+
     '</div>'+
     '<div class="grid g3" style="margin-bottom:16px">'+
       MODULOS.map(m=>{
-        const fs=FRENTES.filter(f=>f[2]===m.id);
+        const fs=FRENTES.filter(f=>TELAS[f[3]].mod.id===m.id);
         return '<div class="card pad"><div style="display:flex;align-items:baseline;gap:8px">'+
           '<span style="font-family:var(--font-d);font-weight:800;font-size:22px;color:var(--brand-2)">'+m.n+'</span>'+
           '<h3 style="font-size:15px">'+esc(m.nome)+'</h3></div>'+
@@ -92,7 +93,7 @@ VIEWS.escopo=function(v){
       MODULOS.map(m=>'<button class="chip '+(FILTRO_F===m.id?'on':'')+'" data-o="'+m.id+'">'+m.n+' · '+esc(m.nome.split(' ')[0])+'</button>').join('')+'</div>'+
     '<div class="card"><div class="tw"><table><thead><tr><th style="width:44px">#</th><th>Frente</th><th>Módulo</th><th>Tela</th><th>Onda</th><th></th></tr></thead><tbody id="tbf"></tbody></table></div></div>';
   const pinta=()=>{
-    $('#tbf').innerHTML=FRENTES.filter(f=> FILTRO_F==='todas' || String(f[4])===FILTRO_F || f[2]===FILTRO_F).map(f=>
+    $('#tbf').innerHTML=FRENTES.filter(f=> FILTRO_F==='todas' || String(f[4])===FILTRO_F || TELAS[f[3]].mod.id===FILTRO_F).map(f=>
       '<tr><td style="font-family:var(--font-d);font-weight:800;color:var(--muted)">'+f[0]+'</td>'+
       '<td style="font-weight:600">'+esc(f[1])+'</td>'+
       '<td class="mini">'+TELAS[f[3]].mod.n+' · '+esc(TELAS[f[3]].mod.nome)+'</td>'+
@@ -112,7 +113,7 @@ function boasVindas(){
   if(LS.get('pr_visto_v4')) return;
   LS.set('pr_visto_v4','1');
   modal('Prontos em Rede',
-    '<p style="margin:0 0 14px;font-size:13.6px;color:var(--ink-2)">A plataforma da RE/MAX em <b>seis módulos</b>. Não é uma maquete: o que você faz aqui fica gravado e recalcula o resto.</p>'+
+    '<p style="margin:0 0 14px;font-size:13.6px;color:var(--ink-2)">A plataforma da RE/MAX em <b>sete módulos</b>. Não é uma maquete: o que você faz aqui fica gravado e recalcula o resto.</p>'+
     '<div class="kv"><span class="k">Experimente</span><span class="v">Envie uma evidência na <b>Jornada</b>, aprove em <b>Aprovações</b> e veja a adesão e o ranking mudarem.</span></div>'+
     '<div class="kv"><span class="k">Estúdio</span><span class="v">Preencha seus dados, escolha a cor e baixe a peça em <b>PNG</b> ou <b>PDF</b> — os arquivos saem de verdade.</span></div>'+
     '<div class="kv"><span class="k">Excelência</span><span class="v">Envie a foto de uma entrega no <b>Programa de Excelência</b>: ela fica guardada e, ao ser validada, vira ponto e faixa de bonificação.</span></div>'+
@@ -121,10 +122,13 @@ function boasVindas(){
 }
 function iniciarApp(){
   P = personas();
+  marcarAcesso();
   renderWho(); renderNav();
   if(!location.hash) location.hash='#/inicio';
   route();
+  const primeiraVez=!LS.get('pr_visto_v4');
   boasVindas();
+  if(!primeiraVez) popupComunicado();          // comunicado marcado como aviso aparece ao entrar
 }
 function entrarNaPlataforma(){
   if(LS.get('pr_sessao') && CONTAS.some(c=>c.papel===LS.get('pr_sessao'))){
@@ -135,6 +139,7 @@ function entrarNaPlataforma(){
   }
 }
 loadState();
+garantirCampos();
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
 aberturaVideo(entrarNaPlataforma);   // a vinheta abre o site em toda visita; a animada de reserva aparece uma vez por navegador

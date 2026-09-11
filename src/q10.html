@@ -3,7 +3,16 @@
    MÓDULO 3 · COMPLIANCE & GOVERNANCE
    ======================================================================= */
 function novaAprovacao(o){
-  S.aprovacoes.unshift(Object.assign({id:uid('a'), dt:agora(), st:'pendente', quem:eu().nome}, o));
+  const niveis=alcadasDe(o.tipo==='Evidência'||o.tipo==='Fachada'? o.tipo : 'Peça fora do padrão');
+  S.aprovacoes.unshift(Object.assign({id:uid('a'), dt:agora(), st:'pendente', quem:eu().nome, niveis, nivel:0, trilha:[]}, o));
+}
+/* alçadas: cada item sobe N1 → N2 → N3; só a última aplica o resultado na jornada */
+const niveisDe = a => (a.niveis && a.niveis.length)? a.niveis : alcadasDe(a.tipo==='Evidência'||a.tipo==='Fachada'? a.tipo : 'Peça fora do padrão');
+const rotuloNivel = a => niveisDe(a)[Math.min(a.nivel||0, niveisDe(a).length-1)];
+const nivelAtual = a => 'N'+(Math.min(a.nivel||0, niveisDe(a).length-1)+1)+' · '+rotuloNivel(a);
+function trilhaHTML(a){
+  const ns=niveisDe(a), at=a.st==='pendente'? (a.nivel||0) : ns.length;
+  return '<div class="trilha">'+ns.map((n,i)=>'<span class="'+(i<at?'ok':i===at?'agora':'')+'">'+(i<at?'✓ ':'')+'N'+(i+1)+' · '+esc(n)+'</span>').join('<i>→</i>')+'</div>';
 }
 function aplicarAprovacao(a, ok, motivo){
   const u=S.unidades[a.loja];
@@ -104,7 +113,7 @@ VIEWS.jornada=function(v,arg){
 
 function jornadaUnidade(v,l){
   const U=S.unidades[l.id], e=proximaEtapa(l.id), d=dias(dt(e.prazo));
-  const podeEnviar = ROLE==='franquia' || ROLE==='brasil' || ROLE==='master';
+  const podeEnviar = ROLE==='franquia' || souMatriz() || ROLE==='master';
   v.innerHTML =
     (lojasVisiveis().length>1?'<a class="btn sm" href="#/jornada" style="margin-bottom:14px">← Todas as unidades</a>':'')+
     ph('Jornada · '+esc(l.nome), esc(l.bairro)+' · '+esc(masterDe(l.master).nome)+' · '+corretoresDe(l.id).length+' associados',
@@ -213,8 +222,8 @@ VIEWS.fachadas=function(v){
 /* ---------- Aprovações ---------- */
 VIEWS.aprovacoes=function(v){
   const meu=ROLE==='franquia';
-  const lista = ROLE==='brasil'? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDe(a.loja).master==='m2') : S.aprovacoes.filter(a=>a.loja===escopoLoja());
-  const pend=lista.filter(a=>a.st==='pendente');
+  const lista = souMatriz()? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDe(a.loja).master===MASTER_DEMO) : S.aprovacoes.filter(a=>a.loja===escopoLoja());
+  const pend=lista.filter(a=>a.st==='pendente' && (meu || podeDecidirNivel(rotuloNivel(a))));
   v.innerHTML =
     ph('Fluxo de aprovação','Projetos de fachada, evidências de etapa e peças fora do padrão passam por aprovação. Cada decisão fica registrada com autor, data e justificativa — e o que é aprovado avança a jornada da unidade na hora.',
       '','aprovacoes')+
@@ -223,7 +232,8 @@ VIEWS.aprovacoes=function(v){
       kpi('Aprovados', lista.filter(a=>a.st==='aprovado').length, 'no período')+
       kpi('Reprovados', lista.filter(a=>a.st==='reprovado').length, 'com justificativa registrada')+
     '</div>'+
-    (meu?'<div class="hint" style="margin-bottom:16px">A franquia acompanha o andamento, mas quem aprova é a Master Regional ou a RE/MAX Brasil.</div>':'')+
+    (meu?'<div class="hint" style="margin-bottom:16px">A franquia acompanha o andamento, mas quem aprova são as alçadas definidas pela Matriz.</div>':
+      '<div class="hint" style="margin-bottom:16px"><b>Alçadas.</b> Evidências passam por N1 · Master Regional e N2 · Matriz; projetos de fachada sobem até N3 · Diretoria. Você decide o que está no seu nível'+(souMatriz()?' — <a href="#/jornadas">ajustar alçadas</a>':'')+'.</div>')+
     '<div class="card"><div class="lst" id="aps"></div></div>';
   const pinta=()=>{
     $('#aps').innerHTML = lista.map(a=>
@@ -231,16 +241,22 @@ VIEWS.aprovacoes=function(v){
       '<div class="bd"><div class="t">'+esc(a.item)+' <span class="tag mut">'+esc(a.tipo)+'</span></div>'+
       '<div class="s">'+esc(lojaDe(a.loja).nome)+' · '+esc(a.quem)+' · '+quando(a.dt)+' — '+esc(a.obs||'')+
         (a.motivo?' <b style="color:var(--bad)">Motivo: '+esc(a.motivo)+'</b>':'')+
-        (a.decisor?' · decidido por '+esc(a.decisor):'')+'</div>'+
+        (a.decisor?' · decidido por '+esc(a.decisor):'')+'</div>'+trilhaHTML(a)+
         ((a.anexos&&a.anexos.length)?'<div style="margin-top:6px;max-width:420px">'+a.anexos.slice(0,2).map(x=>fileRow(x)).join('')+'</div>':'')+
       '</div>'+
       '<div class="rt">'+(a.st==='pendente'
-        ? (meu?'<span class="tag warn">Aguardando</span>':'<div style="display:flex;gap:6px"><button class="btn sm" data-no="'+a.id+'">Reprovar</button><button class="btn sm pri" data-ok="'+a.id+'">Aprovar</button></div>')
+        ? (!meu && podeDecidirNivel(rotuloNivel(a))?'<div style="display:flex;gap:6px"><button class="btn sm" data-no="'+a.id+'">Reprovar</button><button class="btn sm pri" data-ok="'+a.id+'">Aprovar</button></div>'
+           :'<span class="tag warn">Aguardando '+esc(nivelAtual(a))+'</span>')
         : stTag(a.st))+'</div></div>').join('')||'<div class="empty">Nada para aprovar.</div>';
     $$('[data-ok]').forEach(b=>b.addEventListener('click',()=>{
       const a=S.aprovacoes.find(x=>x.id===b.dataset.ok);
-      commit('Aprovou', a.item, s=>{ aplicarAprovacao(s.aprovacoes.find(x=>x.id===a.id), true); });
-      route(); toast('<b>Aprovado.</b> A unidade avançou na jornada e a adesão foi recalculada.',1);
+      const nv=nivelAtual(a), ultimo=(a.nivel||0)>=niveisDe(a).length-1;
+      commit(ultimo?'Aprovou':'Aprovou no nível e encaminhou', a.item+' · '+nv, s=>{ const x=s.aprovacoes.find(y=>y.id===a.id);
+        x.niveis=niveisDe(x); x.trilha=(x.trilha||[]).concat([{nivel:nv, quem:eu().nome, q:agora()}]);
+        if(ultimo) aplicarAprovacao(x,true); else x.nivel=(x.nivel||0)+1; });
+      route(); renderNav();
+      toast(ultimo?'<b>Aprovado.</b> A unidade avançou na jornada e a adesão foi recalculada.'
+                  :'<b>Aprovado no '+esc(nv)+'.</b> Seguiu para '+esc(nivelAtual(S.aprovacoes.find(y=>y.id===a.id)))+'.',1);
     }));
     $$('[data-no]').forEach(b=>b.addEventListener('click',()=>{
       const a=S.aprovacoes.find(x=>x.id===b.dataset.no);

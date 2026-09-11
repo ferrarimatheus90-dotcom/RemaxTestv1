@@ -1,0 +1,217 @@
+<style>
+/* ---------- v3: RE/MAX TV, banner da home ---------- */
+.banner-home{overflow:hidden;margin-bottom:22px;position:relative}
+.banner-home img{display:block;width:100%;height:auto}
+.banner-home .trocar{position:absolute;right:14px;top:14px}
+.banner-vazio{
+  width:100%;display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;margin-bottom:22px;padding:26px 18px;
+  border:1.5px dashed var(--line-2,var(--line));border-radius:18px;background:transparent;color:var(--ink-2);font-size:14px;font-weight:600;cursor:pointer
+}
+.banner-vazio span{font-size:12.5px;font-weight:400;color:var(--muted)}
+.banner-vazio:hover{background:var(--fill-2)}
+.tv-mini{display:flex;flex-direction:column;gap:8px;margin:6px 0 8px}
+.tvm{display:flex;gap:10px;align-items:center;border:0;background:transparent;padding:0;text-align:left;cursor:pointer;color:var(--ink)}
+.tvm .capa{width:92px;flex:none;border-radius:8px}
+.tvm span{font-size:12.6px;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tvm:hover span{color:var(--azul)}
+.capa{position:relative;display:block;aspect-ratio:16/9;overflow:hidden;background:linear-gradient(160deg,var(--hero-a),var(--hero-c))}
+.capa img{width:100%;height:100%;object-fit:cover;display:block}
+.capa.ig{background:linear-gradient(135deg,#F58529,#DD2A7B 45%,#8134AF 75%,#515BD4)}
+.capa.ig::after{content:"Instagram";position:absolute;left:10px;bottom:8px;color:#fff;font-size:11px;font-weight:600}
+.capa .mp{position:absolute;left:50%;top:50%;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(255,255,255,.92)}
+.capa .mp::after{content:"";position:absolute;left:13px;top:10px;border-style:solid;border-width:7px 0 7px 11px;border-color:transparent transparent transparent #0B2253}
+.tvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px}
+.tvcard{background:var(--surface);border-radius:18px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column}
+.tvcard .capa{border-radius:0}
+.tvcard .tx{padding:12px 14px 14px}
+.tvcard .tx b{display:block;font-size:13.6px;font-weight:600;line-height:1.35;letter-spacing:-.01em}
+.tvcard .tx span{display:block;font-size:12px;color:var(--muted);margin-top:4px}
+.tvcard .acoes{display:flex;gap:6px;margin-top:10px}
+.tvcard:hover .capa img{transform:scale(1.03)}
+.tvcard .capa img{transition:transform .8s var(--e)}
+.player-ov .modal{max-width:960px;width:94vw}
+.player-ov .mb{padding:0}
+.player{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}
+.player.ig{aspect-ratio:9/16;max-height:80vh;width:auto;margin:0 auto}
+.audio-li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.audio-li audio{height:34px;max-width:260px}
+@media(max-width:640px){ .tvgrid{grid-template-columns:1fr} .audio-li{flex-wrap:wrap} }
+</style>
+<script>
+/* =======================================================================
+   v3 (reunião de 10/09/2026) — estado novo, RE/MAX TV e banner da home
+   ======================================================================= */
+const TV_PADRAO=[
+  {id:'v1', yt:'oTM71smUy1g', tit:'REMAX 2026.', canal:'REMAX Brasil', cat:'Institucional', dest:1},
+  {id:'v2', yt:'aFUjVWCXPzM', tit:'Mensagem do presidente e CEO da RE/MAX Brasil', canal:'Peixoto Accyoli · REMAX Rio de Janeiro Norte', cat:'Liderança', dur:'49 s'},
+  {id:'v3', yt:'3D8OCGxzRgQ', tit:'Entrevista com Peixoto Accyoli, presidente e CEO da RE/MAX no Brasil', canal:'Conecta Imobi', cat:'Liderança', dur:'6 min'},
+  {id:'v4', yt:'gB97lBbp5Qg', tit:'Crescer sem perder a base: as lições de Peixoto Accyoli à frente da RE/MAX Brasil', canal:'Perpetual Cast', cat:'Liderança', dur:'1 h'},
+  {id:'v5', yt:'UWHQkXWyAxY', tit:'Por que a RE/MAX é a empresa que mais vende imóveis no mundo?', canal:'Segredos Imobiliários DWV', cat:'Liderança', dur:'1 h 31 min'},
+  {id:'v6', yt:'NpveddTF-Yo', tit:'Por que essa é a maior franquia de imobiliária do mundo', canal:'Guia-se Podcast · ep. 75', cat:'Liderança', dur:'1 h 02 min'},
+  {id:'v7', yt:'IY3v0xlQVKE', tit:'Como a RE/MAX construiu o maior ecossistema de franquias do Brasil', canal:'Cris Arcangeli', cat:'Liderança', dur:'53 min'},
+  {id:'v8', yt:'5VeM14Qq0DY', tit:'DC News Talks — entrevista com Peixoto Accyoli, CEO da RE/MAX Brasil', canal:'DC News', cat:'Liderança', dur:'59 min'}
+];
+const slug = s => String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'.').replace(/^\.|\.$/g,'');
+function garantirCampos(){
+  const s=S; let mudou=false;
+  const def=(k,v)=>{ if(s[k]===undefined){ s[k]=v; mudou=true; } };
+  def('tv', GENERICA? [] : TV_PADRAO.map(x=>Object.assign({},x)));
+  def('audios', []); def('perfis', {}); def('envios', []); def('jornadas', []); def('prazos', {});
+  def('solicitacoes', []); def('lojasExtra', []); def('permRegiao', {}); def('arquivosMarca', []); def('tutoriais', {});
+  def('pexCriterios', CRITERIOS_EXC.map(c=>Object.assign({cat:'Adequação', ativo:true}, c)));
+  def('pesos', Object.assign({}, PONTOS));
+  def('param', {plataforma:GENERICA?'Hub da Rede':'Prontos em Rede', marca:GENERICA?'Rede Exemplo':'RE/MAX',
+    termos:GENERICA?{Associado:'Consultor',Associados:'Consultores',Corretor:'Consultor',Corretores:'Consultores',CRECI:'Registro','Master Regional':'Gestor Regional','Masters Regionais':'Gestores Regionais'}:{}, modulosOff:[], bannerHome:'', provedor:(s.social&&s.social.provedor)||'bundle', whatsSuporte:''});
+  if(!s.v3){
+    s.v3=1; mudou=true;
+    s.comunicados.forEach(k=>{
+      if(/^Prontos em Rede — campanha/.test(k.tit)) k.tit=k.tit.replace('Prontos em Rede','Social Hub');
+      k.corpo=String(k.corpo||'').replace(/módulo Content &amp; Social Hub/g,'módulo Social Hub');
+      if(k.id==='k1') k.popup=true;
+    });
+    if(!s.comunicados.some(k=>k.id==='k9')){
+      s.comunicados.unshift({id:'k9', area:'Marketing', tit:'Convenção RE/MAX 2027 — reserve a data', dt:'2026-09-10', obr:false, autor:'Matriz RE/MAX Brasil',
+        res:'A convenção nacional acontece em 12 de maio de 2027, em São Paulo. Adicione à sua agenda.',
+        corpo:'A apuração do Grand Champion sai da plataforma e os destaques do Programa de Excelência sobem ao palco. Reserve a data: 12 de maio de 2027, em São Paulo.',
+        evento:{data:'2027-05-12', hora:'09:00', fim:'18:00', local:'São Paulo · SP'}, canais:['plataforma','email','whatsapp']});
+      s.leituras.k9=[];
+    }
+    (s.excelencia.provas||[]).forEach(p=>{ if(p.validador==='Marketing RE/MAX Brasil') p.validador='Matriz RE/MAX Brasil'; });
+    (s.audit||[]).forEach(a=>{ if(a.quem==='Marketing RE/MAX Brasil') a.quem='Matriz RE/MAX Brasil'; });
+    Object.values(s.usuarios).forEach(u=>{
+      const r=seed('v3:'+u.id);
+      if(!u.email){ const p=String(u.nome).replace(/^Gestor · /,'').split(/\s+/); u.email=slug(p[0])+(p.length>1?'.'+slug(p[p.length-1]):'')+(u.nivel==='franquia'?'@unidade.test':'@corretor.test'); }
+      if(u.ultimo===undefined) u.ultimo = u.ativo? new Date(2026,8,10-rint(r,0,20),rint(r,8,20),rint(r,0,59)).toISOString() : null;
+    });
+  }
+  ETAPAS.forEach(e=>{ if(s.prazos[e.id]) e.prazo=s.prazos[e.id]; });          // prazos editados pela Matriz
+  Object.keys(s.pesos).forEach(k=>{ PONTOS[k]=s.pesos[k]; });                  // pesos da régua (PEX)
+  s.lojasExtra.forEach(l=>{ if(!BASE.lojas.some(x=>x.id===l.id)) BASE.lojas.push(l); });
+  if(mudou) saveState();
+}
+
+/* ---------- vídeos: YouTube (modo sem cookies) ou Instagram, só carregam no clique ---------- */
+function ytId(u){ const m=String(u||'').match(/(?:youtu\.be\/|v=|shorts\/|embed\/|live\/)([\w-]{11})/); return m?m[1]:(/^[\w-]{11}$/.test(u)?u:''); }
+function igCodigo(u){ const m=String(u||'').match(/instagram\.com\/(?:[\w.]+\/)?(?:reel|reels|p|tv)\/([\w-]+)/); return m?m[1]:''; }
+function capaHTML(v, tam){
+  if(v.yt) return '<span class="capa"><img src="https://i.ytimg.com/vi/'+v.yt+'/'+(tam==='sm'?'mqdefault':'hqdefault')+'.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="mp"></span></span>';
+  return '<span class="capa ig"><span class="mp"></span></span>';
+}
+function capaBotao(v){
+  return '<button class="yt" '+(v.yt?'data-yt="'+v.yt+'"':'data-ig="'+esc(v.ig)+'"')+' data-tit="'+esc(v.tit)+'" aria-label="'+esc(T('Assistir ao vídeo'))+' '+esc(v.tit)+'">'+
+    (v.yt?'<img src="https://i.ytimg.com/vi/'+v.yt+'/maxresdefault.jpg" alt="" loading="lazy" onerror="if(!this.dataset.hq){this.dataset.hq=1;this.src=\'https://i.ytimg.com/vi/'+v.yt+'/hqdefault.jpg\'}else{this.parentNode.classList.add(\'sem-capa\')}">':'')+
+    '<span class="play"></span><span class="yt-alt">'+esc(T('Assistir no YouTube'))+'</span></button>';
+}
+function srcVideo(v){
+  return v.yt? 'https://www.youtube-nocookie.com/embed/'+v.yt+'?autoplay=1&rel=0&modestbranding=1&playsinline=1'
+             : 'https://www.instagram.com/reel/'+v.ig+'/embed';
+}
+function abrirVideo(v){
+  if(EM_QUADRO){ window.open(v.yt?'https://www.youtube.com/watch?v='+v.yt:'https://www.instagram.com/reel/'+v.ig+'/', '_blank', 'noopener'); return; }
+  const ov=modal(esc(v.tit), '<iframe class="player'+(v.ig?' ig':'')+'" src="'+srcVideo(v)+'" title="'+esc(v.tit)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>', '');
+  ov.classList.add('player-ov');
+}
+function lerImagemReduzida(arq, max, q, pronto){
+  if(!arq || !/^image\//.test(arq.type||'')){ toast(T('Escolha uma imagem em JPG ou PNG.')); return; }
+  const fr=new FileReader();
+  fr.onload=()=>{ const im=new Image(); im.onload=()=>{
+    const k=Math.min(1, max/Math.max(im.width, im.height)), c=document.createElement('canvas');
+    c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    pronto(c.toDataURL('image/jpeg',q), arq.name); }; im.onerror=()=>toast(T('Não consegui ler essa imagem.')); im.src=fr.result; };
+  fr.readAsDataURL(arq);
+}
+function escolherImagem(max, q, pronto){
+  const inp=$('#filePicker'); inp.value=''; inp.accept='image/*'; inp.multiple=false;
+  inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(f) lerImagemReduzida(f,max,q,pronto); };
+  inp.click();
+}
+
+/* ---------- banner + RE/MAX TV na tela inicial ---------- */
+function blocoHome(){
+  const pr=S.param||{}, vs=(S.tv||[]).filter(v=>v.yt||v.ig);
+  let h='';
+  if(pr.bannerHome) h+='<div class="card banner-home"><img src="'+pr.bannerHome+'" alt="'+esc(T('Banner da campanha'))+'">'+
+    (souMatriz()?'<button class="btn sm trocar" id="bnEnviar">'+esc(T('Trocar banner'))+'</button>':'')+'</div>';
+  else if(souMatriz()) h+='<button class="banner-vazio" id="bnEnviar">＋ '+esc(T('Banner da campanha: enviar imagem'))+
+    '<span>'+esc(T('Aparece aqui, no topo da tela inicial de toda a rede. JPG ou PNG na horizontal.'))+'</span></button>';
+  if(!vs.length) return h;
+  const d=vs.find(v=>v.dest)||vs[0], outros=vs.filter(v=>v!==d).slice(0,3);
+  return h+'<div class="card video-inst tv-home">'+
+    '<div class="vi-tx"><span class="vi-eb">RE/MAX TV'+(d.cat?' · '+esc(T(d.cat)):'')+'</span><h3>'+esc(d.tit)+'</h3>'+
+      '<p>'+esc(d.canal||'')+(d.dur?' · '+esc(d.dur):'')+'</p>'+
+      '<div class="tv-mini">'+outros.map(v=>'<button class="tvm" data-tv="'+v.id+'">'+capaHTML(v,'sm')+'<span>'+esc(v.tit)+'</span></button>').join('')+'</div>'+
+      '<a class="btn" href="#/tv" style="align-self:flex-start">'+esc(T('Ver a RE/MAX TV'))+'</a></div>'+
+    capaBotao(d)+'</div>';
+}
+document.addEventListener('click', e=>{
+  const m=e.target.closest('[data-tv]'); if(m){ const v=(S.tv||[]).find(x=>x.id===m.dataset.tv); if(v) abrirVideo(v); return; }
+  if(e.target.closest('#bnEnviar')){
+    escolherImagem(1800, .84, url=>{ commit('Atualizou o banner da home','Início', s=>{ s.param.bannerHome=url; }); route(); toast(T('Banner publicado na tela inicial da rede.'),1); });
+  }
+});
+
+/* ---------- tela RE/MAX TV ---------- */
+let TV_CAT='Todos';
+VIEWS.tv=function(v){
+  const cats=['Todos'].concat(Array.from(new Set((S.tv||[]).map(x=>x.cat||'Institucional'))));
+  if(cats.indexOf(TV_CAT)<0) TV_CAT='Todos';
+  const lista=(S.tv||[]).filter(x=>TV_CAT==='Todos'||x.cat===TV_CAT);
+  v.innerHTML=
+    ph('RE/MAX TV', GENERICA? T('Vídeos institucionais, mensagens da liderança e treinamentos da rede — mais as trilhas e áudios da marca. Tudo abre aqui dentro, sem sair da plataforma.')
+                           : T('Vídeos institucionais, mensagens da liderança e palestras do presidente da RE/MAX Brasil, Peixoto Accyoli — mais as trilhas e áudios da marca. Tudo abre aqui dentro, sem sair da plataforma.'),
+      souMatriz()?'<button class="btn" id="tvAudio">＋ '+esc(T('Áudio'))+'</button><button class="btn pri" id="tvNovo">＋ '+esc(T('Adicionar vídeo'))+'</button>':'','tv')+
+    '<div class="chips" id="tvCats" style="margin-bottom:16px">'+cats.map(c=>'<button class="chip '+(c===TV_CAT?'on':'')+'" data-c="'+esc(c)+'">'+esc(T(c))+'</button>').join('')+'</div>'+
+    '<div class="tvgrid">'+(lista.map(x=>'<div class="tvcard" data-tv="'+x.id+'">'+capaHTML(x)+
+      '<div class="tx"><b>'+esc(x.tit)+'</b><span>'+esc(x.canal||'')+(x.dur?' · '+esc(x.dur):'')+'</span>'+
+      (souMatriz()?'<div class="acoes"><button class="btn sm" data-dest="'+x.id+'">'+(x.dest?'★ '+esc(T('Em destaque')):esc(T('Destacar na home')))+'</button><button class="btn sm" data-tira="'+x.id+'">'+esc(T('Remover'))+'</button></div>':'')+
+      '</div></div>').join('')||'<div class="empty">'+esc(T('Nenhum vídeo nesta categoria.'))+'</div>')+'</div>'+
+    '<div class="card" style="margin-top:22px"><div class="ch"><h3>'+esc(T('Trilhas e áudios da marca'))+'</h3><div class="r"><span class="mini">'+esc(T('vinhetas, trilhas de vídeo e spots de rádio'))+'</span></div></div><div class="cb">'+
+      ((S.audios||[]).map(a=>'<div class="audio-li"><span class="tag mut">'+esc(a.tipo||'Trilha')+'</span><div style="flex:1;min-width:0"><b style="font-size:13.4px">'+esc(a.nome)+'</b><div class="mini">'+esc(a.obs||'')+'</div></div>'+
+        (a.src?'<audio controls preload="none" src="'+a.src+'"></audio>':'<span class="mini">'+esc(T('arquivo no servidor na versão final'))+'</span>')+
+        (souMatriz()?'<button class="btn sm" data-atira="'+a.id+'">×</button>':'')+'</div>').join('')||
+        '<div class="empty">'+esc(T('A Matriz ainda não publicou áudios. As trilhas institucionais entram aqui.'))+'</div>')+
+    '</div></div>';
+  $$('#tvCats .chip',v).forEach(b=>b.addEventListener('click',()=>{ TV_CAT=b.dataset.c; route(); }));
+  $$('[data-dest]',v).forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
+    commit('Destacou vídeo na home', (S.tv.find(x=>x.id===b.dataset.dest)||{}).tit, s=>{ s.tv.forEach(x=>x.dest= x.id===b.dataset.dest?1:0); }); route(); toast(T('Vídeo em destaque na tela inicial.'),1); }));
+  $$('[data-tira]',v).forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
+    commit('Removeu vídeo da RE/MAX TV', (S.tv.find(x=>x.id===b.dataset.tira)||{}).tit, s=>{ s.tv=s.tv.filter(x=>x.id!==b.dataset.tira); }); route(); }));
+  $$('[data-atira]',v).forEach(b=>b.addEventListener('click',()=>{ commit('Removeu áudio','', s=>{ s.audios=s.audios.filter(x=>x.id!==b.dataset.atira); }); route(); }));
+  $('#tvNovo')&&$('#tvNovo').addEventListener('click',()=>{
+    const ov=modal(T('Adicionar vídeo'),
+      '<div class="field"><label>'+esc(T('Link do vídeo'))+'</label><input id="tvU" placeholder="https://www.youtube.com/watch?v=…  ou  https://www.instagram.com/reel/…"></div>'+
+      '<div class="field"><label>'+esc(T('Título'))+'</label><input id="tvT"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>'+esc(T('Categoria'))+'</label><select id="tvC">'+['Institucional','Liderança','Treinamentos','Eventos'].map(c=>'<option>'+c+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>'+esc(T('Canal ou autor'))+'</label><input id="tvA" placeholder="Ex.: RE/MAX Brasil"></div></div>'+
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="tvD" style="width:auto"> '+esc(T('Destacar na tela inicial'))+'</label>'+
+      '<div class="hint" style="margin-top:12px">'+esc(T('Vídeos do YouTube e do Instagram entram pelo link: tocam dentro da plataforma, sem baixar nem ocupar espaço. O perfil precisa ser público.'))+'</div>',
+      '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn pri" id="tvOk">'+esc(T('Adicionar'))+'</button>');
+    $('#tvOk',ov).addEventListener('click',()=>{
+      const u=$('#tvU',ov).value.trim(), yt=ytId(u), ig=yt?'':igCodigo(u);
+      if(!yt&&!ig) return toast(T('Cole um link do YouTube ou do Instagram.'));
+      const tit=$('#tvT',ov).value.trim()||T('Vídeo da rede'), id=uid('v'), dest=$('#tvD',ov).checked;
+      commit('Adicionou vídeo à RE/MAX TV', tit, s=>{ if(dest) s.tv.forEach(x=>x.dest=0);
+        s.tv.unshift({id, yt, ig, tit, canal:$('#tvA',ov).value.trim(), cat:$('#tvC',ov).value, dest:dest?1:0}); });
+      fechaModal(); route(); toast(T('Vídeo publicado na RE/MAX TV.'),1);
+    });
+  });
+  $('#tvAudio')&&$('#tvAudio').addEventListener('click',()=>{
+    let arq=null;
+    const ov=modal(T('Adicionar áudio'),
+      '<div class="field"><label>'+esc(T('Nome'))+'</label><input id="auN" placeholder="Ex.: Trilha institucional 2026"></div>'+
+      '<div class="field"><label>'+esc(T('Tipo'))+'</label><select id="auT"><option>Trilha</option><option>Vinheta</option><option>Spot de rádio</option></select></div>'+
+      '<button class="btn" id="auF" style="width:100%;justify-content:center">'+esc(T('Escolher arquivo (MP3, até 2 MB)'))+'</button><div class="mini" id="auI" style="margin-top:6px"></div>',
+      '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn pri" id="auOk">'+esc(T('Publicar'))+'</button>');
+    $('#auF',ov).addEventListener('click',()=>{ const inp=$('#filePicker'); inp.value=''; inp.accept='audio/*'; inp.multiple=false;
+      inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+        if(f.size>2*1048576){ arq={nome:f.name, tam:f.size}; $('#auI',ov).textContent=f.name+' · '+kb(f.size)+' — '+T('grande demais para a demonstração: fica só o registro.'); return; }
+        const fr=new FileReader(); fr.onload=()=>{ arq={nome:f.name, tam:f.size, src:fr.result}; $('#auI',ov).textContent=f.name+' · '+kb(f.size); }; fr.readAsDataURL(f); };
+      inp.click(); });
+    $('#auOk',ov).addEventListener('click',()=>{
+      const nome=$('#auN',ov).value.trim()||(arq&&arq.nome)||T('Áudio da marca');
+      commit('Publicou áudio da marca', nome, s=>{ s.audios.unshift({id:uid('au'), nome, tipo:$('#auT',ov).value, src:arq&&arq.src||'', obs:arq?arq.nome+' · '+kb(arq.tam):''}); });
+      fechaModal(); route(); toast(T('Áudio publicado.'),1);
+    });
+  });
+};
+</script>

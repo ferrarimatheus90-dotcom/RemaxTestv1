@@ -13,9 +13,9 @@ const adesaoCampanha = c => {
 VIEWS.prontos=function(v){
   const us=usuariosVisiveis(), con=us.filter(u=>u.ig).length;
   const camp=S.campanhas.find(c=>c.st==='agendada')||S.campanhas[0];
-  const souBrasil=ROLE==='brasil', euAg=camp.ag&&camp.ag[euId()];
+  const souBrasil=souMatriz(), euAg=camp.ag&&camp.ag[euId()];
   v.innerHTML =
-    ph('Prontos em Rede','O programa nacional de comunicação sincronizada: a RE/MAX Brasil publica arte e legenda, a rede inteira posta no mesmo dia e na mesma hora — em um clique, sem repassar arquivo por WhatsApp.',
+    ph('Campanhas da rede','Comunicação sincronizada: a Matriz publica arte e legenda e a rede inteira posta no mesmo dia e na mesma hora — em um clique, sem repassar arquivo por WhatsApp.',
       souBrasil?'<button class="btn pri" id="novaC">+ Nova campanha</button>':(souCorretor()&&!euAg?'<button class="btn pri" id="agEu">Agendar na minha conta</button>':''),'prontos')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Próxima publicação', new Date(camp.dt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), esc(camp.tit.split('—')[0].trim())+' · '+new Date(camp.dt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))+
@@ -26,7 +26,7 @@ VIEWS.prontos=function(v){
     '<div class="grid g23" style="margin-bottom:16px">'+
       '<div class="card"><div class="ch"><h3>Campanha em preparação</h3><div class="r">'+(euAg?'<span class="tag ok">Você já agendou</span>':'<span class="tag red">Faltam '+dias(new Date(camp.dt))+' dias</span>')+'</div></div>'+
       '<div class="cb" style="display:grid;grid-template-columns:190px 1fr;gap:18px;align-items:start">'+
-        '<canvas class="prev" id="cvC"></canvas>'+
+        (camp.arte?'<img class="prev" src="'+camp.arte+'" alt="" style="width:100%;border-radius:12px">':'<canvas class="prev" id="cvC"></canvas>')+
         '<div><div style="font-family:var(--font-d);font-weight:800;font-size:17px">'+esc(camp.tit)+'</div>'+
         '<div class="mini" style="margin:5px 0 12px">'+new Date(camp.dt).toLocaleString('pt-BR')+' · '+esc(camp.peca)+' · toda a rede</div>'+
         '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.9px;line-height:1.55">'+esc(camp.leg)+'</div>'+
@@ -54,6 +54,7 @@ VIEWS.prontos=function(v){
       const a=$('#cvC'); if(!a) return; a.width=cv.width; a.height=cv.height; a.getContext('2d').drawImage(cv,0,0);
       $('#dlArte')&&$('#dlArte').addEventListener('click',()=>canvasBlob(cv,'image/png').then(b=>{baixarBlob(b,'campanha-'+camp.id+'.png');toast('Arte baixada.',1);})); });
 
+  if(camp.arte) $('#dlArte').addEventListener('click',()=>fetch(camp.arte).then(r=>r.blob()).then(b=>{ baixarBlob(b,'campanha-'+camp.id+'.jpg'); toast('Arte baixada.',1); }));
   const prim=new Date(2026,8,1).getDay();
   let cal=['D','S','T','Q','Q','S','S'].map(d=>'<div class="dh">'+d+'</div>').join('');
   for(let i=0;i<prim;i++) cal+='<div class="dy off"></div>';
@@ -89,12 +90,13 @@ VIEWS.prontos=function(v){
       '<div class="field"><label>Hora</label><input type="time" id="nH" value="10:00"></div></div>'+
       '<div class="field"><label>Formato</label><select id="nP"><option>Feed</option><option>Feed + Story</option><option>Story</option><option>Carrossel</option></select></div>'+
       '<div class="field"><label>Legenda oficial</label><textarea id="nL" rows="3" placeholder="Texto que a rede publica…"></textarea></div>'+
-      '<div class="field"><label>Modelo de arte</label><select id="nM">'+TPLS().filter(t=>t.cat==='Redes sociais').map(t=>'<option value="'+t.id+'">'+esc(t.nome)+'</option>').join('')+'</select></div>',
+      '<div class="field"><label>Modelo de arte</label><select id="nM">'+TPLS().filter(t=>t.cat==='Redes sociais').map(t=>'<option value="'+t.id+'">'+esc(t.nome)+'</option>').join('')+'</select></div>'+
+      '<div class="field"><label>Ou uma arte salva no Estúdio</label><select id="nA"><option value="">— usar o modelo acima —</option>'+S.pecas.map(p=>'<option value="'+p.id+'">'+esc(p.tplNome)+' · '+quando(p.criado)+'</option>').join('')+'</select></div>',
       '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="nOk">Criar campanha</button>');
     $('#nOk',ov).addEventListener('click',()=>{
       const tit=$('#nT',ov).value.trim()||'Nova campanha da rede';
       commit('Criou campanha', tit, s=>{ s.campanhas.unshift({id:uid('c'), tit, dt:$('#nD',ov).value+'T'+$('#nH',ov).value,
-        st:'planejada', peca:$('#nP',ov).value, tpl:$('#nM',ov).value, leg:$('#nL',ov).value.trim()||'#RemaxBrasil #ProntosEmRede', ag:{}}); });
+        st:'planejada', peca:$('#nP',ov).value, tpl:$('#nM',ov).value, leg:$('#nL',ov).value.trim()||'#RemaxBrasil #ProntosEmRede', ag:{}, arte:((S.pecas.find(p=>p.id===$('#nA',ov).value)||{}).thumb)||''}); });
       fechaModal(); route(); toast('Campanha criada e visível para a rede.',1);
     });
   });
@@ -112,7 +114,7 @@ function disparoEmMassa(campId){
     '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="pD" value="'+camp.dt.slice(0,10)+'"></div>'+
     '<div class="field"><label>Hora</label><input type="time" id="pH" value="'+camp.dt.slice(11,16)+'"></div></div>'+
     '<div class="field"><label>Canais</label><div class="chips" id="pCan"><button class="chip on">Instagram feed</button><button class="chip on">Story</button><button class="chip">Facebook</button></div></div>'+
-    '<div class="hint">Envio pelo provedor <b>'+esc(prov?prov.nome:'não definido')+'</b>. Só entram na fila as contas conectadas; as demais recebem arte e legenda com aviso de publicação manual e vão para a esteira de ativação do CS.</div>',
+    '<div class="hint">Envio pela integração de publicação da plataforma. Só entram na fila as contas conectadas; as demais recebem arte e legenda com aviso de publicação manual e vão para a esteira de ativação do CS.</div>',
     '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="okD">Programar publicação</button>');
   $$('#pCan .chip',ov).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
   $('#okD',ov).addEventListener('click',()=>{
@@ -129,7 +131,7 @@ function disparoEmMassa(campId){
         if(!u.ig){ semConta++; return; }
         if(!c.ag[u.id]){ c.ag[u.id]=c.dt; n++; }
       });
-    }, (PROVEDORES.find(p=>p.id===S.social.provedor)||{}).nome||'provedor');
+    }, 'Integração de publicação');
     fechaModal(); route();
     toast('<b>'+n+' contas</b> entraram na fila para '+new Date(d+'T'+h).toLocaleString('pt-BR')+(semConta?'.<br>'+semConta+' sem conta conectada receberam a arte para publicação manual.':'.'),1);
   });
@@ -146,12 +148,14 @@ VIEWS.redes=function(v){
     const u=S.usuarios[uidc]; if(!u||!us.some(x=>x.id===uidc)) return;
     fila.push({q:c.dt, tit:c.tit, u, st:new Date(c.dt)<HOJE?'publicada':'fila'});
   }));
+  (S.social.fila||[]).forEach(p=>{ const u=S.usuarios[p.uid]; if(!u||!us.some(x=>x.id===p.uid)) return;
+    fila.push({q:p.quando, tit:'Peça do Estúdio · '+p.tplNome, u, st:new Date(p.quando)<new Date()?'publicada':'fila'}); });
   fila.sort((a,b)=> a.q<b.q?1:-1);
   const eu_=souCorretor()?S.usuarios[euId()]:null;
   const M=metricasRede(lojasVisiveis());
 
   v.innerHTML =
-    ph('Redes sociais','Conexão das contas dos associados, provedor de publicação e agendamento em massa. É daqui que a arte oficial sai para o perfil de cada corretor, no mesmo dia e na mesma hora.',
+    ph('Redes sociais','Conexão das contas dos associados e agendamento em massa. É daqui que a arte oficial sai para o perfil de cada corretor, no mesmo dia e na mesma hora.',
       (eu_&&!eu_.ig)?'<button class="btn pri" id="conectar">Conectar meu Instagram</button>':
       (ROLE!=='corretor'?'<button class="btn pri" id="massa">Publicar em massa</button><button class="btn" id="conectarTodas">Conectar pendentes</button>':''),'redes')+
     '<div class="grid g4" style="margin-bottom:16px">'+
@@ -160,23 +164,10 @@ VIEWS.redes=function(v){
       kpi('Já publicadas', fila.filter(f=>f.st==='publicada').length, 'pela plataforma')+
       kpi('Alcance no período', compacto(M.alcance), 'somado das publicações da rede','k-ok')+
     '</div>'+
-    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Provedor de publicação</h3><div class="r"><span class="mini">quem leva a peça até o perfil do associado</span></div></div>'+
-      '<div class="cb"><div class="grid g2">'+
-      PROVEDORES.map(p=>{
-        const ativo=S.social.provedor===p.id;
-        return '<div class="card pad" style="box-shadow:'+(ativo?'0 0 0 1.5px var(--azul) inset;background:var(--azul-soft)':'none;background:var(--surface-2)')+'">'+
-          '<div style="display:flex;align-items:center;gap:8px"><h3 style="font-size:15.5px">'+esc(p.nome)+'</h3>'+
-          (p.rec?'<span class="tag" style="background:var(--azul);color:#fff">Recomendado</span>':(p.selo?'<span class="tag mut">'+esc(p.selo)+'</span>':''))+(ativo?'<span class="tag ok" style="margin-left:auto">Conectado</span>':'')+'</div>'+
-          '<div class="mini" style="margin-top:4px">'+esc(p.tipo)+'</div>'+
-          '<div style="font-size:12.9px;color:var(--ink-2);margin-top:9px">'+esc(p.desc)+'</div>'+
-          '<div style="margin-top:10px">'+p.pontos.map(x=>'<div style="font-size:12.5px;color:var(--ink-2);padding:3px 0 3px 16px;position:relative"><span style="position:absolute;left:0;color:var(--ok)">✓</span>'+esc(x)+'</div>').join('')+'</div>'+
-          '<div class="hint warn" style="margin-top:10px;font-size:12.2px">'+esc(p.atencao)+'</div>'+
-          (ROLE==='brasil'? '<button class="btn '+(ativo?'':'pri')+'" style="margin-top:12px;width:100%;justify-content:center" data-prov="'+p.id+'"'+(ativo?' disabled':'')+'>'+(ativo?'Provedor em uso':'Usar este provedor')+'</button>':'')+
-        '</div>';
-      }).join('')+
-      '</div>'+
-      '<div class="hint" style="margin-top:14px"><b>Uma camada só.</b> Toda publicação passa pela mesma camada da plataforma, então trocar de provedor não muda nenhuma tela. A troca pede nova autorização do Instagram a cada associado — por isso o app próprio da Meta segue em aprovação em paralelo.</div>'+
-    '</div></div>'+
+    '<div class="card pad" style="margin-bottom:16px;display:flex;gap:16px;align-items:center;flex-wrap:wrap">'+
+      '<span class="tag ok">'+esc(T('Integração ativa'))+'</span>'+
+      '<div style="flex:1;min-width:220px"><b>'+esc(T('Publicação automática no Instagram'))+'</b><div class="mini">'+esc(T('Feed, carrossel, reels e stories saem da plataforma direto para o perfil de cada associado. As métricas voltam a cada 24 horas.'))+'</div></div>'+
+      '<span class="mini">'+esc(T('ativa desde'))+' '+new Date(S.social.conectadoEm).toLocaleDateString('pt-BR')+'</span></div>'+
     '<div class="grid g23">'+
       '<div class="card"><div class="ch"><h3>Fila de publicação</h3><div class="r"><span class="mini">gerada pelos agendamentos reais</span></div></div>'+
       '<div class="tw" style="max-height:430px;overflow:auto"><table><thead><tr><th>Quando</th><th>Conteúdo</th><th>Conta</th><th>Situação</th></tr></thead><tbody>'+
@@ -217,7 +208,7 @@ VIEWS.redes=function(v){
   $('#conectar')&&$('#conectar').addEventListener('click',()=>{
     const ov=modal('Conectar Instagram',
       '<div class="tl" style="margin-bottom:6px">'+
-      ['Converter a conta em Instagram Business ou Creator','Vincular a uma página do Facebook da unidade','Autorizar a plataforma Prontos em Rede','Escolher os horários preferidos de publicação']
+      ['Deixar a conta como profissional (Comercial ou Criador de conteúdo)','Abrir o link do convite e entrar com o Instagram','Autorizar a plataforma Prontos em Rede a publicar','Pronto: as campanhas da rede saem no seu perfil']
         .map((p,i)=>'<div class="it '+(i===0?'now':'')+'"><div class="t">'+p+'</div></div>').join('')+'</div>'+
       '<div class="hint">Se travar em qualquer passo, mande “instagram” no WhatsApp do suporte: um analista faz junto com você.</div>',
       '<button class="btn" onclick="fechaModal()">Depois</button><button class="btn pri" id="okC">Autorizar</button>');

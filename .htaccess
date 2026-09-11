@@ -14,3 +14,14 @@ AddType video/webm .webm
     Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
 </IfModule>
+
+# Arquivos de configuração da camada de integrações (api/) não são abertos pela web
+<FilesMatch "^(_config|config|prontos-config.*)\.php$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>

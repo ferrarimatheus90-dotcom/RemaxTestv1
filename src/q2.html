@@ -8,18 +8,21 @@
     <nav class="nav" id="nav"></nav>
     <div class="op">
       Plataforma desenvolvida por<br><b>BMAG SERVIÇOS DIGITAIS</b>
+      <span class="dir">© 2026 BMAG Serviços Digitais. Todos os direitos reservados.</span>
     </div>
   </aside>
 
   <div class="main">
     <header class="top">
       <button class="iconbtn burger" id="burger" aria-label="Menu"></button>
+      <button class="iconbtn voltar" id="btnVoltar" aria-label="Voltar" title="Voltar"></button>
       <div class="search">
         <span class="si" id="siBusca"></span>
         <input id="q" type="search" autocomplete="off" placeholder="Buscar: cartão de visita, fachada, comunicado, regra de logo…" aria-label="Busca inteligente">
         <div id="srBox"></div>
       </div>
       <div class="sp"></div>
+      <button class="iconbtn buscaBtn" id="btnBusca" aria-label="Buscar" title="Buscar"></button>
       <button class="iconbtn" id="btnIdioma" title="Idioma" aria-label="Idioma"></button>
       <button class="iconbtn" id="btnTema" title="Tema" aria-label="Tema"></button>
       <button class="iconbtn" id="btnAlert" title="Alertas" aria-label="Alertas"><span class="dot" id="alertDot"></span></button>
@@ -31,6 +34,7 @@
       </button>
     </header>
     <main class="content" id="view"></main>
+    <footer class="rodape" id="rodape">© 2026 <b>BMAG SERVIÇOS DIGITAIS</b> · Todos os direitos reservados.</footer>
   </div>
 </div>
 <div id="toast"></div>
@@ -56,6 +60,7 @@
 
    Desenvolvido por BMAG SERVIÇOS DIGITAIS.
    ======================================================================= */
+const GENERICA = __GENERICA__;      /* build --generica: demonstração sem a marca RE/MAX */
 const LOGO = "__LOGO__";
 document.getElementById('logoSide').src = LOGO;
 const BASE = __BASE__;
@@ -102,7 +107,7 @@ const kb = n => n<1024? n+' B' : n<1048576? (n/1024).toFixed(0)+' KB' : (n/10485
 
 function toast(msg, ok){
   const t=document.createElement('div'); t.className='toast'+(ok?' ok':''); t.innerHTML=msg;
-  $('#toast').appendChild(t); if(typeof aplicarIdioma==='function') aplicarIdioma(t); setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),420);},3000);
+  $('#toast').appendChild(t); if(typeof aplicarIdioma==='function') aplicarIdioma(t); if(typeof aplicarTermos==='function') aplicarTermos(t); setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .4s';setTimeout(()=>t.remove(),420);},3000);
 }
 function modal(title, body, footer){
   const ov=document.createElement('div'); ov.className='ov';
@@ -111,6 +116,7 @@ function modal(title, body, footer){
   document.addEventListener('keydown',function k(e){if(e.key==='Escape'){ov.remove();document.removeEventListener('keydown',k);}});
   $('#modalRoot').appendChild(ov);
   if(typeof aplicarIdioma==='function') aplicarIdioma(ov);
+  if(typeof aplicarTermos==='function') aplicarTermos(ov);
   return ov;
 }
 const fechaModal = ()=> $$('.ov').forEach(o=>o.remove());
@@ -137,7 +143,7 @@ const PONTOS = {etapa:50, etapaAtraso:20, evidencia:15, campanha:30, leitura:5, 
 /* =======================================================================
    ESTADO PERSISTENTE
    ======================================================================= */
-const KEY='pr_state_v4';
+const KEY = GENERICA? 'hub_state_v1' : 'pr_state_v4';   // a demonstração genérica não mistura dados com o site da RE/MAX
 let S=null;
 
 function fotoSimulada(chave, tipo){
@@ -221,7 +227,7 @@ function seedState(){
     st.excelencia.provas.push({id:'x-seed'+i, criterio:p[1], criterioNome:c.nome, pts:c.pts, loja:p[0], uid:null,
       autor:'Gestor · '+lojaDe(p[0]).nome, q:new Date(2026,8,2+i,10,20).toISOString(), st:p[3], obs:p[4],
       motivo: p[3]==='recusado'?'Print não mostra a data das publicações.':'',
-      validador: p[3]==='pendente'?null:'Marketing RE/MAX Brasil',
+      validador: p[3]==='pendente'?null:'Matriz RE/MAX Brasil',
       arq:{nome:'comprovacao-'+p[1]+'.jpg', tam:180000+i*9000, tipo:'image/jpeg',
            quando:new Date(2026,8,2+i,10,20).toISOString(), quem:'Gestor da unidade', thumb:fotoSimulada(p[0]+p[1],p[2])}});
   });
@@ -254,7 +260,7 @@ function commit(acao, objeto, fn, origem){
   S.audit = S.audit.slice(0,400);
   saveState();
 }
-function resetState(){ LS.del(KEY); S=seedState(); saveState(); }
+function resetState(){ LS.del(KEY); S=seedState(); saveState(); if(typeof garantirCampos==='function') garantirCampos(); }
 
 /* ---------- leitura derivada do estado ---------- */
 const lojaDe = id => BASE.lojas.find(l=>l.id===id);
@@ -312,7 +318,10 @@ function pontosC(uidc){
   return p;
 }
 function naoLidos(){ const id=euId(); return S.comunicados.filter(k=>(S.leituras[k.id]||[]).indexOf(id)<0); }
-function pendentesAprov(){ return S.aprovacoes.filter(a=>a.st==='pendente' && (ROLE==='brasil'||ROLE==='master'? true : a.loja===escopoLoja())); }
+function pendentesAprov(){ return S.aprovacoes.filter(a=>a.st==='pendente' && (
+  souMatriz()? podeDecidirNivel(rotuloNivel(a)) :
+  ROLE==='master'? lojaDe(a.loja).master===MASTER_DEMO && podeDecidirNivel(rotuloNivel(a)) :
+  a.loja===escopoLoja())); }
 
 /* ---------- personas ---------- */
 let ROLE = LS.get('pr_role') || 'brasil';
@@ -324,24 +333,29 @@ function personas(){
     DEMO_ID = c.id;
   }
   const c = S.usuarios[DEMO_ID];
-  return {
-    brasil:  {id:'brasil', nome:'Marketing RE/MAX Brasil', papel:'RE/MAX Brasil · nacional', escopo:'nacional'},
-    master:  {id:'m2', nome:'Master SP Capital II', papel:'Master Regional', escopo:'m2'},
+  const pp={
+    brasil:  {id:'brasil', nome:'Matriz RE/MAX Brasil', papel:'Matriz · nacional', escopo:'nacional'},
+    construtor:{id:'construtor', nome:'Construtor · BMAG', papel:'BMAG · uso interno', escopo:'nacional'},
+    master:  {id:MASTER_DEMO, nome:masterDe(MASTER_DEMO).nome, papel:'Master Regional', escopo:MASTER_DEMO},
     franquia:{id:'g-l18', nome:'Gestor · '+lojaDe('l18').nome, papel:'Franquia · broker', escopo:'l18'},
     corretor:{id:c.id, nome:c.nome, papel:'Associado · '+lojaDe(c.loja).nome, escopo:c.loja, foto:c.foto}
   };
+  Object.keys(pp).forEach(k=>{ const o=(S.perfis||{})[k]; if(o){ if(o.nome) pp[k].nome=o.nome; if(o.foto) pp[k].foto=o.foto; } });   // o que a pessoa editou no perfil
+  return pp;
 }
 let P = null;
 const eu = ()=> P[ROLE];
 const euId = ()=> P[ROLE].id;
 const escopoLoja = ()=> ROLE==='franquia'? 'l18' : ROLE==='corretor'? S.usuarios[DEMO_ID].loja : null;
 function lojasVisiveis(){
-  if(ROLE==='brasil') return BASE.lojas;
-  if(ROLE==='master') return BASE.lojas.filter(l=>l.master==='m2');
+  if(souMatriz()) return BASE.lojas;
+  if(ROLE==='master') return BASE.lojas.filter(l=>l.master===MASTER_DEMO);
   return BASE.lojas.filter(l=>l.id===escopoLoja());
 }
 const minhaLoja = ()=> escopoLoja()? lojaDe(escopoLoja()) : null;
 const souCorretor = ()=> ROLE==='corretor';
+const MASTER_DEMO = 'm3';   // regional da unidade de teste (RE/MAX SMART): a Master de teste aprova o que o gestor de teste envia
+const souMatriz = ()=> ROLE==='brasil' || ROLE==='construtor';   // o Construtor (BMAG) enxerga a rede inteira, como a Matriz
 
 /* ---------- anexos (upload real, com miniatura) ---------- */
 function pedirArquivos(accept, multiplo, cb){
