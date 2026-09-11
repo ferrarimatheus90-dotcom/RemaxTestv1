@@ -1370,11 +1370,12 @@ const TEMPLATES = [
   {id:'t14', nome:'Capa de WhatsApp Business', cat:'Digital',        fmt:'feed',   dim:'640 × 640 px', txt:'ATENDIMENTO', sub:'Fale comigo agora'},
   {id:'t16', nome:'Placa 40 × 60 cm — venda',   cat:'Placas e campo', fmt:'placa46', dim:'40 × 60 cm', tag:'Nova marca', txt:'VENDE-SE', sub:'Fale com o corretor'},
   {id:'t17', nome:'Placa 40 × 60 cm — locação', cat:'Placas e campo', fmt:'placa46', dim:'40 × 60 cm', txt:'ALUGA-SE', sub:'Agende sua visita'},
+  {id:'t18', nome:"Foto com marca d'água",       cat:'Digital',        fmt:'foto',   dim:'no tamanho da foto', tag:'Novo', txt:'', sub:''},
   {id:'t15', nome:'Fachada — projeto padrão',  cat:'Fachadas',       fmt:'slide',  dim:'DWG + PDF', tag:'Obrigatório', txt:'PADRÃO DE FACHADA', sub:'Especificação técnica'}
 ];
 function TPLS(){ return TEMPLATES.concat((S&&S.templatesExtra)||[]); }
 const CATS = ['Todos','Redes sociais','Papelaria','Placas e campo','Apresentações','Mídia externa','Digital','Fachadas'];
-const DIMS = {feed:[1080,1080], story:[1080,1920], cartao:[1063,591], placa:[1200,900], placa46:[800,1200], email:[1200,360], a4:[1240,1754], slide:[1600,900]};
+const DIMS = {feed:[1080,1080], story:[1080,1920], cartao:[1063,591], placa:[1200,900], placa46:[800,1200], foto:[1600,1200], email:[1200,360], a4:[1240,1754], slide:[1600,900]};
 
 const SEED_COMUNICADOS = [
   {id:'k1', area:'Marketing', tit:'Nova identidade visual RE/MAX — cronograma de adequação por etapa', dt:'2026-09-08', obr:true,
@@ -1978,8 +1979,51 @@ function balaoPeca(g, cx, cy, alt, luz, k){
   g.drawImage(BALAO_IMG, cx-larg/2, cy-alt/2, larg, alt); g.restore();
 }
 
-/* desenha a peça; d = {fmt,tema,titulo,sub,nome,creci,tel,unidade,foto(Image|null),imovel(Image|null)} */
+/* marca d'água: pino da marca + nome da unidade + corretor e CRECI, em branco translúcido
+   o = {pos:'centro'|'canto', op:'suave'|'media'|'forte', cy (centro vertical opcional), topo (canto em cima)} */
+function marcaDagua(g, d, W, H, o){
+  o=o||{};
+  const alfa = o.op==='suave'? 0.36 : o.op==='forte'? 0.82 : 0.58, base=Math.min(W,H), canto=o.pos==='canto';
+  const nome=String(d.unidade||'').toUpperCase();
+  const linha2=[d.nome, d.creci?'CRECI '+d.creci:''].filter(Boolean).join('  ·  ').toUpperCase();
+  const pinR = imgOk(BALAO_IMG)? BALAO_IMG.naturalWidth/BALAO_IMG.naturalHeight : 0;
+  const medir=s=>{ const f1=Math.round(s*0.44), f2=Math.round(s*0.19);
+    g.font='700 '+f1+'px '+FONTE; espacamento(g, Math.round(f1*0.04)); const w1=g.measureText(nome).width;
+    g.font='500 '+f2+'px '+FONTE; espacamento(g, Math.round(f2*0.1)); const w2=g.measureText(linha2).width;
+    return {s, f1, f2, pin:s*pinR, gap:s*0.24, larg:s*pinR+s*0.24+Math.max(w1,w2)}; };
+  let m=medir(base*(canto?0.09:0.13));
+  const maxL=W*(canto?0.6:0.86); if(m.larg>maxL) m=medir(m.s*maxL/m.larg);
+  const mg=base*0.045;
+  const x0 = canto? W-mg-m.larg : (W-m.larg)/2;
+  const cy = canto? (o.topo? mg+m.s/2 : H-mg-m.s/2) : (o.cy!=null? o.cy : H/2);
+  g.save(); g.globalAlpha=alfa; g.textBaseline='middle';
+  g.shadowColor='rgba(0,0,0,.4)'; g.shadowBlur=m.s*0.14;
+  if(m.pin) g.drawImage(BALAO_IMG, x0, cy-m.s/2, m.pin, m.s);
+  const tx=x0+m.pin+m.gap; g.fillStyle='#FFFFFF';
+  g.font='700 '+m.f1+'px '+FONTE; espacamento(g, Math.round(m.f1*0.04)); g.fillText(nome, tx, cy-(linha2? m.f2*0.72 : 0));
+  if(linha2){ g.font='500 '+m.f2+'px '+FONTE; espacamento(g, Math.round(m.f2*0.1)); g.fillText(linha2, tx, cy+m.f1*0.56); }
+  g.restore(); espacamento(g,0); g.textBaseline='top';
+}
+/* modelo "Foto com marca d'água": a própria foto, no tamanho dela, só com a marca por cima */
+function desenharFoto(cv, d){
+  const foto=imgOk(d.imovel)? d.imovel : null;
+  let W=1600, H=1200;
+  if(foto){ const iw=foto.naturalWidth||foto.width, ih=foto.naturalHeight||foto.height, s=Math.min(1,1600/Math.max(iw,ih)); W=Math.round(iw*s); H=Math.round(ih*s); }
+  cv.width=W; cv.height=H;
+  const g=cv.getContext('2d'); g.textBaseline='top'; espacamento(g,0);
+  if(foto) g.drawImage(foto,0,0,W,H);
+  else {
+    const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#B9C6D6'); gr.addColorStop(1,'#6F7F95'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    g.fillStyle='rgba(255,255,255,.85)'; g.font='600 '+Math.round(H*0.045)+'px '+FONTE; g.textAlign='center';
+    g.fillText('Adicione a foto do imóvel', W/2, H*0.12); g.textAlign='left';
+  }
+  marcaDagua(g, d, W, H, {pos:d.marcaPos||'centro', op:d.marcaOp||'media'});
+  return cv;
+}
+
+/* desenha a peça; d = {fmt,tema,titulo,sub,nome,creci,tel,unidade,foto(Image|null),imovel(Image|null),marca,marcaPos,marcaOp} */
 function desenharPeca(cv, d){
+  if(d.fmt==='foto') return desenharFoto(cv, d);
   const [W,H]=DIMS[d.fmt]||DIMS.feed;
   cv.width=W; cv.height=H;
   const g=cv.getContext('2d'), T=TEMAS[d.tema]||TEMAS.azul;
@@ -2005,6 +2049,8 @@ function desenharPeca(cv, d){
     const alt=Math.min(W,H)*(deitado?0.56:0.36);
     balaoPeca(g, deitado? W*0.8 : W*0.76, deitado? H*0.42 : (story? H*0.3 : H*0.29), alt, T.luz, k);
   }
+  // marca d'água na foto (opcional): no centro livre da peça ou no canto de cima, longe do logotipo
+  if(foto && d.marca) marcaDagua(g, d, W, H, {pos:d.marcaPos||'centro', op:d.marcaOp||'media', topo:true, cy: story? H*0.44 : deitado? H*0.36 : H*0.4});
   const tinta = foto? '#FFFFFF' : T.tinta, apoio = foto? 'rgba(255,255,255,.9)' : T.apoio;
 
   // logotipo
@@ -2620,7 +2666,7 @@ VIEWS.biblioteca=function(v){
 /* =======================================================================
    MÓDULO 2 · ESTÚDIO DE PEÇAS  (foto do imóvel + personalização + download)
    ======================================================================= */
-const ST={tpl:'t01', tema:'azul', titulo:null, sub:null, nome:null, creci:'', tel:'', unidade:'', foto:'', fotoNome:'', imovel:'', imovelNome:''};
+const ST={tpl:'t01', tema:'azul', titulo:null, sub:null, nome:null, creci:'', tel:'', unidade:'', foto:'', fotoNome:'', imovel:'', imovelNome:'', marca:false, marcaPos:'centro', marcaOp:'media'};
 function usuarioAtualParaPeca(){
   if(souCorretor()) return S.usuarios[euId()];
   const lid=escopoLoja()||'l18';
@@ -2667,6 +2713,16 @@ VIEWS.estudio=function(v,arg){
             '<input type="file" accept="image/*" id="fImArq" hidden>'+
           '</label>'+
           (ST.imovel?'<button class="btn sm" id="fImTirar" style="margin-top:10px">'+esc(T('Remover foto'))+'</button>':'')+
+          (t.fmt==='foto'
+            ? '<div class="mini" style="margin-top:12px"><b>'+esc(T("Neste modelo a marca d'água é sempre aplicada."))+'</b> '+esc(T('A foto sai no tamanho original, pronta para portais e WhatsApp.'))+'</div>'
+            : '<label style="display:flex;gap:9px;align-items:center;margin-top:14px;font-size:13.6px;font-weight:500;cursor:pointer">'+
+              '<input type="checkbox" id="fMarca" style="width:auto"'+(ST.marca?' checked':'')+(ST.imovel?'':' disabled')+'> '+esc(T("Aplicar marca d'água na foto"))+'</label>'+
+              (ST.imovel?'':'<div class="mini" style="margin-top:4px">'+esc(T("Adicione a foto do imóvel para usar a marca d'água."))+'</div>'))+
+          ((t.fmt==='foto' || (ST.marca && ST.imovel))?
+            '<div class="grid g2" style="gap:10px;margin-top:10px"><div class="field" style="margin:0"><label>'+esc(T('Posição'))+'</label><div class="chips" id="fMPos">'+
+              [['centro','Centro'],['canto','Canto']].map(x=>'<button class="chip '+(ST.marcaPos===x[0]?'on':'')+'" data-p="'+x[0]+'">'+esc(T(x[1]))+'</button>').join('')+'</div></div>'+
+            '<div class="field" style="margin:0"><label>'+esc(T('Intensidade'))+'</label><div class="chips" id="fMOp">'+
+              [['suave','Suave'],['media','Média'],['forte','Forte']].map(x=>'<button class="chip '+(ST.marcaOp===x[0]?'on':'')+'" data-o="'+x[0]+'">'+esc(T(x[1]))+'</button>').join('')+'</div></div></div>' : '')+
           '<div class="divider"></div>' : '')+
         '<div class="sec">'+esc(T('Peça'))+'</div>'+
         '<div class="field"><label>Modelo</label><select id="fTpl">'+TPLS().map(x=>'<option value="'+x.id+'"'+(x.id===t.id?' selected':'')+'>'+esc(x.nome)+' · '+esc(x.dim)+'</option>').join('')+'</select></div>'+
@@ -2698,7 +2754,7 @@ VIEWS.estudio=function(v,arg){
       '</div>'+
     '</div>';
 
-  const dados=()=>({fmt:t.fmt, tema:ST.tema, titulo:ST.titulo, sub:ST.sub, nome:ST.nome, creci:ST.creci, tel:ST.tel, unidade:ST.unidade, foto:ST.foto, imovel:aceitaImovel?ST.imovel:''});
+  const dados=()=>({fmt:t.fmt, tema:ST.tema, titulo:ST.titulo, sub:ST.sub, nome:ST.nome, creci:ST.creci, tel:ST.tel, unidade:ST.unidade, foto:ST.foto, imovel:aceitaImovel?ST.imovel:'', marca:t.fmt==='foto'||(!!ST.marca&&!!ST.imovel), marcaPos:ST.marcaPos, marcaOp:ST.marcaOp});
   let cvAtual=null, vez=0;
   function pinta(){
     const esta=++vez;
@@ -2725,6 +2781,9 @@ VIEWS.estudio=function(v,arg){
       const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) lerFotoImovel(f,aplica); });
   }
   $('#fImTirar')&&$('#fImTirar').addEventListener('click',()=>{ ST.imovel=''; ST.imovelNome=''; route(); });
+  $('#fMarca')&&$('#fMarca').addEventListener('change',e=>{ ST.marca=e.target.checked; route(); });
+  $$('#fMPos .chip').forEach(b=>b.addEventListener('click',()=>{ ST.marcaPos=b.dataset.p; $$('#fMPos .chip').forEach(x=>x.classList.toggle('on',x===b)); pinta(); }));
+  $$('#fMOp .chip').forEach(b=>b.addEventListener('click',()=>{ ST.marcaOp=b.dataset.o; $$('#fMOp .chip').forEach(x=>x.classList.toggle('on',x===b)); pinta(); }));
 
   $('#fFoto').addEventListener('click',()=>pedirArquivos('image/*',false,as=>{
     const a=as[0]; if(!a||!a.thumb) return toast('Não consegui ler essa imagem.');
@@ -2736,7 +2795,7 @@ VIEWS.estudio=function(v,arg){
     if(!cvAtual) return;
     canvasBlob(cvAtual,'image/png').then(b=>{
       baixarBlob(b, 'remax-'+t.id+'-'+(ST.nome||'peca').toLowerCase().replace(/\s+/g,'-').slice(0,24)+'.png');
-      commit('Gerou peça (PNG)', t.nome);
+      commit('Gerou peça (PNG)', t.nome+(dados().marca?" · com marca d'água":''));
       toast('<b>'+t.dim+'</b> gerado e baixado.',1);
     });
   });
@@ -5278,6 +5337,18 @@ en:{
 'Cobrar quem não leu':'Remind who has not read',
 'Integração ativa':'Integration active',
 'Publicação automática no Instagram':'Automatic Instagram publishing',
+'Aplicar marca d\'água na foto':'Apply watermark to the photo',
+'Adicione a foto do imóvel para usar a marca d\'água.':'Add the property photo to use the watermark.',
+'Neste modelo a marca d\'água é sempre aplicada.':'This template always applies the watermark.',
+'A foto sai no tamanho original, pronta para portais e WhatsApp.':'The photo keeps its original size, ready for listing sites and WhatsApp.',
+'Posição':'Position',
+'Intensidade':'Intensity',
+'Centro':'Center',
+'Canto':'Corner',
+'Suave':'Light',
+'Média':'Medium',
+'Forte':'Strong',
+'Foto com marca d\'água':'Photo with watermark',
 'Provedor em uso':'Provider in use','Usar este provedor':'Use this provider','Você já agendou':'You already scheduled',
 /* seções */
 'Precisa de atenção':'Needs attention','Publicações da rede por semana':'Network posts per week','Adesão por unidade':'Adoption by office',
@@ -5504,6 +5575,18 @@ es:{
 'Cobrar quem não leu':'Recordar a quien no leyó',
 'Integração ativa':'Integración activa',
 'Publicação automática no Instagram':'Publicación automática en Instagram',
+'Aplicar marca d\'água na foto':'Aplicar marca de agua a la foto',
+'Adicione a foto do imóvel para usar a marca d\'água.':'Agregue la foto del inmueble para usar la marca de agua.',
+'Neste modelo a marca d\'água é sempre aplicada.':'En esta plantilla la marca de agua siempre se aplica.',
+'A foto sai no tamanho original, pronta para portais e WhatsApp.':'La foto sale en su tamaño original, lista para portales y WhatsApp.',
+'Posição':'Posición',
+'Intensidade':'Intensidad',
+'Centro':'Centro',
+'Canto':'Esquina',
+'Suave':'Suave',
+'Média':'Media',
+'Forte':'Fuerte',
+'Foto com marca d\'água':'Foto con marca de agua',
 'Provedor em uso':'Proveedor en uso','Usar este provedor':'Usar este proveedor','Você já agendou':'Ya programó',
 'Precisa de atenção':'Necesita atención','Publicações da rede por semana':'Publicaciones de la red por semana','Adesão por unidade':'Adopción por oficina',
 'Progresso por etapa':'Progreso por etapa','Situação por unidade':'Situación por oficina','Alertas desta unidade':'Alertas de esta oficina',

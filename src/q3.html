@@ -19,11 +19,12 @@ const TEMPLATES = [
   {id:'t14', nome:'Capa de WhatsApp Business', cat:'Digital',        fmt:'feed',   dim:'640 × 640 px', txt:'ATENDIMENTO', sub:'Fale comigo agora'},
   {id:'t16', nome:'Placa 40 × 60 cm — venda',   cat:'Placas e campo', fmt:'placa46', dim:'40 × 60 cm', tag:'Nova marca', txt:'VENDE-SE', sub:'Fale com o corretor'},
   {id:'t17', nome:'Placa 40 × 60 cm — locação', cat:'Placas e campo', fmt:'placa46', dim:'40 × 60 cm', txt:'ALUGA-SE', sub:'Agende sua visita'},
+  {id:'t18', nome:"Foto com marca d'água",       cat:'Digital',        fmt:'foto',   dim:'no tamanho da foto', tag:'Novo', txt:'', sub:''},
   {id:'t15', nome:'Fachada — projeto padrão',  cat:'Fachadas',       fmt:'slide',  dim:'DWG + PDF', tag:'Obrigatório', txt:'PADRÃO DE FACHADA', sub:'Especificação técnica'}
 ];
 function TPLS(){ return TEMPLATES.concat((S&&S.templatesExtra)||[]); }
 const CATS = ['Todos','Redes sociais','Papelaria','Placas e campo','Apresentações','Mídia externa','Digital','Fachadas'];
-const DIMS = {feed:[1080,1080], story:[1080,1920], cartao:[1063,591], placa:[1200,900], placa46:[800,1200], email:[1200,360], a4:[1240,1754], slide:[1600,900]};
+const DIMS = {feed:[1080,1080], story:[1080,1920], cartao:[1063,591], placa:[1200,900], placa46:[800,1200], foto:[1600,1200], email:[1200,360], a4:[1240,1754], slide:[1600,900]};
 
 const SEED_COMUNICADOS = [
   {id:'k1', area:'Marketing', tit:'Nova identidade visual RE/MAX — cronograma de adequação por etapa', dt:'2026-09-08', obr:true,

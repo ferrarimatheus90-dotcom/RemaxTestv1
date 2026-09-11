@@ -2,7 +2,7 @@
 /* =======================================================================
    MÓDULO 2 · ESTÚDIO DE PEÇAS  (foto do imóvel + personalização + download)
    ======================================================================= */
-const ST={tpl:'t01', tema:'azul', titulo:null, sub:null, nome:null, creci:'', tel:'', unidade:'', foto:'', fotoNome:'', imovel:'', imovelNome:''};
+const ST={tpl:'t01', tema:'azul', titulo:null, sub:null, nome:null, creci:'', tel:'', unidade:'', foto:'', fotoNome:'', imovel:'', imovelNome:'', marca:false, marcaPos:'centro', marcaOp:'media'};
 function usuarioAtualParaPeca(){
   if(souCorretor()) return S.usuarios[euId()];
   const lid=escopoLoja()||'l18';
@@ -49,6 +49,16 @@ VIEWS.estudio=function(v,arg){
             '<input type="file" accept="image/*" id="fImArq" hidden>'+
           '</label>'+
           (ST.imovel?'<button class="btn sm" id="fImTirar" style="margin-top:10px">'+esc(T('Remover foto'))+'</button>':'')+
+          (t.fmt==='foto'
+            ? '<div class="mini" style="margin-top:12px"><b>'+esc(T("Neste modelo a marca d'água é sempre aplicada."))+'</b> '+esc(T('A foto sai no tamanho original, pronta para portais e WhatsApp.'))+'</div>'
+            : '<label style="display:flex;gap:9px;align-items:center;margin-top:14px;font-size:13.6px;font-weight:500;cursor:pointer">'+
+              '<input type="checkbox" id="fMarca" style="width:auto"'+(ST.marca?' checked':'')+(ST.imovel?'':' disabled')+'> '+esc(T("Aplicar marca d'água na foto"))+'</label>'+
+              (ST.imovel?'':'<div class="mini" style="margin-top:4px">'+esc(T("Adicione a foto do imóvel para usar a marca d'água."))+'</div>'))+
+          ((t.fmt==='foto' || (ST.marca && ST.imovel))?
+            '<div class="grid g2" style="gap:10px;margin-top:10px"><div class="field" style="margin:0"><label>'+esc(T('Posição'))+'</label><div class="chips" id="fMPos">'+
+              [['centro','Centro'],['canto','Canto']].map(x=>'<button class="chip '+(ST.marcaPos===x[0]?'on':'')+'" data-p="'+x[0]+'">'+esc(T(x[1]))+'</button>').join('')+'</div></div>'+
+            '<div class="field" style="margin:0"><label>'+esc(T('Intensidade'))+'</label><div class="chips" id="fMOp">'+
+              [['suave','Suave'],['media','Média'],['forte','Forte']].map(x=>'<button class="chip '+(ST.marcaOp===x[0]?'on':'')+'" data-o="'+x[0]+'">'+esc(T(x[1]))+'</button>').join('')+'</div></div></div>' : '')+
           '<div class="divider"></div>' : '')+
         '<div class="sec">'+esc(T('Peça'))+'</div>'+
         '<div class="field"><label>Modelo</label><select id="fTpl">'+TPLS().map(x=>'<option value="'+x.id+'"'+(x.id===t.id?' selected':'')+'>'+esc(x.nome)+' · '+esc(x.dim)+'</option>').join('')+'</select></div>'+
@@ -80,7 +90,7 @@ VIEWS.estudio=function(v,arg){
       '</div>'+
     '</div>';
 
-  const dados=()=>({fmt:t.fmt, tema:ST.tema, titulo:ST.titulo, sub:ST.sub, nome:ST.nome, creci:ST.creci, tel:ST.tel, unidade:ST.unidade, foto:ST.foto, imovel:aceitaImovel?ST.imovel:''});
+  const dados=()=>({fmt:t.fmt, tema:ST.tema, titulo:ST.titulo, sub:ST.sub, nome:ST.nome, creci:ST.creci, tel:ST.tel, unidade:ST.unidade, foto:ST.foto, imovel:aceitaImovel?ST.imovel:'', marca:t.fmt==='foto'||(!!ST.marca&&!!ST.imovel), marcaPos:ST.marcaPos, marcaOp:ST.marcaOp});
   let cvAtual=null, vez=0;
   function pinta(){
     const esta=++vez;
@@ -107,6 +117,9 @@ VIEWS.estudio=function(v,arg){
       const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f) lerFotoImovel(f,aplica); });
   }
   $('#fImTirar')&&$('#fImTirar').addEventListener('click',()=>{ ST.imovel=''; ST.imovelNome=''; route(); });
+  $('#fMarca')&&$('#fMarca').addEventListener('change',e=>{ ST.marca=e.target.checked; route(); });
+  $$('#fMPos .chip').forEach(b=>b.addEventListener('click',()=>{ ST.marcaPos=b.dataset.p; $$('#fMPos .chip').forEach(x=>x.classList.toggle('on',x===b)); pinta(); }));
+  $$('#fMOp .chip').forEach(b=>b.addEventListener('click',()=>{ ST.marcaOp=b.dataset.o; $$('#fMOp .chip').forEach(x=>x.classList.toggle('on',x===b)); pinta(); }));
 
   $('#fFoto').addEventListener('click',()=>pedirArquivos('image/*',false,as=>{
     const a=as[0]; if(!a||!a.thumb) return toast('Não consegui ler essa imagem.');
@@ -118,7 +131,7 @@ VIEWS.estudio=function(v,arg){
     if(!cvAtual) return;
     canvasBlob(cvAtual,'image/png').then(b=>{
       baixarBlob(b, 'remax-'+t.id+'-'+(ST.nome||'peca').toLowerCase().replace(/\s+/g,'-').slice(0,24)+'.png');
-      commit('Gerou peça (PNG)', t.nome);
+      commit('Gerou peça (PNG)', t.nome+(dados().marca?" · com marca d'água":''));
       toast('<b>'+t.dim+'</b> gerado e baixado.',1);
     });
   });

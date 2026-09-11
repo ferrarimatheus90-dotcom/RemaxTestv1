@@ -75,8 +75,51 @@ function balaoPeca(g, cx, cy, alt, luz, k){
   g.drawImage(BALAO_IMG, cx-larg/2, cy-alt/2, larg, alt); g.restore();
 }
 
-/* desenha a peça; d = {fmt,tema,titulo,sub,nome,creci,tel,unidade,foto(Image|null),imovel(Image|null)} */
+/* marca d'água: pino da marca + nome da unidade + corretor e CRECI, em branco translúcido
+   o = {pos:'centro'|'canto', op:'suave'|'media'|'forte', cy (centro vertical opcional), topo (canto em cima)} */
+function marcaDagua(g, d, W, H, o){
+  o=o||{};
+  const alfa = o.op==='suave'? 0.36 : o.op==='forte'? 0.82 : 0.58, base=Math.min(W,H), canto=o.pos==='canto';
+  const nome=String(d.unidade||'').toUpperCase();
+  const linha2=[d.nome, d.creci?'CRECI '+d.creci:''].filter(Boolean).join('  ·  ').toUpperCase();
+  const pinR = imgOk(BALAO_IMG)? BALAO_IMG.naturalWidth/BALAO_IMG.naturalHeight : 0;
+  const medir=s=>{ const f1=Math.round(s*0.44), f2=Math.round(s*0.19);
+    g.font='700 '+f1+'px '+FONTE; espacamento(g, Math.round(f1*0.04)); const w1=g.measureText(nome).width;
+    g.font='500 '+f2+'px '+FONTE; espacamento(g, Math.round(f2*0.1)); const w2=g.measureText(linha2).width;
+    return {s, f1, f2, pin:s*pinR, gap:s*0.24, larg:s*pinR+s*0.24+Math.max(w1,w2)}; };
+  let m=medir(base*(canto?0.09:0.13));
+  const maxL=W*(canto?0.6:0.86); if(m.larg>maxL) m=medir(m.s*maxL/m.larg);
+  const mg=base*0.045;
+  const x0 = canto? W-mg-m.larg : (W-m.larg)/2;
+  const cy = canto? (o.topo? mg+m.s/2 : H-mg-m.s/2) : (o.cy!=null? o.cy : H/2);
+  g.save(); g.globalAlpha=alfa; g.textBaseline='middle';
+  g.shadowColor='rgba(0,0,0,.4)'; g.shadowBlur=m.s*0.14;
+  if(m.pin) g.drawImage(BALAO_IMG, x0, cy-m.s/2, m.pin, m.s);
+  const tx=x0+m.pin+m.gap; g.fillStyle='#FFFFFF';
+  g.font='700 '+m.f1+'px '+FONTE; espacamento(g, Math.round(m.f1*0.04)); g.fillText(nome, tx, cy-(linha2? m.f2*0.72 : 0));
+  if(linha2){ g.font='500 '+m.f2+'px '+FONTE; espacamento(g, Math.round(m.f2*0.1)); g.fillText(linha2, tx, cy+m.f1*0.56); }
+  g.restore(); espacamento(g,0); g.textBaseline='top';
+}
+/* modelo "Foto com marca d'água": a própria foto, no tamanho dela, só com a marca por cima */
+function desenharFoto(cv, d){
+  const foto=imgOk(d.imovel)? d.imovel : null;
+  let W=1600, H=1200;
+  if(foto){ const iw=foto.naturalWidth||foto.width, ih=foto.naturalHeight||foto.height, s=Math.min(1,1600/Math.max(iw,ih)); W=Math.round(iw*s); H=Math.round(ih*s); }
+  cv.width=W; cv.height=H;
+  const g=cv.getContext('2d'); g.textBaseline='top'; espacamento(g,0);
+  if(foto) g.drawImage(foto,0,0,W,H);
+  else {
+    const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#B9C6D6'); gr.addColorStop(1,'#6F7F95'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    g.fillStyle='rgba(255,255,255,.85)'; g.font='600 '+Math.round(H*0.045)+'px '+FONTE; g.textAlign='center';
+    g.fillText('Adicione a foto do imóvel', W/2, H*0.12); g.textAlign='left';
+  }
+  marcaDagua(g, d, W, H, {pos:d.marcaPos||'centro', op:d.marcaOp||'media'});
+  return cv;
+}
+
+/* desenha a peça; d = {fmt,tema,titulo,sub,nome,creci,tel,unidade,foto(Image|null),imovel(Image|null),marca,marcaPos,marcaOp} */
 function desenharPeca(cv, d){
+  if(d.fmt==='foto') return desenharFoto(cv, d);
   const [W,H]=DIMS[d.fmt]||DIMS.feed;
   cv.width=W; cv.height=H;
   const g=cv.getContext('2d'), T=TEMAS[d.tema]||TEMAS.azul;
@@ -102,6 +145,8 @@ function desenharPeca(cv, d){
     const alt=Math.min(W,H)*(deitado?0.56:0.36);
     balaoPeca(g, deitado? W*0.8 : W*0.76, deitado? H*0.42 : (story? H*0.3 : H*0.29), alt, T.luz, k);
   }
+  // marca d'água na foto (opcional): no centro livre da peça ou no canto de cima, longe do logotipo
+  if(foto && d.marca) marcaDagua(g, d, W, H, {pos:d.marcaPos||'centro', op:d.marcaOp||'media', topo:true, cy: story? H*0.44 : deitado? H*0.36 : H*0.4});
   const tinta = foto? '#FFFFFF' : T.tinta, apoio = foto? 'rgba(255,255,255,.9)' : T.apoio;
 
   // logotipo
