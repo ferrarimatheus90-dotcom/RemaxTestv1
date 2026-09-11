@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Prontos em Rede — arquitetura da plataforma",
+    "subtitle": "Rede RE/MAX · desenvolvida pela BMAG SERVIÇOS DIGITAIS · começa com 20 unidades e cresce por ondas",
+    "output": "arquitetura-prontos-em-rede.html",
+    "visual_preset": "signal-flow",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "caminho-principal", "label": "Caminho principal", "focus": ["usuarios", "app", "api", "banco"], "note": "Da pessoa na rede até o dado gravado, sempre dentro do escopo do seu nível." },
+      { "id": "publicacao-redes", "label": "Publicação nas redes", "focus": ["api", "publicacao", "instagram"], "note": "A campanha sai da plataforma e chega ao perfil de cada corretor pela API de publicação." },
+      { "id": "suporte-avisos", "label": "Suporte e avisos", "focus": ["operacao", "app", "api", "ia", "whatsapp", "email"], "note": "Assistente primeiro; se não resolver, vira chamado. Avisos saem por WhatsApp e e-mail." },
+      { "id": "dados-arquivos", "label": "Dados e arquivos", "focus": ["api", "banco", "arquivos"], "note": "Banco com escopo por regional e unidade; peças, evidências e fotos em armazenamento com CDN." }
+    ]
+  },
+  "components": [
+    { "id": "operacao", "type": "external", "label": "Operação Guia-se", "sublabel": "N1 analistas · N2 coordenação", "pos": [40, 100], "size": [180, 64], "tag": "N3 RE/MAX" },
+    { "id": "usuarios", "type": "external", "label": "Rede RE/MAX", "sublabel": "Brasil · Master · unidade · corretor", "pos": [40, 300], "size": [180, 64] },
+    { "id": "app", "type": "frontend", "label": "Aplicação web", "sublabel": "6 módulos · 3 idiomas", "pos": [340, 300], "size": [180, 64] },
+    { "id": "api", "type": "backend", "label": "API da plataforma", "sublabel": "4 níveis · auditoria", "pos": [640, 300], "size": [180, 64], "tag": "login por nível" },
+    { "id": "banco", "type": "database", "label": "Banco relacional", "sublabel": "escopo por unidade", "pos": [940, 230], "size": [180, 64], "tag": "backup diário" },
+    { "id": "arquivos", "type": "cloud", "label": "Arquivos + CDN", "sublabel": "peças · evidências · fotos", "pos": [940, 370], "size": [180, 64] },
+    { "id": "publicacao", "type": "cloud", "label": "bundle.social", "sublabel": "publicação em massa", "pos": [640, 100], "size": [180, 64], "tag": "reserva: Zernio" },
+    { "id": "instagram", "type": "external", "label": "Instagram", "sublabel": "perfis dos corretores", "pos": [940, 100], "size": [180, 64] },
+    { "id": "ia", "type": "backend", "label": "Assistente de IA", "sublabel": "apoiado no Brand Center", "pos": [340, 560], "size": [180, 64] },
+    { "id": "whatsapp", "type": "external", "label": "WhatsApp Cloud API", "sublabel": "API oficial da Meta", "pos": [640, 560], "size": [180, 64] },
+    { "id": "email", "type": "cloud", "label": "E-mail transacional", "sublabel": "Amazon SES ou Brevo", "pos": [940, 560], "size": [180, 64] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Plataforma Prontos em Rede · BMAG", "wraps": ["app", "api", "banco", "arquivos"] },
+    { "kind": "region", "label": "Publicação nas redes", "wraps": ["publicacao", "instagram"] },
+    { "kind": "region", "label": "Comunicação e suporte", "wraps": ["ia", "whatsapp", "email"] }
+  ],
+  "connections": [
+    { "id": "usuarios-app", "from": "usuarios", "to": "app", "label": "HTTPS", "variant": "emphasis" },
+    { "id": "app-api", "from": "app", "to": "api", "label": "sessão", "variant": "emphasis" },
+    { "id": "api-banco", "from": "api", "to": "banco", "label": "dados" },
+    { "id": "api-arquivos", "from": "api", "to": "arquivos" },
+    { "id": "api-publicacao", "from": "api", "to": "publicacao", "label": "campanhas" },
+    { "id": "publicacao-instagram", "from": "publicacao", "to": "instagram", "label": "publica" },
+    { "id": "api-ia", "from": "api", "to": "ia", "label": "dúvidas" },
+    { "id": "api-whatsapp", "from": "api", "to": "whatsapp", "label": "suporte", "labelDy": 24 },
+    { "id": "api-email", "from": "api", "to": "email", "label": "avisos" },
+    { "id": "operacao-app", "from": "operacao", "to": "app", "label": "chamados", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Plataforma BMAG", "items": ["6 módulos numa aplicação web, tema claro e escuro, pt/en/es", "API multi-tenant em 4 níveis: Brasil → Master → unidade → corretor", "Auditoria de toda ação: quem, o quê, quando", "BI nativo, sem licença por usuário"] },
+    { "dot": "emerald", "title": "Integrações", "items": ["Publicação: bundle.social (reserva Zernio; depois, app próprio na Meta)", "WhatsApp oficial: suporte grátis na janela de 24 h; avisos a R$ 0,034", "E-mail transacional: Amazon SES ou Brevo", "IA de primeiro nível apoiada no Brand Center"] },
+    { "dot": "amber", "title": "Operação e protótipo", "items": ["Suporte: N1 analistas · N2 coordenação · N3 RE/MAX", "Protótipo hoje: arquivo único + vinheta em vídeo", "Publicado do GitHub para a Hostinger"] }
+  ]
+}
