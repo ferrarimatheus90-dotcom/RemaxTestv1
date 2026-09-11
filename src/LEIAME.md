@@ -110,7 +110,8 @@ sem sair, e "Sair da conta" volta ao login.
   8,5 s, 1920×1080, sem áudio — abrem o site. Ficam em `prontos-em-rede-src/` e o `build.py`
   copia os dois para o lado do HTML gerado. Aba aberta em segundo plano: o vídeo espera a aba
   aparecer, porque o navegador pausa vídeo sem som em aba escondida. O primeiro quadro vai embutido (`splash-poster.b64`) para
-  a tela não piscar. Toca em toda visita (botão "Pular"). Se o vídeo não começar em 8 s, entra a
+  a tela não piscar. Toca em toda visita — inclusive com "reduzir movimento" ligado no aparelho e ao voltar
+  pelo botão Voltar — com o botão "Pular". Se o vídeo não começar em 8 s, entra a
   abertura animada; se o aparelho bloquear o vídeo automático, aparece o botão "Assistir". Celular em pé: o miolo do vídeo é ampliado sobre um fundo da mesma cor.
 - **Abertura animada (reserva)**: o céu azul acende, o pino da RE/MAX sobe e pousa, e a escrita REMAX desce de baixo
   dele formando o logo vertical; depois vem o título. Ao terminar, a tela de acesso já está por baixo e

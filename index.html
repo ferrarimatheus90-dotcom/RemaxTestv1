@@ -4346,8 +4346,8 @@ function marcaBrilho(cls){
    Sem o arquivo (artefato, HTML solto) ou com o vídeo bloqueado, entra a abertura animada abaixo.
    ======================================================================= */
 function aberturaVideo(depois, forcar){
-  const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduz){ depois(); return; }
+  // toca mesmo com "reduzir movimento" ligado no aparelho: é a vinheta da marca, pedida em toda visita (tem Pular)
+  if(document.getElementById('splash')) return;
   const el=document.createElement('div'); el.id='splash';
   el.innerHTML='<video muted playsinline preload="auto" poster="'+SPLASH_POSTER+'"><source src="splash.mp4" type="video/mp4"><source src="splash.webm" type="video/webm"></video>'+
     '<button class="pular">'+(LANG==='en'?'Skip':LANG==='es'?'Saltar':'Pular')+'</button>';
@@ -4580,6 +4580,7 @@ loadState();
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
 aberturaVideo(entrarNaPlataforma);   // a vinheta abre o site em toda visita; a animada de reserva aparece uma vez por navegador
+window.addEventListener('pageshow', e=>{ if(e.persisted) aberturaVideo(()=>{}); });   // voltou pelo botão Voltar: o navegador restaura a página sem recarregar
 </script>
 </body>
 </html>
