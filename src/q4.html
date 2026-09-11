@@ -278,7 +278,7 @@ function viewConfig(){
     '<div class="kv"><span class="k">Carga inicial</span><span class="v">Adesão, chamados, campanhas e leituras começam preenchidos para a tela não nascer vazia. A partir daí, quem move os números é você.</span></div>'+
     '<div class="kv"><span class="k">Ocupação</span><span class="v">'+tam+' KB gravados · '+S.audit.length+' registros de auditoria · '+S.excelencia.provas.length+' comprovações guardadas</span></div>',
     '<button class="btn" id="verAb">'+esc(T('Ver a abertura'))+'</button><button class="btn" id="expJ">↓ Exportar dados (JSON)</button><button class="btn red" id="rst">Recarregar demonstração</button><button class="btn pri" onclick="fechaModal()">Fechar</button>');
-  $('#verAb',ov).addEventListener('click',()=>{ fechaModal(); aberturaVideo(()=>{}); });
+  $('#verAb',ov).addEventListener('click',()=>{ fechaModal(); aberturaVideo(()=>{}, true); });
   $('#expJ',ov).addEventListener('click',()=>{
     baixarBlob(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),'prontos-em-rede-dados.json'); toast('Arquivo exportado.',1);
   });

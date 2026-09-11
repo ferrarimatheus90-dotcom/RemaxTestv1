@@ -645,6 +645,12 @@ canvas.prev{max-width:100%;height:auto;display:block;border-radius:8px;box-shado
   #splash video{inset:auto;left:50%;top:50%;width:190vw;height:auto;max-width:none;transform:translate(-50%,-50%);object-fit:contain}
 }
 #splash.sai{opacity:0;transform:scale(1.02);transition:opacity .85s var(--e2), transform 1s var(--e)}
+#splash .assistir{
+  position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);z-index:3;height:52px;padding:0 28px;border:0;border-radius:99px;
+  background:rgba(255,255,255,.92);color:#0B2253;font-size:16px;font-weight:600;cursor:pointer;
+  box-shadow:0 12px 36px rgba(0,0,0,.28);transition:background .2s var(--e2), transform .2s var(--e2)
+}
+#splash .assistir:hover{background:#fff}
 
 /* ---------- acesso ---------- */
 .login{
@@ -1683,7 +1689,7 @@ function viewConfig(){
     '<div class="kv"><span class="k">Carga inicial</span><span class="v">Adesão, chamados, campanhas e leituras começam preenchidos para a tela não nascer vazia. A partir daí, quem move os números é você.</span></div>'+
     '<div class="kv"><span class="k">Ocupação</span><span class="v">'+tam+' KB gravados · '+S.audit.length+' registros de auditoria · '+S.excelencia.provas.length+' comprovações guardadas</span></div>',
     '<button class="btn" id="verAb">'+esc(T('Ver a abertura'))+'</button><button class="btn" id="expJ">↓ Exportar dados (JSON)</button><button class="btn red" id="rst">Recarregar demonstração</button><button class="btn pri" onclick="fechaModal()">Fechar</button>');
-  $('#verAb',ov).addEventListener('click',()=>{ fechaModal(); aberturaVideo(()=>{}); });
+  $('#verAb',ov).addEventListener('click',()=>{ fechaModal(); aberturaVideo(()=>{}, true); });
   $('#expJ',ov).addEventListener('click',()=>{
     baixarBlob(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}),'prontos-em-rede-dados.json'); toast('Arquivo exportado.',1);
   });
@@ -4339,7 +4345,7 @@ function marcaBrilho(cls){
    ABERTURA EM VÍDEO — a vinheta "Prontos em Rede" (splash.mp4, ao lado do index.html).
    Sem o arquivo (artefato, HTML solto) ou com o vídeo bloqueado, entra a abertura animada abaixo.
    ======================================================================= */
-function aberturaVideo(depois){
+function aberturaVideo(depois, forcar){
   const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduz){ depois(); return; }
   const el=document.createElement('div'); el.id='splash';
@@ -4356,9 +4362,18 @@ function aberturaVideo(depois){
     depois();                                     // o login já nasce por baixo e as duas telas se cruzam
     setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);
   }
-  function reserva(){                             // sem vídeo: a abertura animada
+  function reserva(){                             // sem vídeo: a abertura animada, uma vez por navegador
     if(acabou || tocou) return; acabou=true; clearTimeout(guarda);
-    el.remove(); abertura(depois);
+    el.remove();
+    if(!forcar && LS.get('pr_abertura_anim')){ document.body.style.overflow=''; depois(); return; }
+    LS.set('pr_abertura_anim','1'); abertura(depois);
+  }
+  function pedeToque(){                           // o aparelho bloqueou o vídeo automático (ex.: iPhone em economia de bateria)
+    if(acabou || el.querySelector('.assistir')) return; clearTimeout(guarda);
+    const b=document.createElement('button'); b.className='assistir';
+    b.textContent='\u25B6  '+(LANG==='en'?'Watch':LANG==='es'?'Ver':'Assistir');
+    b.addEventListener('click',e=>{ e.stopPropagation(); b.remove(); const p2=v.play(); if(p2 && p2.catch) p2.catch(reserva); });
+    el.appendChild(b);
   }
   v.addEventListener('playing',()=>{ if(tocou) return; tocou=true; clearTimeout(guarda);
     teto=setTimeout(fim, ((isFinite(v.duration)&&v.duration)||9)*1000+2500); });
@@ -4372,9 +4387,13 @@ function aberturaVideo(depois){
   }
   function tocar(){
     if(acabou) return;
-    guarda=setTimeout(reserva, 3500);             // não começou em 3,5 s: rede lenta ou bloqueio
+    guarda=setTimeout(reserva, 8000);             // não começou em 8 s: rede muito lenta
     const p=v.play();
-    if(p && p.catch) p.catch(e=>{ if(e && e.name==='AbortError' && document.hidden) quandoVisivel(tocar); else reserva(); });
+    if(p && p.catch) p.catch(e=>{
+      if(e && e.name==='AbortError' && document.hidden) quandoVisivel(tocar);
+      else if(e && e.name==='NotAllowedError') pedeToque();
+      else reserva();
+    });
   }
   if(document.hidden) quandoVisivel(tocar); else tocar();
   el.addEventListener('click',fim);
@@ -4560,8 +4579,7 @@ function entrarNaPlataforma(){
 loadState();
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
-if(LS.get('pr_abertura_v9')) entrarNaPlataforma();
-else { LS.set('pr_abertura_v9','1'); aberturaVideo(entrarNaPlataforma); }
+aberturaVideo(entrarNaPlataforma);   // a vinheta abre o site em toda visita; a animada de reserva aparece uma vez por navegador
 </script>
 </body>
 </html>

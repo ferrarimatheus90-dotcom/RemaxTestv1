@@ -172,6 +172,12 @@
   #splash video{inset:auto;left:50%;top:50%;width:190vw;height:auto;max-width:none;transform:translate(-50%,-50%);object-fit:contain}
 }
 #splash.sai{opacity:0;transform:scale(1.02);transition:opacity .85s var(--e2), transform 1s var(--e)}
+#splash .assistir{
+  position:absolute;left:50%;top:62%;transform:translate(-50%,-50%);z-index:3;height:52px;padding:0 28px;border:0;border-radius:99px;
+  background:rgba(255,255,255,.92);color:#0B2253;font-size:16px;font-weight:600;cursor:pointer;
+  box-shadow:0 12px 36px rgba(0,0,0,.28);transition:background .2s var(--e2), transform .2s var(--e2)
+}
+#splash .assistir:hover{background:#fff}
 
 /* ---------- acesso ---------- */
 .login{

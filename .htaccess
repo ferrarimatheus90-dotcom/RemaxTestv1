@@ -1,0 +1,16 @@
+# Prontos em Rede — configuração da hospedagem
+
+# Tipos de vídeo: sem isto a hospedagem entrega o WebM como texto e o navegador não toca
+AddType video/mp4 .mp4
+AddType video/webm .webm
+
+<IfModule mod_headers.c>
+  # A página sempre confere se há versão nova — evita ver o site antigo depois de uma atualização
+  <FilesMatch "\.html?$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  # Os vídeos podem ficar guardados no navegador por uma semana
+  <FilesMatch "\.(mp4|webm)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>

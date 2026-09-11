@@ -34,6 +34,8 @@ Para atualizar: novo push na `main` e implantar de novo.
 
 A vinheta de abertura são os arquivos `splash.mp4` e `splash.webm`, na raiz, ao lado do
 `index.html` — os três precisam ir juntos para a hospedagem. Sem ele, o site abre com a animação de reserva.
+O `.htaccess` da raiz ensina a hospedagem a servir o WebM como vídeo e faz o navegador sempre
+conferir se há versão nova da página.
 
 ## Arquitetura
 

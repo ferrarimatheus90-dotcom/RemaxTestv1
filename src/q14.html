@@ -137,8 +137,7 @@ function entrarNaPlataforma(){
 loadState();
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
-if(LS.get('pr_abertura_v9')) entrarNaPlataforma();
-else { LS.set('pr_abertura_v9','1'); aberturaVideo(entrarNaPlataforma); }
+aberturaVideo(entrarNaPlataforma);   // a vinheta abre o site em toda visita; a animada de reserva aparece uma vez por navegador
 </script>
 </body>
 </html>

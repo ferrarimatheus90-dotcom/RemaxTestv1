@@ -435,7 +435,7 @@ function marcaBrilho(cls){
    ABERTURA EM VÍDEO — a vinheta "Prontos em Rede" (splash.mp4, ao lado do index.html).
    Sem o arquivo (artefato, HTML solto) ou com o vídeo bloqueado, entra a abertura animada abaixo.
    ======================================================================= */
-function aberturaVideo(depois){
+function aberturaVideo(depois, forcar){
   const reduz = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduz){ depois(); return; }
   const el=document.createElement('div'); el.id='splash';
@@ -452,9 +452,18 @@ function aberturaVideo(depois){
     depois();                                     // o login já nasce por baixo e as duas telas se cruzam
     setTimeout(()=>{ el.remove(); if(!document.getElementById('login')) document.body.style.overflow=''; },900);
   }
-  function reserva(){                             // sem vídeo: a abertura animada
+  function reserva(){                             // sem vídeo: a abertura animada, uma vez por navegador
     if(acabou || tocou) return; acabou=true; clearTimeout(guarda);
-    el.remove(); abertura(depois);
+    el.remove();
+    if(!forcar && LS.get('pr_abertura_anim')){ document.body.style.overflow=''; depois(); return; }
+    LS.set('pr_abertura_anim','1'); abertura(depois);
+  }
+  function pedeToque(){                           // o aparelho bloqueou o vídeo automático (ex.: iPhone em economia de bateria)
+    if(acabou || el.querySelector('.assistir')) return; clearTimeout(guarda);
+    const b=document.createElement('button'); b.className='assistir';
+    b.textContent='\u25B6  '+(LANG==='en'?'Watch':LANG==='es'?'Ver':'Assistir');
+    b.addEventListener('click',e=>{ e.stopPropagation(); b.remove(); const p2=v.play(); if(p2 && p2.catch) p2.catch(reserva); });
+    el.appendChild(b);
   }
   v.addEventListener('playing',()=>{ if(tocou) return; tocou=true; clearTimeout(guarda);
     teto=setTimeout(fim, ((isFinite(v.duration)&&v.duration)||9)*1000+2500); });
@@ -468,9 +477,13 @@ function aberturaVideo(depois){
   }
   function tocar(){
     if(acabou) return;
-    guarda=setTimeout(reserva, 3500);             // não começou em 3,5 s: rede lenta ou bloqueio
+    guarda=setTimeout(reserva, 8000);             // não começou em 8 s: rede muito lenta
     const p=v.play();
-    if(p && p.catch) p.catch(e=>{ if(e && e.name==='AbortError' && document.hidden) quandoVisivel(tocar); else reserva(); });
+    if(p && p.catch) p.catch(e=>{
+      if(e && e.name==='AbortError' && document.hidden) quandoVisivel(tocar);
+      else if(e && e.name==='NotAllowedError') pedeToque();
+      else reserva();
+    });
   }
   if(document.hidden) quandoVisivel(tocar); else tocar();
   el.addEventListener('click',fim);
