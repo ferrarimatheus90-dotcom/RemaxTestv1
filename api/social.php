@@ -6,6 +6,7 @@
 
    GET  ?acao=ping      → responde se o servidor está configurado (sem chave)
    GET  ?acao=status    → time e contas conectadas              (chave)
+   POST ?acao=conectar  → {voltar} → link do portal de conexão do Instagram  (chave)
    POST ?acao=publicar  → {legenda, imagem (data URL ou URL), quando?}  (chave)
    ======================================================================= */
 require __DIR__ . '/_config.php';
@@ -23,17 +24,39 @@ if (!$chave || !$time) {
 }
 $base = 'https://api.bundle.social/api/v1';
 $cab  = ['x-api-key: ' . $chave, 'Accept: application/json'];
+$cabJson = array_merge($cab, ['Content-Type: application/json']);
+$msgErro = function ($j) { return is_array($j) ? ($j['message'] ?? ($j['error'] ?? '')) : ''; };
 
 if ($acao === 'status') {
     [$cod, $j, $erro] = http('GET', $base . '/team/' . rawurlencode($time), $cab);
-    if ($cod !== 200) {
-        responder(['ok' => false, 'erro' => 'A API de publicação respondeu HTTP ' . $cod . ($erro ? ' (' . $erro . ')' : '') . '.'], 502);
-    }
+    if ($cod === 401 || $cod === 403) responder(['ok' => false, 'erro' => 'A chave da API foi recusada (HTTP ' . $cod . '). Confira bundle_api_key.'], 502);
+    if ($cod === 404) responder(['ok' => false, 'erro' => 'Time não encontrado (HTTP 404). Confira bundle_team_id.'], 502);
+    if ($cod !== 200) responder(['ok' => false, 'erro' => 'A API de publicação respondeu HTTP ' . $cod . ($erro ? ' (' . $erro . ')' : '') . '.'], 502);
     $contas = [];
     foreach (($j['socialAccounts'] ?? []) as $c) {
-        $contas[] = ['tipo' => $c['type'] ?? '', 'nome' => $c['username'] ?? ($c['displayName'] ?? '')];
+        if (!empty($c['deletedAt'])) continue;
+        $contas[] = ['tipo' => $c['type'] ?? '', 'nome' => '@' . ltrim((string) ($c['username'] ?? ($c['displayName'] ?? '')), '@')];
     }
-    responder(['ok' => true, 'msg' => 'Conectado ao time ' . ($j['name'] ?? $time) . ' · ' . count($contas) . ' contas conectadas.', 'contas' => $contas]);
+    responder(['ok' => true, 'msg' => 'Conectado ao time “' . ($j['name'] ?? $time) . '” · ' . count($contas) . ' conta(s) conectada(s).', 'contas' => $contas]);
+}
+
+if ($acao === 'conectar') {
+    $d = corpoJson();
+    $voltar = (string) ($d['voltar'] ?? '');
+    if (!preg_match('#^https://#', $voltar)) $voltar = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'connectagendapro.com') . '/?instagram=voltou';
+    // 1º: portal de conexão (em português, com a marca do fornecedor escondida quando o plano permite)
+    [$cod, $j] = http('POST', $base . '/social-account/create-portal-link', $cabJson, json_encode([
+        'teamId' => $time, 'socialAccountTypes' => ['INSTAGRAM'], 'redirectUrl' => $voltar, 'language' => 'pt',
+        'instagramConnectionMethod' => 'INSTAGRAM', 'hidePoweredBy' => true, 'expiresIn' => 60]));
+    if ($cod < 200 || $cod >= 300 || empty($j['url'])) {
+        // 2º: link direto de autorização do Instagram
+        [$cod, $j] = http('POST', $base . '/social-account/connect', $cabJson, json_encode([
+            'type' => 'INSTAGRAM', 'teamId' => $time, 'redirectUrl' => $voltar, 'instagramConnectionMethod' => 'INSTAGRAM']));
+    }
+    if ($cod < 200 || $cod >= 300 || empty($j['url'])) {
+        responder(['ok' => false, 'erro' => 'Não consegui gerar o link de conexão (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
+    }
+    responder(['ok' => true, 'url' => $j['url']]);
 }
 
 if ($acao === 'publicar') {
@@ -52,29 +75,29 @@ if ($acao === 'publicar') {
         [$cod, $j] = http('POST', $base . '/upload', $cab, ['teamId' => $time, 'file' => $arquivo]);
         @unlink($tmp);
     } else {
-        [$cod, $j] = http('POST', $base . '/upload/from-url', array_merge($cab, ['Content-Type: application/json']),
-                          json_encode(['teamId' => $time, 'url' => $imagem]));
+        [$cod, $j] = http('POST', $base . '/upload/from-url', $cabJson, json_encode(['teamId' => $time, 'url' => $imagem]));
     }
-    $uploadId = $j['id'] ?? ($j['uploadId'] ?? null);
+    $uploadId = $j['id'] ?? null;
     if ($cod < 200 || $cod >= 300 || !$uploadId) {
-        responder(['ok' => false, 'erro' => 'Falha ao enviar a peça (HTTP ' . $cod . ').', 'detalhe' => $j], 502);
+        responder(['ok' => false, 'erro' => 'Falha ao enviar a peça (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
     }
 
     // 2) agenda o post (padrão: daqui a 2 minutos)
     $quando = !empty($d['quando']) ? strtotime((string) $d['quando']) : time() + 120;
-    $post = [
+    $post = json_encode([
         'teamId' => $time,
         'title' => mb_substr($legenda !== '' ? $legenda : 'Publicação da plataforma', 0, 80),
         'postDate' => gmdate('Y-m-d\TH:i:s.000\Z', $quando),
         'status' => 'SCHEDULED',
         'socialAccountTypes' => ['INSTAGRAM'],
         'data' => ['INSTAGRAM' => ['type' => 'POST', 'text' => $legenda, 'uploadIds' => [$uploadId]]],
-    ];
-    [$cod, $j] = http('POST', $base . '/posts', array_merge($cab, ['Content-Type: application/json']), json_encode($post));
+    ]);
+    [$cod, $j] = http('POST', $base . '/posts', $cabJson, $post);
+    if ($cod === 404) [$cod, $j] = http('POST', $base . '/post', $cabJson, $post);   // a documentação cita os dois caminhos
     if ($cod < 200 || $cod >= 300) {
-        responder(['ok' => false, 'erro' => 'A API recusou a publicação (HTTP ' . $cod . ').', 'detalhe' => $j], 502);
+        responder(['ok' => false, 'erro' => 'A API recusou a publicação (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
     }
-    responder(['ok' => true, 'msg' => 'Publicação agendada para ' . date('d/m/Y H:i', $quando) . '.', 'id' => $j['id'] ?? null]);
+    responder(['ok' => true, 'msg' => 'Publicação agendada para ' . date('d/m/Y H:i', $quando) . ' (horário do servidor).', 'id' => $j['id'] ?? null]);
 }
 
 responder(['ok' => false, 'erro' => 'Ação desconhecida.'], 400);

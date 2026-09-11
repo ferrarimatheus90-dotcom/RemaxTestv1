@@ -120,7 +120,15 @@ function boasVindas(){
     '<div class="kv"><span class="k">Menu</span><span class="v">Passe o mouse por um módulo na barra lateral para abrir as telas dele.</span></div>',
     '<button class="btn pri" onclick="fechaModal()">Começar</button>');
 }
+function voltaDoPortal(){
+  const q=new URLSearchParams(location.search); if(!q.has('instagram')) return;
+  const erro=q.get('error')||q.get('errorMessage');
+  history.replaceState(null,'',location.pathname+(location.hash||'#/param'));
+  setTimeout(()=>toast(erro? '<b>'+T('A conexão do Instagram não terminou.')+'</b><br>'+esc(erro)
+                           : '<b>'+T('Instagram conectado.')+'</b> '+T('Em Parametrização, clique em “Testar conexão” para ver a conta.'), !erro), 800);
+}
 function iniciarApp(){
+  voltaDoPortal();
   P = personas();
   marcarAcesso();
   renderWho(); renderNav();

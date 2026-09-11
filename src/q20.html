@@ -87,7 +87,8 @@ VIEWS.param=function(v){
       '<div class="card pad"><h3>'+esc(T('Integração de publicação'))+'</h3><div class="mini" style="margin:6px 0 12px">'+esc(T('O fornecedor fica só aqui: o cliente vê a plataforma, não o fornecedor.'))+'</div>'+
         '<div class="field"><label>'+esc(T('Fornecedor em uso'))+'</label><select id="pmProv">'+PROVEDORES.map(p=>'<option value="'+p.id+'"'+(pr.provedor===p.id?' selected':'')+'>'+esc(p.nome)+' · '+esc(p.tipo)+'</option>').join('')+'</select></div>'+
         '<div class="field"><label>'+esc(T('Chave de operação deste navegador'))+'</label><input id="pmChave" type="password" value="'+esc(LS.get('pr_chave_api')||'')+'" placeholder="'+esc(T('a mesma do arquivo de configuração no servidor'))+'"></div>'+
-        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="pmTestSoc">'+esc(T('Testar conexão'))+'</button><button class="btn" id="pmPostTeste">'+esc(T('Publicar teste'))+'</button></div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="pmTestSoc">'+esc(T('Testar conexão'))+'</button><button class="btn pri" id="pmConIg">'+esc(T('Conectar Instagram'))+'</button><button class="btn" id="pmPostTeste">'+esc(T('Publicar teste'))+'</button></div>'+
+        '<div class="mini" style="margin-top:8px">'+esc(T('“Conectar Instagram” abre o portal de conexão numa aba nova: entre com o Instagram da conta (profissional) e autorize. Depois, “Testar conexão” lista a conta.'))+'</div>'+
         '<div id="pmResSoc" class="mini" style="margin-top:10px"></div></div>'+
       '<div class="card pad"><h3>'+esc(T('Avisos por e-mail e WhatsApp'))+'</h3><div class="mini" style="margin:6px 0 12px">'+esc(T('Comunicados, cobranças de leitura e alertas de prazo saem por aqui.'))+'</div>'+
         '<div class="grid g2" style="gap:10px"><div class="field"><label>'+esc(T('E-mail de teste'))+'</label><input id="pmMail" type="email" placeholder="voce@empresa.com.br"></div>'+
@@ -116,6 +117,15 @@ VIEWS.param=function(v){
       nome:eu().nome, creci:'', tel:'', unidade:S.param.marca||'', foto:''});
     mostra('#pmResSoc', await chamarApi('social.php','publicar',{legenda:'Teste de publicação da plataforma '+(S.param.plataforma||'')+' · '+new Date().toLocaleString('pt-BR'),
       imagem:cv.toDataURL('image/jpeg',0.86)})); });
+  $('#pmConIg').addEventListener('click',async()=>{ salvaChave();
+    const aba=window.open('about:blank','_blank');                       // abre já no clique, para o navegador não bloquear
+    $('#pmResSoc').textContent=T('Gerando o link de conexão…');
+    const r=await chamarApi('social.php','conectar',{voltar:location.origin+location.pathname+'?instagram=voltou'});
+    if(r.ok && r.url){ if(aba) aba.location.href=r.url; else location.href=r.url;
+      $('#pmResSoc').innerHTML='<span class="tag ok">OK</span> '+esc(T('Portal aberto numa aba nova. Ao terminar, volte aqui e clique em “Testar conexão”.'));
+      commit('Abriu o portal de conexão do Instagram','Parametrização','Integração de publicação'); }
+    else { if(aba) aba.close(); mostra('#pmResSoc', r); }
+  });
   $('#pmTestNot').addEventListener('click',async()=>{ salvaChave(); mostra('#pmResNot', await chamarApi('notificar.php','status')); });
   $('#pmEnvMail').addEventListener('click',async()=>{ salvaChave(); const to=$('#pmMail').value.trim(); if(!to) return toast(T('Informe o e-mail de teste.'));
     mostra('#pmResNot', await chamarApi('notificar.php','email',{para:to, assunto:'Teste da plataforma '+(S.param.plataforma||''), texto:'Se você recebeu esta mensagem, os avisos por e-mail estão funcionando.'})); });
