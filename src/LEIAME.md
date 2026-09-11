@@ -59,7 +59,9 @@ Grand Champion).
   rotas, busca e alertas.
 - `q5.html` — motor de arte (desenha a peça em canvas e exporta PNG e PDF) e motor de
   gráficos (linha, barras e rosca em canvas, sem biblioteca).
-- `q6.html` a `q13.html` — as telas, na ordem dos módulos.
+- `q6.html` a `q13.html` — as telas, na ordem dos módulos. O Início (`q6.html`) traz, abaixo do
+  banner, o vídeo oficial "REMAX 2026." do canal da REMAX Brasil no YouTube (`VIDEO_INST`): só a capa
+  carrega de início; o player (youtube-nocookie) entra no clique.
 - `q15.html` — Módulo 6 · Programa de Excelência (comprovação com foto, validação,
   faixas de bonificação e ranking). Entra no build antes do `q14.html`.
 - `q14.html` — mapa das 40 frentes e inicialização (abertura → acesso → aplicação).

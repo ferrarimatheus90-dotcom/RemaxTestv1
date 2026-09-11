@@ -15,9 +15,40 @@ function banner(o){
       '<div class="acts">'+o.acts+'</div>'+
     '</div>'+
     '<div class="stats">'+o.stats.map(s=>'<div class="st"><div class="l">'+esc(s[0])+'</div><div class="v">'+s[1]+'</div><div class="d">'+esc(s[2])+'</div></div>').join('')+'</div>'+
-    '</div></div>';
+    '</div></div>'+videoInstitucional();
 }
 function ligarHero(){ /* o banner agora é tipográfico: sem canvas */ }
+
+/* ---------- vídeo oficial da marca (YouTube) ----------
+   Mostra só a capa; o player do YouTube (modo sem cookies) carrega quando alguém clica.
+   Dentro do artefato do claude.ai, que não aceita o player, o clique abre o vídeo no YouTube. */
+const VIDEO_INST = {id:'oTM71smUy1g', titulo:'REMAX 2026.', canal:'REMAX Brasil'};
+function videoInstitucional(){
+  const vd=VIDEO_INST;
+  return '<div class="card video-inst">'+
+    '<div class="vi-tx"><span class="vi-eb">'+esc(T('Vídeo oficial'))+' · '+esc(vd.canal)+'</span>'+
+      '<h3>'+esc(vd.titulo)+'</h3>'+
+      '<p>'+esc(T('Direto do canal da REMAX Brasil. Bom para abrir reuniões, treinamentos e o onboarding das unidades.'))+'</p>'+
+      '<button class="btn pri" data-yt-abrir>'+esc(T('Assistir ao vídeo'))+'</button></div>'+
+    '<button class="yt" data-yt="'+vd.id+'" aria-label="'+esc(T('Assistir ao vídeo'))+' '+esc(vd.titulo)+'">'+
+      '<img src="https://i.ytimg.com/vi/'+vd.id+'/maxresdefault.jpg" alt="" loading="lazy" onerror="this.parentNode.classList.add(\'sem-capa\')">'+
+      '<span class="play"></span><span class="yt-alt">'+esc(T('Assistir no YouTube'))+'</span></button>'+
+  '</div>';
+}
+document.addEventListener('click', e=>{
+  const alvo=e.target.closest('.yt[data-yt], [data-yt-abrir]'); if(!alvo) return;
+  const card=alvo.closest('.video-inst'), yt=card&&card.querySelector('.yt[data-yt]'); if(!yt) return;
+  const id=yt.dataset.yt;
+  if(EM_QUADRO){ window.open('https://www.youtube.com/watch?v='+id, '_blank', 'noopener'); return; }
+  const f=document.createElement('iframe');
+  f.className='yt-frame';
+  f.src='https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&rel=0&modestbranding=1&playsinline=1';
+  f.title=VIDEO_INST.titulo+' — '+VIDEO_INST.canal;
+  f.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+  f.allowFullscreen=true; f.referrerPolicy='strict-origin-when-cross-origin';
+  yt.replaceWith(f);
+  const b=card.querySelector('[data-yt-abrir]'); if(b) b.remove();
+});
 
 VIEWS.inicio=function(v){
   if(ROLE==='corretor') return inicioCorretor(v);
