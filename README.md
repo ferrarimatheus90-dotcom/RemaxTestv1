@@ -60,6 +60,7 @@ Para conferir se o servidor está pronto: `https://seudominio/api/social.php?aca
 
 ## Documentos
 
+- `docs/Guia-de-Apresentacao-Prontos-em-Rede-v3.pdf` — o sistema inteiro, tela por tela, com roteiro de apresentação e perguntas prováveis.
 - `docs/Manual-do-Usuario-Prontos-em-Rede-v3.pdf` — hierarquia e permissões de cada perfil.
 - `docs/Tutorial-de-Testes-Prontos-em-Rede-v3.pdf` — roteiro de testes, perfil por perfil.
 - `docs/Requisitos-de-Indicadores-Prontos-em-Rede-v3.pdf` — definição, fórmula e fonte de cada indicador.
