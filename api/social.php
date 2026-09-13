@@ -18,14 +18,25 @@ if ($acao === 'ping') {
 exigirChave();
 
 $chave = cfg('bundle_api_key');
-$time  = cfg('bundle_team_id');
-if (!$chave || !$time) {
-    responder(['ok' => false, 'configurado' => false, 'erro' => 'Falta bundle_api_key ou bundle_team_id no prontos-config.php.'], 503);
+if (!$chave) {
+    responder(['ok' => false, 'configurado' => false, 'erro' => 'Falta bundle_api_key no prontos-config.php.'], 503);
 }
 $base = 'https://api.bundle.social/api/v1';
 $cab  = ['x-api-key: ' . $chave, 'Accept: application/json'];
 $cabJson = array_merge($cab, ['Content-Type: application/json']);
 $msgErro = function ($j) { return is_array($j) ? ($j['message'] ?? ($j['error'] ?? '')) : ''; };
+
+// o time: o do prontos-config.php ou, se estiver vazio, o primeiro time da organização
+$time = cfg('bundle_team_id');
+$nomeTime = '';
+if (!$time) {
+    [$cod, $j, $erro] = http('GET', $base . '/teams', $cab);
+    if ($cod === 401 || $cod === 403) responder(['ok' => false, 'erro' => 'A chave da API foi recusada (HTTP ' . $cod . '). Confira bundle_api_key.'], 502);
+    if ($cod !== 200) responder(['ok' => false, 'erro' => 'A API de publicação respondeu HTTP ' . $cod . ' ao listar os times.' . ($erro ? ' (' . $erro . ')' : '')], 502);
+    $lista = isset($j['items']) ? $j['items'] : (isset($j['data']) ? $j['data'] : (is_array($j) && isset($j[0]) ? $j : []));
+    if (!$lista || empty($lista[0]['id'])) responder(['ok' => false, 'erro' => 'A chave é válida, mas a organização não tem nenhum time. Crie um time no painel.'], 502);
+    $time = $lista[0]['id']; $nomeTime = $lista[0]['name'] ?? '';
+}
 
 if ($acao === 'status') {
     [$cod, $j, $erro] = http('GET', $base . '/team/' . rawurlencode($time), $cab);
@@ -37,7 +48,7 @@ if ($acao === 'status') {
         if (!empty($c['deletedAt'])) continue;
         $contas[] = ['tipo' => $c['type'] ?? '', 'nome' => '@' . ltrim((string) ($c['username'] ?? ($c['displayName'] ?? '')), '@')];
     }
-    responder(['ok' => true, 'msg' => 'Conectado ao time “' . ($j['name'] ?? $time) . '” · ' . count($contas) . ' conta(s) conectada(s).', 'contas' => $contas]);
+    responder(['ok' => true, 'msg' => 'Conectado ao time “' . ($j['name'] ?? $nomeTime ?: $time) . '” (id ' . $time . ') · ' . count($contas) . ' conta(s) conectada(s).', 'contas' => $contas, 'teamId' => $time]);
 }
 
 if ($acao === 'conectar') {

@@ -13,8 +13,8 @@ return [
     'chave_painel'      => 'troque-por-uma-frase-longa-e-secreta',
 
     // publicação nas redes (bundle.social · Configurações → API)
-    'bundle_api_key'    => '',   // pk_live_...
-    'bundle_team_id'    => '',   // id do time onde as contas do Instagram estão conectadas
+    'bundle_api_key'    => '',   // a chave criada em Organização → Chaves de API (pode ser pk_live_... ou um código com traços)
+    'bundle_team_id'    => '',   // opcional: vazio usa o primeiro time da organização
 
     // e-mail (conta de e-mail criada no hPanel, do mesmo domínio do site)
     'email_remetente'   => '',   // ex.: avisos@connectagendapro.com
