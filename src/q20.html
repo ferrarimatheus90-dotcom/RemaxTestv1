@@ -134,7 +134,10 @@ VIEWS.param=function(v){
   const mostra=(alvo,r)=>{ $(alvo).innerHTML= r.ok? '<span class="tag ok">OK</span> '+esc(r.msg||'')+(r.contas?'<br>'+r.contas.map(c=>esc(c.tipo+' · '+(c.nome||''))).join('<br>'):'')
     : '<span class="tag warn">'+esc(T('Atenção'))+'</span> '+esc(r.erro||r.msg||'')+(r.configurado===false?'<br>'+esc(T('Falta criar o arquivo prontos-config.php no servidor (veja o README).')):''); };
   const salvaChave=()=>LS.set('pr_chave_api', $('#pmChave').value.trim());
-  $('#pmTestSoc').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Consultando…'); mostra('#pmResSoc', await chamarApi('social.php','status')); });
+  $('#pmTestSoc').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Consultando…');
+    const r=await chamarApi('social.php','contas');
+    if(!r.ok) return mostra('#pmResSoc', r);
+    $('#pmResSoc').innerHTML='<span class="tag ok">OK</span> '+esc(r.msg)+'<br>'+r.times.map(t=>'<b>'+esc(t.nome)+'</b>: '+(t.contas.length? t.contas.map(c=>esc(c.tipo+' · '+c.nome)).join(', ') : '<span style="color:var(--muted)">sem conta</span>')).join('<br>'); });
   $('#pmPostTeste').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Publicando…');
     const cv=await montarPeca({fmt:'feed', tema:'azul', titulo:'TESTE DE PUBLICAÇÃO', sub:(S.param.plataforma||'')+' · '+new Date().toLocaleDateString('pt-BR'),
       nome:eu().nome, creci:'', tel:'', unidade:S.param.marca||'', foto:''});

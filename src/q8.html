@@ -158,8 +158,10 @@ VIEWS.estudio=function(v,arg){
     if(!noServidor){ toast('<b>Só no site publicado.</b> Aberto do computador, a plataforma não tem com quem falar.'); return; }
     if(!LS.get('pr_chave_api')){ toast('<b>Publicação real ainda não liberada neste navegador.</b><br>Peça ao Construtor a chave de operação (Parametrização).'); return; }
     const legenda=[ST.titulo, ST.sub].filter(Boolean).join(' — ')+'\n'+[ST.nome, ST.creci?'CRECI '+ST.creci:'', ST.unidade].filter(Boolean).join(' · ')+'\n#RemaxBrasil #ProntosEmRede';
+    const conta = u.teamSocial && u.ig ? (u.igConta||'conta do associado') : 'conta padrão da rede';
     const ov=modal('Postar agora no Instagram',
-      '<div class="hint warn" style="margin-bottom:12px"><b>Isto publica de verdade, em público</b>, na conta de Instagram conectada à plataforma. Dá para apagar depois no próprio Instagram.</div>'+
+      '<div class="hint warn" style="margin-bottom:12px"><b>Isto publica de verdade, em público</b>, em <b>'+esc(conta)+'</b>. Dá para apagar depois no próprio Instagram.'+
+        (u.teamSocial&&u.ig?'':' Para publicar na sua própria conta, conecte-a em <a href="#/redes">Redes sociais</a>.')+'</div>'+
       '<div style="display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start"><img src="'+cvAtual.toDataURL('image/jpeg',0.6)+'" style="width:120px;border-radius:10px" alt="">'+
       '<div class="field" style="margin:0"><label>Legenda</label><textarea id="pLeg" rows="5">'+esc(legenda)+'</textarea></div></div>',
       '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="pOk">Postar agora</button>');
@@ -167,7 +169,7 @@ VIEWS.estudio=function(v,arg){
       const leg=$('#pLeg',ov).value.trim(); fechaModal();
       const res=$('#dPostRes'); res.innerHTML='<span class="tag">…</span> Enviando a peça para a integração de publicação…';
       const b=await canvasBlob(cvAtual,'image/jpeg',0.9); const dataUrl=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); });
-      const r=await chamarApi('social.php','publicar',{legenda:leg, imagem:dataUrl, agora:true});
+      const r=await chamarApi('social.php','publicar',{legenda:leg, imagem:dataUrl, agora:true, teamId:(u.teamSocial&&u.ig)? u.teamSocial : ''});
       if(!r.ok){ res.innerHTML='<span class="tag bad">Atenção</span> '+esc(r.erro||'não foi possível publicar'); return; }
       commit('Postou no Instagram pela plataforma', t.nome, s=>{ s.pecas.unshift({id:uid('p'), uid:u.id, tpl:t.id, tplNome:t.nome, thumb:cvAtual.toDataURL('image/jpeg',0.5), criado:agora(), dados:{titulo:ST.titulo, sub:ST.sub, tema:ST.tema}, postId:r.id}); }, 'Integração de publicação');
       res.innerHTML='<span class="tag ok">Enviado</span> '+esc(r.msg||'')+' Acompanhando a publicação…';

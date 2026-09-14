@@ -122,10 +122,19 @@ function boasVindas(){
 }
 function voltaDoPortal(){
   const q=new URLSearchParams(location.search); if(!q.has('instagram')) return;
-  const erro=q.get('error')||q.get('errorMessage');
-  history.replaceState(null,'',location.pathname+(location.hash||'#/param'));
-  setTimeout(()=>toast(erro? '<b>'+T('A conexão do Instagram não terminou.')+'</b><br>'+esc(erro)
-                           : '<b>'+T('Instagram conectado.')+'</b> '+T('Em Parametrização, clique em “Testar conexão” para ver a conta.'), !erro), 800);
+  const erro=q.get('error')||q.get('errorMessage'), uid_=q.get('u');
+  history.replaceState(null,'',location.pathname+(uid_?'#/redes':(location.hash||'#/param')));
+  if(erro){ setTimeout(()=>toast('<b>'+T('A conexão do Instagram não terminou.')+'</b><br>'+esc(erro)), 800); return; }
+  const u=uid_ && S.usuarios[uid_];
+  if(!u || !u.teamSocial){ setTimeout(()=>toast('<b>'+T('Instagram conectado.')+'</b> '+T('Em Parametrização, clique em “Testar conexão” para ver a conta.'),1), 800); return; }
+  // confere no servidor qual conta ficou no espaço do associado
+  setTimeout(async()=>{
+    const r=await chamarApi('social.php','status&teamId='+encodeURIComponent(u.teamSocial));
+    const conta=r.ok && r.contas && r.contas.find(c=>c.tipo==='INSTAGRAM');
+    if(conta){ commit('Conectou conta social', u.nome+' · '+conta.nome, s=>{ s.usuarios[uid_].ig=true; s.usuarios[uid_].igConta=conta.nome; }, 'Integração de publicação');
+      toast('<b>'+esc(conta.nome)+' conectado</b> para '+esc(primeiro(u.nome))+'. As publicações dele saem nessa conta.',1); route(); }
+    else toast('<b>A autorização não chegou.</b> '+esc((r&&r.erro)||'Tente de novo em Redes sociais.'));
+  }, 900);
 }
 /* o WhatsApp do suporte vem do servidor (prontos-config.php), para valer em todos os navegadores */
 function puxarConfigServidor(){

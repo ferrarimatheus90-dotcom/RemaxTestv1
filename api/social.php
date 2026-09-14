@@ -5,9 +5,11 @@
    O cliente final nunca vê o fornecedor: a plataforma fala com esta camada.
 
    GET  ?acao=ping      → responde se o servidor está configurado (sem chave)
-   GET  ?acao=status    → time e contas conectadas              (chave)
-   POST ?acao=conectar  → {voltar} → link do portal de conexão do Instagram  (chave)
-   POST ?acao=publicar  → {legenda, imagem (data URL ou URL), quando?}  (chave)
+   GET  ?acao=status    → time e contas conectadas (teamId opcional)      (chave)
+   GET  ?acao=contas    → todos os times da organização e as suas contas  (chave)
+   POST ?acao=conectar  → {voltar, usuario:{id,nome}?, teamId?} → link do portal; cria o time do associado se preciso  (chave)
+   POST ?acao=publicar  → {legenda, imagem (data URL ou URL), quando?|agora?, teamId?}  (chave)
+   Modelo: um time por associado (a integração aceita uma conta de Instagram por time); o time padrão é o da rede.
    ======================================================================= */
 require __DIR__ . '/_config.php';
 
@@ -40,6 +42,24 @@ if (!$time) {
     $time = $lista[0]['id']; $nomeTime = $lista[0]['name'] ?? '';
 }
 
+$corpo = corpoJson();
+$timePedido = (string) ($_GET['teamId'] ?? ($corpo['teamId'] ?? ''));
+if ($timePedido !== '' && preg_match('/^[\w-]{8,64}$/', $timePedido)) $time = $timePedido;   // time do associado, quando informado
+
+if ($acao === 'contas') {
+    [$cod, $j] = http('GET', $base . '/team/?limit=50', $cab);
+    if ($cod !== 200) responder(['ok' => false, 'erro' => 'A API de publicação respondeu HTTP ' . $cod . '.'], 502);
+    $times = [];
+    foreach ((array) ($j['items'] ?? []) as $t) {
+        if (!empty($t['deletedAt'])) continue;
+        $contas = [];
+        foreach ((array) ($t['socialAccounts'] ?? []) as $c) { if (empty($c['deletedAt'])) $contas[] = ['tipo' => $c['type'] ?? '', 'nome' => '@' . ltrim((string) ($c['username'] ?? ($c['displayName'] ?? '')), '@')]; }
+        $times[] = ['teamId' => $t['id'], 'nome' => $t['name'] ?? '', 'contas' => $contas];
+    }
+    $total = array_sum(array_map(function ($t) { return count($t['contas']); }, $times));
+    responder(['ok' => true, 'msg' => count($times) . ' time(s) · ' . $total . ' conta(s) conectada(s).', 'times' => $times]);
+}
+
 if ($acao === 'status') {
     [$cod, $j, $erro] = http('GET', $base . '/team/' . rawurlencode($time), $cab);
     if ($cod === 401 || $cod === 403) responder(['ok' => false, 'erro' => 'A chave da API foi recusada (HTTP ' . $cod . '). Confira bundle_api_key.'], 502);
@@ -50,11 +70,18 @@ if ($acao === 'status') {
         if (!empty($c['deletedAt'])) continue;
         $contas[] = ['tipo' => $c['type'] ?? '', 'nome' => '@' . ltrim((string) ($c['username'] ?? ($c['displayName'] ?? '')), '@')];
     }
-    responder(['ok' => true, 'msg' => 'Conectado ao time “' . ($j['name'] ?? $nomeTime ?: $time) . '” (id ' . $time . ') · ' . count($contas) . ' conta(s) conectada(s).', 'contas' => $contas, 'teamId' => $time]);
+    responder(['ok' => true, 'msg' => 'Conectado ao time “' . ($j['name'] ?? $nomeTime ?: $time) . '” (id ' . $time . ') · ' . count($contas) . ' conta(s) conectada(s).', 'contas' => $contas, 'teamId' => $time, 'nome' => $j['name'] ?? '']);
 }
 
 if ($acao === 'conectar') {
-    $d = corpoJson();
+    $d = $corpo;
+    // associado sem time próprio: a plataforma cria um time com o nome dele (uma conta de Instagram por time)
+    if (!empty($d['usuario']['nome']) && empty($d['teamId'])) {
+        $nomeNovo = 'Prontos · ' . mb_substr(trim((string) $d['usuario']['nome']), 0, 40);
+        [$cod, $j] = http('POST', $base . '/team/', $cabJson, json_encode(['name' => $nomeNovo]));
+        if ($cod < 200 || $cod >= 300 || empty($j['id'])) responder(['ok' => false, 'erro' => 'Não consegui criar o espaço do associado na integração (HTTP ' . $cod . '). ' . $msgErro($j) . ' O plano atual pode ter atingido o limite de contas.'], 502);
+        $time = $j['id'];
+    }
     $voltar = (string) ($d['voltar'] ?? '');
     if (!preg_match('#^https://#', $voltar)) $voltar = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'connectagendapro.com') . '/?instagram=voltou';
     // 1º: portal de conexão (em português, com a marca do fornecedor escondida quando o plano permite)
@@ -69,11 +96,11 @@ if ($acao === 'conectar') {
     if ($cod < 200 || $cod >= 300 || empty($j['url'])) {
         responder(['ok' => false, 'erro' => 'Não consegui gerar o link de conexão (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
     }
-    responder(['ok' => true, 'url' => $j['url']]);
+    responder(['ok' => true, 'url' => $j['url'], 'teamId' => $time]);
 }
 
 if ($acao === 'publicar') {
-    $d = corpoJson();
+    $d = $corpo;
     $legenda = mb_substr(trim((string) ($d['legenda'] ?? '')), 0, 2000);
     $imagem  = (string) ($d['imagem'] ?? '');
     if ($imagem === '') responder(['ok' => false, 'erro' => 'O Instagram exige imagem ou vídeo: envie a peça junto.'], 400);

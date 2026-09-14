@@ -2957,8 +2957,10 @@ VIEWS.estudio=function(v,arg){
     if(!noServidor){ toast('<b>Só no site publicado.</b> Aberto do computador, a plataforma não tem com quem falar.'); return; }
     if(!LS.get('pr_chave_api')){ toast('<b>Publicação real ainda não liberada neste navegador.</b><br>Peça ao Construtor a chave de operação (Parametrização).'); return; }
     const legenda=[ST.titulo, ST.sub].filter(Boolean).join(' — ')+'\n'+[ST.nome, ST.creci?'CRECI '+ST.creci:'', ST.unidade].filter(Boolean).join(' · ')+'\n#RemaxBrasil #ProntosEmRede';
+    const conta = u.teamSocial && u.ig ? (u.igConta||'conta do associado') : 'conta padrão da rede';
     const ov=modal('Postar agora no Instagram',
-      '<div class="hint warn" style="margin-bottom:12px"><b>Isto publica de verdade, em público</b>, na conta de Instagram conectada à plataforma. Dá para apagar depois no próprio Instagram.</div>'+
+      '<div class="hint warn" style="margin-bottom:12px"><b>Isto publica de verdade, em público</b>, em <b>'+esc(conta)+'</b>. Dá para apagar depois no próprio Instagram.'+
+        (u.teamSocial&&u.ig?'':' Para publicar na sua própria conta, conecte-a em <a href="#/redes">Redes sociais</a>.')+'</div>'+
       '<div style="display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start"><img src="'+cvAtual.toDataURL('image/jpeg',0.6)+'" style="width:120px;border-radius:10px" alt="">'+
       '<div class="field" style="margin:0"><label>Legenda</label><textarea id="pLeg" rows="5">'+esc(legenda)+'</textarea></div></div>',
       '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="pOk">Postar agora</button>');
@@ -2966,7 +2968,7 @@ VIEWS.estudio=function(v,arg){
       const leg=$('#pLeg',ov).value.trim(); fechaModal();
       const res=$('#dPostRes'); res.innerHTML='<span class="tag">…</span> Enviando a peça para a integração de publicação…';
       const b=await canvasBlob(cvAtual,'image/jpeg',0.9); const dataUrl=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); });
-      const r=await chamarApi('social.php','publicar',{legenda:leg, imagem:dataUrl, agora:true});
+      const r=await chamarApi('social.php','publicar',{legenda:leg, imagem:dataUrl, agora:true, teamId:(u.teamSocial&&u.ig)? u.teamSocial : ''});
       if(!r.ok){ res.innerHTML='<span class="tag bad">Atenção</span> '+esc(r.erro||'não foi possível publicar'); return; }
       commit('Postou no Instagram pela plataforma', t.nome, s=>{ s.pecas.unshift({id:uid('p'), uid:u.id, tpl:t.id, tplNome:t.nome, thumb:cvAtual.toDataURL('image/jpeg',0.5), criado:agora(), dados:{titulo:ST.titulo, sub:ST.sub, tema:ST.tema}, postId:r.id}); }, 'Integração de publicação');
       res.innerHTML='<span class="tag ok">Enviado</span> '+esc(r.msg||'')+' Acompanhando a publicação…';
@@ -3252,14 +3254,25 @@ VIEWS.redes=function(v){
       '<div class="card"><div class="ch"><h3>Contas dos associados</h3><div class="r"><span class="mini">'+con+' de '+us.length+'</span></div></div><div class="lst" style="max-height:430px;overflow:auto">'+
         us.slice(0,40).map(u=>'<div class="li" style="cursor:default">'+avatar(u)+
           '<div class="bd"><div class="t" style="font-size:13px">'+esc(u.nome)+'</div><div class="s">'+esc(lojaDe(u.loja).nome)+'</div></div>'+
-          '<div class="rt">'+(u.ig?'<span class="tag ok">Conectada</span>':
+          '<div class="rt">'+(u.ig?'<span class="tag ok">Conectada'+(u.igConta?' · '+esc(u.igConta):'')+'</span>':
             (ROLE==='corretor'?'<span class="tag warn">Pendente</span>':'<button class="btn sm" data-con="'+u.id+'">Conectar</button>'))+'</div></div>').join('')+
       '</div></div>'+
     '</div>';
 
   const conecta=id=>{ commit('Conectou conta social', S.usuarios[id].nome, s=>{ s.usuarios[id].ig=true; }, (prov||{}).nome||'provedor');
     toast('<b>Conta conectada.</b> O associado entra nas publicações sincronizadas.',1); route(); };
-  $$('[data-con]',v).forEach(b=>b.addEventListener('click',()=>conecta(b.dataset.con)));
+  // conexão real: cria o espaço do associado na integração e abre a autorização do Instagram numa aba nova
+  const conectaReal=async id=>{
+    const u=S.usuarios[id]; const aba=window.open('about:blank','_blank');
+    toast('Gerando o link de autorização de '+esc(primeiro(u.nome))+'…');
+    const r=await chamarApi('social.php','conectar',{voltar:location.origin+location.pathname+'?instagram=voltou&u='+encodeURIComponent(id), usuario:{id, nome:u.nome}, teamId:u.teamSocial||''});
+    if(!r.ok || !r.url){ if(aba) aba.close(); toast('<b>Não deu.</b> '+esc(r.erro||'')); return; }
+    commit('Abriu a autorização do Instagram', u.nome, s=>{ s.usuarios[id].teamSocial=r.teamId; }, 'Integração de publicação');
+    if(aba) aba.location.href=r.url; else location.href=r.url;
+    toast('<b>Autorização aberta numa aba nova.</b> Entre com o Instagram de '+esc(primeiro(u.nome))+' e autorize. Ao voltar, a conta aparece conectada.',1);
+  };
+  const conexaoReal = /^https?:/.test(location.protocol) && !EM_QUADRO && !!LS.get('pr_chave_api');
+  $$('[data-con]',v).forEach(b=>b.addEventListener('click',()=>conexaoReal? conectaReal(b.dataset.con) : conecta(b.dataset.con)));
   $$('[data-prov]',v).forEach(b=>b.addEventListener('click',()=>{
     commit('Trocou o provedor de publicação', PROVEDORES.find(p=>p.id===b.dataset.prov).nome, s=>{ s.social.provedor=b.dataset.prov; s.social.conectadoEm=agora(); });
     route(); toast('Provedor atualizado para <b>'+esc(PROVEDORES.find(p=>p.id===b.dataset.prov).nome)+'</b>.',1);
@@ -3285,7 +3298,7 @@ VIEWS.redes=function(v){
         .map((p,i)=>'<div class="it '+(i===0?'now':'')+'"><div class="t">'+p+'</div></div>').join('')+'</div>'+
       '<div class="hint">Se travar em qualquer passo, mande “instagram” no WhatsApp do suporte: um analista faz junto com você.</div>',
       '<button class="btn" onclick="fechaModal()">Depois</button><button class="btn pri" id="okC">Autorizar</button>');
-    $('#okC',ov).addEventListener('click',()=>{ fechaModal(); conecta(euId()); });
+    $('#okC',ov).addEventListener('click',()=>{ fechaModal(); conexaoReal? conectaReal(euId()) : conecta(euId()); });
   });
 };
 </script>
@@ -5398,7 +5411,10 @@ VIEWS.param=function(v){
   const mostra=(alvo,r)=>{ $(alvo).innerHTML= r.ok? '<span class="tag ok">OK</span> '+esc(r.msg||'')+(r.contas?'<br>'+r.contas.map(c=>esc(c.tipo+' · '+(c.nome||''))).join('<br>'):'')
     : '<span class="tag warn">'+esc(T('Atenção'))+'</span> '+esc(r.erro||r.msg||'')+(r.configurado===false?'<br>'+esc(T('Falta criar o arquivo prontos-config.php no servidor (veja o README).')):''); };
   const salvaChave=()=>LS.set('pr_chave_api', $('#pmChave').value.trim());
-  $('#pmTestSoc').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Consultando…'); mostra('#pmResSoc', await chamarApi('social.php','status')); });
+  $('#pmTestSoc').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Consultando…');
+    const r=await chamarApi('social.php','contas');
+    if(!r.ok) return mostra('#pmResSoc', r);
+    $('#pmResSoc').innerHTML='<span class="tag ok">OK</span> '+esc(r.msg)+'<br>'+r.times.map(t=>'<b>'+esc(t.nome)+'</b>: '+(t.contas.length? t.contas.map(c=>esc(c.tipo+' · '+c.nome)).join(', ') : '<span style="color:var(--muted)">sem conta</span>')).join('<br>'); });
   $('#pmPostTeste').addEventListener('click',async()=>{ salvaChave(); $('#pmResSoc').textContent=T('Publicando…');
     const cv=await montarPeca({fmt:'feed', tema:'azul', titulo:'TESTE DE PUBLICAÇÃO', sub:(S.param.plataforma||'')+' · '+new Date().toLocaleDateString('pt-BR'),
       nome:eu().nome, creci:'', tel:'', unidade:S.param.marca||'', foto:''});
@@ -6333,10 +6349,19 @@ function boasVindas(){
 }
 function voltaDoPortal(){
   const q=new URLSearchParams(location.search); if(!q.has('instagram')) return;
-  const erro=q.get('error')||q.get('errorMessage');
-  history.replaceState(null,'',location.pathname+(location.hash||'#/param'));
-  setTimeout(()=>toast(erro? '<b>'+T('A conexão do Instagram não terminou.')+'</b><br>'+esc(erro)
-                           : '<b>'+T('Instagram conectado.')+'</b> '+T('Em Parametrização, clique em “Testar conexão” para ver a conta.'), !erro), 800);
+  const erro=q.get('error')||q.get('errorMessage'), uid_=q.get('u');
+  history.replaceState(null,'',location.pathname+(uid_?'#/redes':(location.hash||'#/param')));
+  if(erro){ setTimeout(()=>toast('<b>'+T('A conexão do Instagram não terminou.')+'</b><br>'+esc(erro)), 800); return; }
+  const u=uid_ && S.usuarios[uid_];
+  if(!u || !u.teamSocial){ setTimeout(()=>toast('<b>'+T('Instagram conectado.')+'</b> '+T('Em Parametrização, clique em “Testar conexão” para ver a conta.'),1), 800); return; }
+  // confere no servidor qual conta ficou no espaço do associado
+  setTimeout(async()=>{
+    const r=await chamarApi('social.php','status&teamId='+encodeURIComponent(u.teamSocial));
+    const conta=r.ok && r.contas && r.contas.find(c=>c.tipo==='INSTAGRAM');
+    if(conta){ commit('Conectou conta social', u.nome+' · '+conta.nome, s=>{ s.usuarios[uid_].ig=true; s.usuarios[uid_].igConta=conta.nome; }, 'Integração de publicação');
+      toast('<b>'+esc(conta.nome)+' conectado</b> para '+esc(primeiro(u.nome))+'. As publicações dele saem nessa conta.',1); route(); }
+    else toast('<b>A autorização não chegou.</b> '+esc((r&&r.erro)||'Tente de novo em Redes sociais.'));
+  }, 900);
 }
 /* o WhatsApp do suporte vem do servidor (prontos-config.php), para valer em todos os navegadores */
 function puxarConfigServidor(){
