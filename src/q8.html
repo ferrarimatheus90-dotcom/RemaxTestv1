@@ -29,7 +29,7 @@ VIEWS.estudio=function(v,arg){
   const u=usuarioAtualParaPeca(), l=lojaDe(u.loja);
   if(arg && TPLS().some(t=>t.id===arg) && arg!==ST.tpl){ ST.tpl=arg; ST.titulo=null; ST.sub=null; }
   const t=TPLS().find(x=>x.id===ST.tpl)||TPLS()[0];
-  if(ST.nome===null){ ST.nome=u.nome; ST.creci=u.creci; ST.tel=u.tel||'(11) 99999-0000'; ST.unidade=l.nome; ST.foto=u.foto||''; }
+  if(ST.nome===null || ST.dono!==u.id){ ST.dono=u.id; ST.nome=u.nome; ST.creci=u.creci; ST.tel=u.tel||'(11) 99999-0000'; ST.unidade=l.nome; ST.foto=u.foto||''; ST.fotoNome=''; }   // trocou de perfil: os dados são de quem está logado agora
   if(ST.titulo===null) ST.titulo=t.txt||t.nome;
   if(ST.sub===null) ST.sub=t.sub||'Fale com o seu consultor RE/MAX';
   const minhas=S.pecas.filter(p=>p.uid===u.id);
