@@ -26,6 +26,11 @@ const MODULOS = [
     {id:'suporte',     t:'Chamados e assistente',    mvp:1, badge:()=>ROLE==='corretor'?0:S.tickets.filter(t=>!/Resolvido/.test(t.st)).length}]},
   {n:6, id:'intel',   nome:'Intelligence (BI)', desc:'Indicadores da rede: adesão, jornada, marketing digital e tradicional, com exportação para planilha.', telas:[
     {id:'painel',      t:'Painel da rede',           mvp:1, papeis:['brasil','master','construtor']},
+    {id:'bibrand',     t:'Brand Center',             mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bisocial',    t:'Social Hub',               mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bigov',       t:'Compliance & Governance',  mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bicomm',      t:'Centro de Comunicação',    mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bipex',       t:'Programa de Excelência',   mvp:1, papeis:['brasil','master','franquia','construtor']},
     {id:'bi',          t:'Marketing digital e tradicional', mvp:1, papeis:['brasil','master','franquia','construtor']}]},
   {n:7, id:'pex',     nome:'Programa de Excelência', desc:'PEX: regras e pesos, comprovações validadas, faixas de bonificação e o ranking Grand Champion.', telas:[
     {id:'excelencia',  t:'Visão do programa',        mvp:1, badge:()=>S.excelencia.provas.filter(p=>p.st==='pendente'&&ROLE!=='corretor').length},

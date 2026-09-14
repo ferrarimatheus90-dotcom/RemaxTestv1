@@ -37,6 +37,7 @@ PARTES = [
     'q18.html',  # v3 · Help Desk, pessoas da rede, perfil, aviso ao entrar
     'q19.html',  # v3 · jornadas, alçadas, regras do PEX, nomenclatura por cliente
     'q20.html',  # v3 · BI (marketing digital e tradicional) e Parametrização
+    'q21.html',  # v3.10 · BI por módulo (submenu do Intelligence) com detalhamento
     'q16.html',  # ícones, idiomas, tema, marca luminosa e abertura
     'q14.html',  # mapa do escopo (40 frentes) + boot
 ]

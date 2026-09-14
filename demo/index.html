@@ -1603,6 +1603,11 @@ const MODULOS = [
     {id:'suporte',     t:'Chamados e assistente',    mvp:1, badge:()=>ROLE==='corretor'?0:S.tickets.filter(t=>!/Resolvido/.test(t.st)).length}]},
   {n:6, id:'intel',   nome:'Intelligence (BI)', desc:'Indicadores da rede: adesão, jornada, marketing digital e tradicional, com exportação para planilha.', telas:[
     {id:'painel',      t:'Painel da rede',           mvp:1, papeis:['brasil','master','construtor']},
+    {id:'bibrand',     t:'Brand Center',             mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bisocial',    t:'Social Hub',               mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bigov',       t:'Compliance & Governance',  mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bicomm',      t:'Centro de Comunicação',    mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bipex',       t:'Programa de Excelência',   mvp:1, papeis:['brasil','master','franquia','construtor']},
     {id:'bi',          t:'Marketing digital e tradicional', mvp:1, papeis:['brasil','master','franquia','construtor']}]},
   {n:7, id:'pex',     nome:'Programa de Excelência', desc:'PEX: regras e pesos, comprovações validadas, faixas de bonificação e o ranking Grand Champion.', telas:[
     {id:'excelencia',  t:'Visão do programa',        mvp:1, badge:()=>S.excelencia.provas.filter(p=>p.st==='pendente'&&ROLE!=='corretor').length},
@@ -5518,6 +5523,491 @@ VIEWS.param=function(v){
 <style>
 .bi-h{font-size:20px;font-weight:600;letter-spacing:-.02em;margin:6px 0 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 </style>
+<style>
+/* Intelligence (BI) · submenu por módulo e detalhamento ao clicar (pedido do Bruno em 14/09) */
+.kpi[data-drill]{cursor:pointer;transition:transform .16s var(--e), box-shadow .16s var(--e)}
+.kpi[data-drill]:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
+.kpi[data-drill] .lupa{display:block;margin-top:9px;font-size:11.5px;font-weight:600;color:var(--link)}
+.bi-nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}
+.bi-nav a{
+  display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;text-decoration:none;
+  font-size:12.5px;font-weight:600;letter-spacing:-.01em;background:var(--fill-2);color:var(--ink-2);
+  border:1px solid transparent;transition:background .15s var(--e)
+}
+.bi-nav a:hover{background:var(--fill)}
+.bi-nav a.on{background:var(--ink);color:var(--surface)}
+.bi-nav a .q{font-size:11px;opacity:.62;font-weight:500}
+</style>
+<script>
+/* =======================================================================
+   v3.10 — INTELLIGENCE (BI): UM PAINEL POR MÓDULO
+
+   Pedido do Bruno na reunião de 14/09:
+     "No Intelligence, ali do menu lateral esquerdo, tem que ter o submenu.
+      E aí a gente vai ter os indicadores de arte, do Brand Center, do Social
+      Hub, do Compliance, do Centro de Comunicação e do Programa de Excelência.
+      Quando você clicar em cada um, ele vai trazer os indicadores do módulo."
+     "Aí, tá com drill down, dá pra clicar?" — sim: todo indicador abre a lista
+      que está por trás dele, com exportação.
+
+   Nada aqui reescreve tela aprovada: são telas novas, penduradas no módulo 6.
+   O painel de marketing digital e tradicional (#/bi) continua como estava.
+   ======================================================================= */
+
+/* ---------- escopo: respeita o filtro de regional do painel de marketing ---------- */
+function biLojas(){
+  let ls = lojasVisiveis();
+  if(typeof BI_F !== 'undefined' && BI_F !== 'todas'){ const f = ls.filter(l=>l.master===BI_F); if(f.length) return f; }
+  return ls;
+}
+function biFiltroHTML(){
+  if(!souMatriz() || typeof BASE==='undefined') return '';
+  const atual = (typeof BI_F!=='undefined') ? BI_F : 'todas';
+  return '<div class="filtros"><div class="f"><label>'+esc(T('Regional'))+'</label><select id="biRegM"><option value="todas">'+esc(T('Todas as regionais'))+'</option>'+
+    BASE.masters.map(m=>'<option value="'+m.id+'"'+(atual===m.id?' selected':'')+'>'+esc(m.nome)+'</option>').join('')+'</select></div></div>';
+}
+function biLigaFiltro(v){
+  const s=$('#biRegM',v); if(s) s.addEventListener('change',e=>{ BI_F=e.target.value; route(); });
+}
+const biAssociados = ls => ls.flatMap(l=>corretoresDe(l.id));
+
+/* ---------- submenu: os painéis do módulo, um por área ---------- */
+const BI_PAINEIS = [
+  {id:'bibrand',  t:'Brand Center',  ic:'🎨'},
+  {id:'bisocial', t:'Social Hub',    ic:'📣'},
+  {id:'bigov',    t:'Compliance',    ic:'✅'},
+  {id:'bicomm',   t:'Comunicação',   ic:'📨'},
+  {id:'bipex',    t:'Excelência',    ic:'🏆'},
+  {id:'bi',       t:'Marketing',     ic:'📈'}
+];
+function biNav(atual){
+  return '<div class="bi-nav">'+BI_PAINEIS.filter(p=>podeVer(TELAS[p.id])).map(p=>
+    '<a href="#/'+p.id+'"'+(p.id===atual?' class="on"':'')+'><span>'+p.ic+'</span>'+esc(T(p.t))+'</a>').join('')+'</div>';
+}
+
+/* ---------- detalhamento (drill-down) ---------- */
+const semTag = s => String(s==null?'':s).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').trim();
+function biDetalhe(titulo, sub, cols, linhas, arq){
+  const corpo =
+    (sub? '<div class="hint" style="margin-bottom:14px">'+sub+'</div>':'')+
+    '<div class="tw" style="max-height:56vh;overflow:auto"><table><thead><tr>'+
+      cols.map((c,i)=>'<th'+(i?' class="num"':'')+'>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>'+
+      (linhas.length
+        ? linhas.map(r=>'<tr>'+r.map((c,i)=>'<td'+(i?' class="num"':'')+'>'+(c==null?'':c)+'</td>').join('')+'</tr>').join('')
+        : '<tr><td colspan="'+cols.length+'"><div class="empty">'+esc(T('Nada para mostrar com o filtro atual.'))+'</div></td></tr>')+
+    '</tbody></table></div>';
+  const ov = modal(esc(titulo)+' <span class="tag mut">'+linhas.length+'</span>', corpo,
+    '<button class="btn" onclick="fechaModal()">'+esc(T('Fechar'))+'</button>'+
+    (linhas.length?'<button class="btn pri" id="biCsvD">↓ '+esc(T('Exportar planilha'))+'</button>':''));
+  const b=$('#biCsvD',ov);
+  if(b) b.addEventListener('click',()=>{
+    const lin=[cols].concat(linhas.map(r=>r.map(semTag)));
+    baixarBlob(new Blob(['﻿'+lin.map(r=>r.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(';')).join('\n')],{type:'text/csv;charset=utf-8'}),
+      (arq||'detalhe')+'.csv');
+    commit('Exportou detalhamento do BI', titulo); toast(T('Planilha exportada.'),1);
+  });
+  return ov;
+}
+/* indicador que abre o detalhe */
+function kpiD(l,v,d,cls,chave){
+  return '<div class="kpi '+(cls||'')+'" data-drill="'+chave+'" role="button" tabindex="0"><div class="l">'+l+'</div><div class="v">'+v+'</div>'+
+    (d?'<div class="d">'+d+'</div>':'')+'<span class="lupa">'+esc(T('ver o detalhe'))+' →</span></div>';
+}
+function ligaDrill(v, mapa){
+  $$('[data-drill]',v).forEach(el=>{
+    const ir=()=>{ const f=mapa[el.dataset.drill]; if(f) f(); };
+    el.addEventListener('click',ir);
+    el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); ir(); } });
+  });
+}
+/* cartão de gráfico que também abre o detalhe */
+function biCard(tit, canvasId, extra, drill, mini){
+  return '<div class="card"><div class="ch"><h3>'+esc(tit)+'</h3><div class="r">'+(mini?'<span class="mini">'+esc(mini)+'</span>':'')+
+    (drill?'<button class="btn sm" data-drill="'+drill+'">'+esc(T('detalhar'))+'</button>':'')+'</div></div>'+
+    '<div class="cb"><div class="grafico"><canvas id="'+canvasId+'"></canvas></div>'+(extra||'')+'</div></div>';
+}
+
+/* =======================================================================
+   1 · BRAND CENTER — adesão à marca e uso do Estúdio de Arte
+   "quem criou mais arte no Estúdio de Arte, quem criou mais e postou mais —
+    não adianta criar e não postar"
+   ======================================================================= */
+function artesDe(uidc){
+  const u=S.usuarios[uidc]||{};
+  return S.pecas.filter(p=>p.uid===uidc).length + (u.pecasFeitas||0);
+}
+function publicadasDe(uidc){
+  let n = S.campanhas.filter(c=>c.ag && c.ag[uidc]).length;
+  n += (S.social.fila||[]).filter(p=>p.uid===uidc).length;
+  return n;
+}
+VIEWS.bibrand = function(v){
+  const ls=biLojas(), us=biAssociados(ls);
+  const criadas = us.reduce((a,u)=>a+artesDe(u.id),0);
+  const publicadas = us.reduce((a,u)=>a+publicadasDe(u.id),0);
+  const criadores = us.filter(u=>artesDe(u.id)>0);
+  const postaram = us.filter(u=>publicadasDe(u.id)>0);
+  const usoEstudio = us.length? Math.round(criadores.length/us.length*100) : 0;
+  const criouEPostou = criadores.length? Math.round(criadores.filter(u=>publicadasDe(u.id)>0).length/criadores.length*100) : 0;
+
+  const porLoja = ls.map(l=>{ const cs=corretoresDe(l.id);
+    return {l, cs, criadas:cs.reduce((a,u)=>a+artesDe(u.id),0), publicadas:cs.reduce((a,u)=>a+publicadasDe(u.id),0),
+            criadores:cs.filter(u=>artesDe(u.id)>0).length}; }).sort((a,b)=>b.criadas-a.criadas);
+  const porReg = BASE.masters.map((m,i)=>{ const f=porLoja.filter(x=>x.l.master===m.id);
+    return {n:m.nome, v:f.reduce((a,x)=>a+x.criadas,0), cor:PALETA[i%PALETA.length]}; }).filter(x=>x.v>0);
+  const modelos={};
+  S.pecas.forEach(p=>{ const u=S.usuarios[p.uid]; if(u && ls.some(l=>l.id===u.loja)) modelos[p.tplNome||'Modelo']=(modelos[p.tplNome||'Modelo']||0)+1; });
+  const modTop = Object.keys(modelos).map(k=>[k,modelos[k]]).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const rank = us.map(u=>({u, a:artesDe(u.id), p:publicadasDe(u.id)})).filter(x=>x.a>0).sort((a,b)=>b.a-a.a);
+
+  v.innerHTML =
+    ph('Indicadores do Brand Center', T('Quem está usando o Estúdio de Arte, em que unidade e em que regional, e o que foi criado que realmente virou publicação. Criar sem postar não conta como adesão.'),
+      '<a class="btn" href="#/estudio">'+esc(T('Abrir o Estúdio de Arte'))+' →</a>','bibrand')+
+    biNav('bibrand')+ biFiltroHTML()+
+    '<div class="grid g4" style="margin-bottom:22px">'+
+      kpiD(T('Artes criadas'), nf(criadas), T('no Estúdio, por toda a base visível'), '', 'criadas')+
+      kpiD(T('Associados criando'), criadores.length+'/'+us.length, pct(usoEstudio)+' '+T('da base'), usoEstudio>50?'k-ok':'k-warn', 'criadores')+
+      kpiD(T('Artes publicadas'), nf(publicadas), T('saíram da plataforma para a rede'), '', 'publicadas')+
+      kpiD(T('Criou e postou'), pct(criouEPostou), T('de quem cria, quem chega a publicar'), criouEPostou>60?'k-ok':'k-warn', 'criouepostou')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:22px">'+
+      biCard(T('Criadas x publicadas por unidade'), 'bbUni', '<div id="bbUniLeg"></div>', 'porunidade', T('10 que mais criam'))+
+      biCard(T('Artes por regional'), 'bbReg', '<div id="bbRegLeg"></div>', 'porregional')+
+    '</div>'+
+    '<div class="grid g23">'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Ranking de associados'))+'</h3><div class="r"><button class="btn sm" data-drill="rank">'+esc(T('ver todos'))+'</button></div></div>'+
+        '<div class="tw"><table><thead><tr><th>'+esc(T('Associado'))+'</th><th class="num">'+esc(T('Criadas'))+'</th><th class="num">'+esc(T('Publicadas'))+'</th><th>'+esc(T('Conta'))+'</th></tr></thead><tbody>'+
+        (rank.slice(0,10).map(x=>'<tr><td style="font-weight:600">'+esc(x.u.nome)+'<div class="mini">'+esc(lojaDe(x.u.loja).nome)+'</div></td>'+
+          '<td class="num">'+nf(x.a)+'</td><td class="num">'+nf(x.p)+'</td>'+
+          '<td>'+(x.u.ig?'<span class="tag ok">'+esc(T('conectada'))+'</span>':'<span class="tag mut">'+esc(T('sem conta'))+'</span>')+'</td></tr>').join('')
+          ||'<tr><td colspan="4"><div class="empty">'+esc(T('Ninguém criou arte ainda no filtro atual.'))+'</div></td></tr>')+
+        '</tbody></table></div></div>'+
+      biCard(T('Modelos mais usados'), 'bbMod', '', 'modelos', T('8 primeiros'))+
+    '</div>';
+
+  const top=porLoja.slice(0,10);
+  gEmpilhado($('#bbUni'), top.map(x=>NOME_CURTO(x.l)),
+    [{nome:T('Publicadas'), cor:PALETA[0], dados:top.map(x=>x.publicadas)},
+     {nome:T('Criadas e não publicadas'), cor:PALETA[1], dados:top.map(x=>Math.max(0,x.criadas-x.publicadas))}], {alt:250});
+  $('#bbUniLeg').innerHTML=legenda([{n:T('Publicadas'),cor:PALETA[0],v:publicadas},{n:T('Criadas e não publicadas'),cor:PALETA[1],v:Math.max(0,criadas-publicadas)}]);
+  gRosca($('#bbReg'), porReg, {alt:250, centro:compacto(criadas), rotulo:T('artes criadas')});
+  $('#bbRegLeg').innerHTML=legenda(porReg);
+  gBarrasH($('#bbMod'), modTop.map(x=>x[0]), modTop.map(x=>x[1]), {alt:Math.max(120, modTop.length*30+16), sufixo:T('peças geradas')});
+
+  biLigaFiltro(v);
+  ligaDrill(v, {
+    criadas: ()=>biDetalhe(T('Artes criadas por unidade'), T('Soma das peças geradas no Estúdio por todos os associados da unidade.'),
+      [T('Unidade'),T('Regional'),T('Associados'),T('Criando'),T('Artes criadas')],
+      porLoja.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), x.cs.length, x.criadores, nf(x.criadas)]),'artes-criadas-por-unidade'),
+    criadores: ()=>biDetalhe(T('Associados que ainda não criaram nenhuma arte'), T('É aqui que está a adesão ao Estúdio de Arte. Cada linha é alguém para o gestor da unidade puxar.'),
+      [T('Associado'),T('Unidade'),T('Regional'),T('Conta conectada')],
+      us.filter(u=>artesDe(u.id)===0).map(u=>[esc(u.nome), esc(lojaDe(u.loja).nome), esc(masterDe(lojaDe(u.loja).master).nome), u.ig?T('sim'):T('não')]),'sem-criar-arte'),
+    publicadas: ()=>biDetalhe(T('Publicações por unidade'), T('Campanhas agendadas e peças enviadas do Estúdio para as contas conectadas.'),
+      [T('Unidade'),T('Regional'),T('Publicadas'),T('Criadas')],
+      porLoja.slice().sort((a,b)=>b.publicadas-a.publicadas).map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), nf(x.publicadas), nf(x.criadas)]),'publicadas-por-unidade'),
+    criouepostou: ()=>biDetalhe(T('Criou arte e não publicou'), T('O indicador que o Bruno pediu: não adianta criar e não postar.'),
+      [T('Associado'),T('Unidade'),T('Artes criadas'),T('Conta conectada')],
+      criadores.filter(u=>publicadasDe(u.id)===0).map(u=>[esc(u.nome), esc(lojaDe(u.loja).nome), nf(artesDe(u.id)), u.ig?T('sim'):T('não')]),'criou-e-nao-postou'),
+    porunidade: ()=>biDetalhe(T('Criadas x publicadas por unidade'),'',
+      [T('Unidade'),T('Criadas'),T('Publicadas'),T('Diferença')],
+      porLoja.map(x=>[esc(x.l.nome), nf(x.criadas), nf(x.publicadas), nf(x.criadas-x.publicadas)]),'criadas-x-publicadas'),
+    porregional: ()=>biDetalhe(T('Artes por regional'),'',[T('Regional'),T('Unidades'),T('Artes criadas'),T('Publicadas')],
+      BASE.masters.map(m=>{ const f=porLoja.filter(x=>x.l.master===m.id);
+        return [esc(m.nome), f.length, nf(f.reduce((a,x)=>a+x.criadas,0)), nf(f.reduce((a,x)=>a+x.publicadas,0))]; }),'artes-por-regional'),
+    modelos: ()=>biDetalhe(T('Modelos mais usados'), T('Qual peça da biblioteca a rede realmente usa.'),[T('Modelo'),T('Vezes usada')],
+      Object.keys(modelos).map(k=>[esc(k), modelos[k]]).sort((a,b)=>b[1]-a[1]),'modelos-mais-usados'),
+    rank: ()=>biDetalhe(T('Ranking de associados no Estúdio'),'',
+      [T('Associado'),T('Unidade'),T('Regional'),T('Criadas'),T('Publicadas'),T('Conta')],
+      rank.map(x=>[esc(x.u.nome), esc(lojaDe(x.u.loja).nome), esc(masterDe(lojaDe(x.u.loja).master).nome), nf(x.a), nf(x.p), x.u.ig?T('conectada'):T('sem conta')]),'ranking-estudio')
+  });
+};
+
+/* =======================================================================
+   2 · SOCIAL HUB — contas conectadas, publicações e frequência
+   "o indicador primordial para o início do projeto é quantas contas estão
+    conectadas… contas conectadas versus número de postagens… frequência"
+   ======================================================================= */
+VIEWS.bisocial = function(v){
+  const ls=biLojas(), us=biAssociados(ls);
+  const con=us.filter(u=>u.ig), adesaoCt = us.length? Math.round(con.length/us.length*100) : 0;
+  const M=metricasRede(ls);
+  const porLoja = ls.map(l=>{ const cs=corretoresDe(l.id), c=cs.filter(u=>u.ig).length, m=metricasLoja(l.id);
+    return {l, cs, con:c, adesao: cs.length? Math.round(c/cs.length*100):0, m}; });
+  const ordAd = porLoja.slice().sort((a,b)=>b.adesao-a.adesao);
+  const freq = con.length? (M.posts/SEMANAS/con.length) : 0;
+  const mix=[{n:'Feed',v:Math.max(0,M.posts-M.reels),cor:PALETA[0]},{n:'Reels',v:M.reels,cor:PALETA[2]},{n:'Stories',v:M.stories,cor:PALETA[6]}];
+
+  v.innerHTML =
+    ph('Indicadores do Social Hub', T('Adesão das contas, volume e frequência de publicação. Conta conectada é o primeiro indicador do projeto: quem paga pela plataforma e não conectou a conta aparece aqui.'),
+      '<a class="btn" href="#/redes">'+esc(T('Abrir Redes sociais'))+' →</a>','bisocial')+
+    biNav('bisocial')+ biFiltroHTML()+
+    '<div class="grid g4" style="margin-bottom:22px">'+
+      kpiD(T('Contas conectadas'), con.length+'/'+us.length, pct(adesaoCt)+' '+T('da base visível'), adesaoCt>60?'k-ok':'k-warn','conectadas')+
+      kpiD(T('Publicações'), nf(M.posts), T('últimas 12 semanas'), '', 'publicacoes')+
+      kpiD(T('Frequência'), freq.toFixed(1).replace('.',',' ), T('publicações por conta conectada, por semana'), freq>=1?'k-ok':'k-warn','frequencia')+
+      kpiD(T('Seguidores'), compacto(M.seguidores), T('somados nas contas conectadas'), '', 'seguidores')+
+    '</div>'+
+    '<div class="grid g3" style="margin-bottom:22px">'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Adesão das contas'))+'</h3><div class="r"><button class="btn sm" data-drill="conectadas">'+esc(T('detalhar'))+'</button></div></div>'+
+        '<div class="cb"><div class="grafico"><canvas id="bsMed"></canvas></div>'+
+        '<div class="hint" style="margin-top:6px">'+esc(T('Meta de adesão da primeira onda: 80% das contas conectadas.'))+'</div></div></div>'+
+      biCard(T('Publicações por semana'), 'bsSerie', '', 'publicacoes')+
+      biCard(T('Formatos publicados'), 'bsMix', '<div id="bsMixLeg"></div>', 'formatos')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:22px">'+
+      biCard(T('Adesão por unidade'), 'bsUni', '', 'porunidade', T('% das contas conectadas'))+
+      biCard(T('Conectadas x publicações'), 'bsCx', '<div id="bsCxLeg"></div>', 'conectadasxposts', T('10 maiores'))+
+    '</div>'+
+    '<div class="card"><div class="ch"><h3>'+esc(T('Por unidade'))+'</h3><div class="r"><button class="btn sm" data-drill="tabela">'+esc(T('exportar'))+'</button></div></div>'+
+      '<div class="tw"><table><thead><tr><th>'+esc(T('Unidade'))+'</th><th class="num">'+esc(T('Associados'))+'</th><th class="num">'+esc(T('Conectadas'))+'</th>'+
+      '<th class="num">'+esc(T('Adesão'))+'</th><th class="num">'+esc(T('Publicações'))+'</th><th class="num">'+esc(T('Frequência'))+'</th><th class="num">'+esc(T('Seguidores'))+'</th></tr></thead><tbody>'+
+      ordAd.map(x=>'<tr><td style="font-weight:600">'+esc(x.l.nome)+'<div class="mini">'+esc(masterDe(x.l.master).nome)+'</div></td>'+
+        '<td class="num">'+x.cs.length+'</td><td class="num">'+x.con+'</td>'+
+        '<td class="num">'+(x.adesao>=80?'<span class="tag ok">':'<span class="tag'+(x.adesao<50?' warn':'')+'">')+pct(x.adesao)+'</span></td>'+
+        '<td class="num">'+nf(x.m.posts)+'</td><td class="num">'+(x.con? (x.m.posts/SEMANAS/x.con).toFixed(1).replace('.',','):'—')+'</td>'+
+        '<td class="num">'+compacto(x.m.seguidores)+'</td></tr>').join('')+
+    '</tbody></table></div></div>';
+
+  gMedidor($('#bsMed'), adesaoCt, {alt:250, meta:80, rotulo:T('contas conectadas')});
+  gLinha($('#bsSerie'), M.semanas, [{nome:T('Publicações'), dados:M.serie, cor:PALETA[0]}], {alt:250});
+  gRosca($('#bsMix'), mix, {alt:250, centro:compacto(mix.reduce((a,b)=>a+b.v,0)), rotulo:T('peças publicadas')});
+  $('#bsMixLeg').innerHTML=legenda(mix);
+  gBarrasH($('#bsUni'), ordAd.slice(0,12).map(x=>NOME_CURTO(x.l)), ordAd.slice(0,12).map(x=>x.adesao),
+    {fmt:v=>v+'%', max:100, alt:Math.max(140, Math.min(12,ordAd.length)*30+16), meta:80, metaRotulo:T('meta 80%')});
+  const cx = porLoja.slice().sort((a,b)=>b.m.posts-a.m.posts).slice(0,10);
+  gEmpilhado($('#bsCx'), cx.map(x=>NOME_CURTO(x.l)),
+    [{nome:T('Contas conectadas'), cor:PALETA[0], dados:cx.map(x=>x.con)},
+     {nome:T('Publicações (÷10)'), cor:PALETA[4], dados:cx.map(x=>Math.round(x.m.posts/10))}], {alt:250});
+  $('#bsCxLeg').innerHTML=legenda([{n:T('Contas conectadas'),cor:PALETA[0]},{n:T('Publicações, em dezenas'),cor:PALETA[4]}]);
+
+  biLigaFiltro(v);
+  const linhasUni = ordAd.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), x.cs.length, x.con, pct(x.adesao), nf(x.m.posts),
+    x.con? (x.m.posts/SEMANAS/x.con).toFixed(1).replace('.',','):'0', x.m.seguidores]);
+  ligaDrill(v, {
+    conectadas: ()=>biDetalhe(T('Contas ainda não conectadas'), T('A lista de governança: quem tem acesso à plataforma e ainda não ligou o Instagram.'),
+      [T('Associado'),T('Unidade'),T('Regional'),T('Ativo')],
+      us.filter(u=>!u.ig).map(u=>[esc(u.nome), esc(lojaDe(u.loja).nome), esc(masterDe(lojaDe(u.loja).master).nome), u.ativo?T('sim'):T('não')]),'contas-nao-conectadas'),
+    publicacoes: ()=>biDetalhe(T('Publicações por unidade'),'',[T('Unidade'),T('Regional'),T('Publicações'),T('Alcance')],
+      porLoja.slice().sort((a,b)=>b.m.posts-a.m.posts).map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), nf(x.m.posts), nf(x.m.alcance)]),'publicacoes-por-unidade'),
+    frequencia: ()=>biDetalhe(T('Frequência por unidade'), T('Publicações por conta conectada, por semana. Abaixo de 1 a unidade praticamente parou.'),
+      [T('Unidade'),T('Conectadas'),T('Publicações'),T('Frequência')],
+      porLoja.slice().sort((a,b)=>(b.con?b.m.posts/b.con:0)-(a.con?a.m.posts/a.con:0))
+        .map(x=>[esc(x.l.nome), x.con, nf(x.m.posts), x.con?(x.m.posts/SEMANAS/x.con).toFixed(1).replace('.',','):'0']),'frequencia-por-unidade'),
+    seguidores: ()=>biDetalhe(T('Seguidores por unidade'),'',[T('Unidade'),T('Conectadas'),T('Seguidores'),T('Curtidas')],
+      porLoja.slice().sort((a,b)=>b.m.seguidores-a.m.seguidores).map(x=>[esc(x.l.nome), x.con, nf(x.m.seguidores), nf(x.m.curtidas)]),'seguidores-por-unidade'),
+    formatos: ()=>biDetalhe(T('Formatos publicados'),'',[T('Formato'),T('Peças')], mix.map(m=>[m.n, nf(m.v)]),'formatos'),
+    porunidade: ()=>biDetalhe(T('Adesão por unidade'),'',[T('Unidade'),T('Regional'),T('Associados'),T('Conectadas'),T('Adesão')],
+      ordAd.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), x.cs.length, x.con, pct(x.adesao)]),'adesao-por-unidade'),
+    conectadasxposts: ()=>biDetalhe(T('Contas conectadas x publicações'),'',
+      [T('Unidade'),T('Conectadas'),T('Publicações'),T('Por conta')],
+      porLoja.slice().sort((a,b)=>b.m.posts-a.m.posts).map(x=>[esc(x.l.nome), x.con, nf(x.m.posts), x.con?Math.round(x.m.posts/x.con):0]),'conectadas-x-publicacoes'),
+    tabela: ()=>biDetalhe(T('Social Hub por unidade'),'',
+      [T('Unidade'),T('Regional'),T('Associados'),T('Conectadas'),T('Adesão'),T('Publicações'),T('Frequência'),T('Seguidores')], linhasUni,'social-hub-por-unidade')
+  });
+};
+
+/* =======================================================================
+   3 · COMPLIANCE & GOVERNANCE — jornada, fachadas e aprovações
+   "quem já está na jornada… fachada, merchandising, outdoor; o pessoal manda
+    a comprovação e o BI só lê essas informações"
+   ======================================================================= */
+VIEWS.bigov = function(v){
+  const ls=biLojas();
+  const linhas = ls.map(l=>({l, ad:adesao(l.id), ok:etapasOk(l.id), U:S.unidades[l.id]})).sort((a,b)=>b.ad-a.ad);
+  const media = linhas.length? Math.round(linhas.reduce((a,x)=>a+x.ad,0)/linhas.length) : 0;
+  const concluidas = linhas.filter(x=>x.ok>=ETAPAS.length).length;
+  const fachadas = linhas.filter(x=>x.U.fachada.st==='instalada').length;
+  const pend = pendentesAprov().length;
+  const atrasadas = linhas.filter(x=>ETAPAS.some(e=>statusEtapa(x.l.id,e.id)==='atrasada')).length;
+  const porEtapa = ETAPAS.map(e=>Math.round(ls.filter(l=>S.unidades[l.id].etapas[e.id].ok).length/Math.max(1,ls.length)*100));
+  const fachSt=['instalada','producao','em_analise','nao_iniciada'].map((s,i)=>({n:T(FACH_LABEL[s]), v:linhas.filter(x=>x.U.fachada.st===s).length, cor:PALETA[[4,5,1,7][i]]})).filter(x=>x.v>0);
+  const calorL = linhas.slice(0,14);
+
+  v.innerHTML =
+    ph('Indicadores de Compliance', T('A jornada de adequação da rede, item por item: quem cumpriu, quem está atrasado e o que está esperando aprovação. O painel só lê o que as unidades enviaram na plataforma.'),
+      '<a class="btn" href="#/jornada">'+esc(T('Abrir a jornada'))+' →</a>','bigov')+
+    biNav('bigov')+ biFiltroHTML()+
+    '<div class="grid g4" style="margin-bottom:22px">'+
+      kpiD(T('Adesão média'), pct(media), T('da jornada de adequação'), media>=70?'k-ok':'k-warn','adesao')+
+      kpiD(T('Unidades concluídas'), concluidas+'/'+linhas.length, T('com todas as etapas cumpridas'), '', 'concluidas')+
+      kpiD(T('Fachadas instaladas'), fachadas+'/'+linhas.length, T('nova identidade já na rua'), '', 'fachadas')+
+      kpiD(T('Unidades atrasadas'), nf(atrasadas), T('com pelo menos uma etapa fora do prazo'), atrasadas?'k-warn':'k-ok','atrasadas')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:22px">'+
+      biCard(T('Etapas concluídas pela rede'), 'bgEtapas', '', 'etapas', T('% das unidades'))+
+      biCard(T('Situação das fachadas'), 'bgFach', '<div id="bgFachLeg"></div>', 'fachadas')+
+    '</div>'+
+    '<div class="card" style="margin-bottom:22px"><div class="ch"><h3>'+esc(T('Mapa da jornada'))+'</h3><div class="r"><span class="mini">'+esc(T('unidade por etapa'))+'</span>'+
+      '<button class="btn sm" data-drill="mapa">'+esc(T('detalhar'))+'</button></div></div><div class="cb"><div class="grafico"><canvas id="bgCalor"></canvas></div></div></div>'+
+    '<div class="card"><div class="ch"><h3>'+esc(T('Ranking de adesão'))+'</h3><div class="r">'+
+      (pend?'<span class="tag warn">'+pend+' '+esc(T('esperando aprovação'))+'</span>':'')+'<button class="btn sm" data-drill="tabela">'+esc(T('exportar'))+'</button></div></div>'+
+      '<div class="tw"><table><thead><tr><th>'+esc(T('Unidade'))+'</th><th class="num">'+esc(T('Adesão'))+'</th><th class="num">'+esc(T('Etapas'))+'</th>'+
+      '<th>'+esc(T('Fachada'))+'</th><th>'+esc(T('Próxima etapa'))+'</th></tr></thead><tbody>'+
+      linhas.map(x=>'<tr><td style="font-weight:600">'+esc(x.l.nome)+'<div class="mini">'+esc(masterDe(x.l.master).nome)+'</div></td>'+
+        '<td class="num" style="min-width:120px">'+pct(x.ad)+barra(x.ad)+'</td><td class="num">'+x.ok+'/'+ETAPAS.length+'</td>'+
+        '<td>'+(x.U.fachada.st==='instalada'?'<span class="tag ok">'+esc(T('Instalada'))+'</span>':'<span class="tag warn">'+esc(T(FACH_LABEL[x.U.fachada.st]))+'</span>')+'</td>'+
+        '<td class="mini">'+esc(proximaEtapa(x.l.id).nome)+'</td></tr>').join('')+
+    '</tbody></table></div></div>';
+
+  gBarrasH($('#bgEtapas'), ETAPA_CURTA, porEtapa, {fmt:v=>v+'%', max:100, alt:Math.max(140, ETAPA_CURTA.length*30+16), sufixo:T('das unidades concluíram')});
+  gRosca($('#bgFach'), fachSt, {alt:250, centro:String(fachadas), rotulo:T('instaladas')});
+  $('#bgFachLeg').innerHTML=legenda(fachSt);
+  gCalor($('#bgCalor'), calorL.map(x=>NOME_CURTO(x.l)), ETAPA_CURTA,
+    calorL.map(x=>ETAPAS.map(e=>{ const s=statusEtapa(x.l.id,e.id);
+      const val = s==='concluida'?1 : s==='aprovacao'?0.6 : s==='andamento'?0.35 : s==='atrasada'?0.15 : 0;
+      return {v:val, s:T(({concluida:'Concluída',aprovacao:'Em aprovação',andamento:'Em andamento',atrasada:'Atrasada',pendente:'Pendente'})[s]||s)}; })),
+    {alt:Math.max(120, calorL.length*26+34), altLinha:26});
+
+  biLigaFiltro(v);
+  ligaDrill(v, {
+    adesao: ()=>biDetalhe(T('Adesão por unidade'),'',[T('Unidade'),T('Regional'),T('Adesão'),T('Etapas concluídas'),T('Próxima etapa')],
+      linhas.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), pct(x.ad), x.ok+'/'+ETAPAS.length, esc(proximaEtapa(x.l.id).nome)]),'adesao-por-unidade'),
+    concluidas: ()=>biDetalhe(T('Unidades que ainda não concluíram'),'',[T('Unidade'),T('Etapas'),T('Falta'),T('Adesão')],
+      linhas.filter(x=>x.ok<ETAPAS.length).map(x=>[esc(x.l.nome), x.ok+'/'+ETAPAS.length, esc(proximaEtapa(x.l.id).nome), pct(x.ad)]),'unidades-nao-concluidas'),
+    fachadas: ()=>biDetalhe(T('Fachadas por unidade'),'',[T('Unidade'),T('Regional'),T('Situação')],
+      linhas.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), T(FACH_LABEL[x.U.fachada.st])]),'fachadas'),
+    atrasadas: ()=>biDetalhe(T('Etapas fora do prazo'),'',[T('Unidade'),T('Etapa'),T('Prazo')],
+      linhas.flatMap(x=>ETAPAS.filter(e=>statusEtapa(x.l.id,e.id)==='atrasada').map(e=>[esc(x.l.nome), esc(e.nome), e.prazo])),'etapas-atrasadas'),
+    etapas: ()=>biDetalhe(T('Etapas concluídas pela rede'),'',[T('Etapa'),T('Unidades'),T('% da rede')],
+      ETAPAS.map((e,i)=>[esc(e.nome), ls.filter(l=>S.unidades[l.id].etapas[e.id].ok).length+'/'+ls.length, porEtapa[i]+'%']),'etapas-da-rede'),
+    mapa: ()=>biDetalhe(T('Mapa da jornada'),'',[T('Unidade')].concat(ETAPA_CURTA),
+      linhas.map(x=>[esc(x.l.nome)].concat(ETAPAS.map(e=>T(({concluida:'Concluída',aprovacao:'Em aprovação',andamento:'Em andamento',atrasada:'Atrasada',pendente:'Pendente'})[statusEtapa(x.l.id,e.id)]||'')))),'mapa-da-jornada'),
+    tabela: ()=>biDetalhe(T('Compliance por unidade'),'',[T('Unidade'),T('Regional'),T('Adesão'),T('Etapas'),T('Fachada'),T('Próxima etapa')],
+      linhas.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), pct(x.ad), x.ok+'/'+ETAPAS.length, T(FACH_LABEL[x.U.fachada.st]), esc(proximaEtapa(x.l.id).nome)]),'compliance-por-unidade')
+  });
+};
+
+/* =======================================================================
+   4 · CENTRO DE COMUNICAÇÃO — leitura dos comunicados
+   "dá pra fazer BI só falando da leitura dos comunicados: leitura de
+    comunicado, 60% — isso é um BI"
+   ======================================================================= */
+VIEWS.bicomm = function(v){
+  const ls=biLojas(), us=biAssociados(ls), idsU=us.map(u=>u.id);
+  const ks=S.comunicados.slice();
+  const lidosDe = k => (S.leituras[k.id]||[]).filter(id=>idsU.indexOf(id)>=0).length;
+  const taxa = k => us.length? Math.round(lidosDe(k)/us.length*100) : 0;
+  const media = ks.length? Math.round(ks.reduce((a,k)=>a+taxa(k),0)/ks.length) : 0;
+  const obr = ks.filter(k=>k.obr);
+  const mediaObr = obr.length? Math.round(obr.reduce((a,k)=>a+taxa(k),0)/obr.length) : 0;
+  const pendencias = obr.reduce((a,k)=>a+(us.length-lidosDe(k)),0);
+  const porLoja = ls.map(l=>({l, lt:leituraDe(l.id), cs:corretoresDe(l.id)})).sort((a,b)=>b.lt-a.lt);
+  const ordK = ks.slice().sort((a,b)=>taxa(b)-taxa(a));
+  const canais={}; ks.forEach(k=>(k.canais||['plataforma']).forEach(c=>canais[c]=(canais[c]||0)+1));
+  const canLabel=c=>c==='email'?'E-mail':c==='whatsapp'?'WhatsApp':c==='popup'?T('Aviso ao entrar'):T('Plataforma');
+  const canData=Object.keys(canais).map((c,i)=>({n:canLabel(c), v:canais[c], cor:PALETA[i%PALETA.length]}));
+
+  v.innerHTML =
+    ph('Indicadores de Comunicação', T('Quanto da rede realmente lê o que a Matriz publica. A confirmação de leitura é registrada pessoa a pessoa, então dá para cobrar quem faltou.'),
+      '<a class="btn" href="#/comunicados">'+esc(T('Abrir os comunicados'))+' →</a>','bicomm')+
+    biNav('bicomm')+ biFiltroHTML()+
+    '<div class="grid g4" style="margin-bottom:22px">'+
+      kpiD(T('Comunicados publicados'), nf(ks.length), obr.length+' '+T('obrigatórios'), '', 'lista')+
+      kpiD(T('Leitura média'), pct(media), T('de todos os comunicados'), media>=70?'k-ok':'k-warn','leitura')+
+      kpiD(T('Leitura dos obrigatórios'), pct(mediaObr), T('os que contam para o compliance'), mediaObr>=80?'k-ok':'k-warn','obrigatorios')+
+      kpiD(T('Confirmações pendentes'), nf(pendencias), T('pessoas x comunicados obrigatórios'), pendencias?'k-warn':'k-ok','pendentes')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:22px">'+
+      biCard(T('Leitura por comunicado'), 'bcCom', '', 'lista', T('10 primeiros'))+
+      biCard(T('Canais usados'), 'bcCan', '<div id="bcCanLeg"></div>', 'canais')+
+    '</div>'+
+    '<div class="grid g23">'+
+      biCard(T('Leitura por unidade'), 'bcUni', '', 'porunidade', T('% dos obrigatórios'))+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Comunicados'))+'</h3><div class="r"><button class="btn sm" data-drill="lista">'+esc(T('ver todos'))+'</button></div></div>'+
+      '<div class="tw" style="max-height:380px;overflow:auto"><table><thead><tr><th>'+esc(T('Comunicado'))+'</th><th class="num">'+esc(T('Leram'))+'</th><th class="num">'+esc(T('Taxa'))+'</th></tr></thead><tbody>'+
+      ordK.map(k=>'<tr><td style="font-weight:600">'+esc(k.tit)+'<div class="mini">'+esc(k.area||'')+(k.obr?' · '+esc(T('obrigatório')):'')+'</div></td>'+
+        '<td class="num">'+lidosDe(k)+'/'+us.length+'</td><td class="num">'+(taxa(k)>=70?'<span class="tag ok">':'<span class="tag warn">')+pct(taxa(k))+'</span></td></tr>').join('')+
+      '</tbody></table></div></div>'+
+    '</div>';
+
+  const top=ordK.slice(0,10);
+  gBarrasH($('#bcCom'), top.map(k=>k.tit), top.map(k=>taxa(k)), {fmt:v=>v+'%', max:100, alt:Math.max(140, top.length*30+16), meta:70, metaRotulo:T('meta 70%')});
+  gRosca($('#bcCan'), canData, {alt:250, centro:String(ks.length), rotulo:T('comunicados')});
+  $('#bcCanLeg').innerHTML=legenda(canData);
+  gBarrasH($('#bcUni'), porLoja.slice(0,12).map(x=>NOME_CURTO(x.l)), porLoja.slice(0,12).map(x=>x.lt),
+    {fmt:v=>v+'%', max:100, alt:Math.max(140, Math.min(12,porLoja.length)*30+16)});
+
+  biLigaFiltro(v);
+  ligaDrill(v, {
+    lista: ()=>biDetalhe(T('Leitura por comunicado'),'',[T('Comunicado'),T('Área'),T('Obrigatório'),T('Leram'),T('Taxa')],
+      ordK.map(k=>[esc(k.tit), esc(k.area||''), k.obr?T('sim'):T('não'), lidosDe(k)+'/'+us.length, pct(taxa(k))]),'leitura-por-comunicado'),
+    leitura: ()=>biDetalhe(T('Leitura por unidade'),'',[T('Unidade'),T('Regional'),T('Associados'),T('Leitura dos obrigatórios')],
+      porLoja.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), x.cs.length, pct(x.lt)]),'leitura-por-unidade'),
+    obrigatorios: ()=>biDetalhe(T('Comunicados obrigatórios'),'',[T('Comunicado'),T('Leram'),T('Taxa')],
+      obr.slice().sort((a,b)=>taxa(a)-taxa(b)).map(k=>[esc(k.tit), lidosDe(k)+'/'+us.length, pct(taxa(k))]),'comunicados-obrigatorios'),
+    pendentes: ()=>biDetalhe(T('Quem ainda não confirmou leitura'), T('Só os comunicados obrigatórios. É a lista que o gestor usa para cobrar.'),
+      [T('Associado'),T('Unidade'),T('Comunicado')],
+      obr.flatMap(k=>us.filter(u=>(S.leituras[k.id]||[]).indexOf(u.id)<0).map(u=>[esc(u.nome), esc(lojaDe(u.loja).nome), esc(k.tit)])).slice(0,600),'leitura-pendente'),
+    canais: ()=>biDetalhe(T('Canais usados'),'',[T('Canal'),T('Comunicados')], canData.map(c=>[c.n, c.v]),'canais-de-comunicacao'),
+    porunidade: ()=>biDetalhe(T('Leitura por unidade'),'',[T('Unidade'),T('Associados'),T('Leitura')],
+      porLoja.map(x=>[esc(x.l.nome), x.cs.length, pct(x.lt)]),'leitura-por-unidade')
+  });
+};
+
+/* =======================================================================
+   5 · PROGRAMA DE EXCELÊNCIA — pontuação, comprovações e faixas
+   ======================================================================= */
+VIEWS.bipex = function(v){
+  const ls=biLojas();
+  const provas = S.excelencia.provas.filter(p=>ls.some(l=>l.id===p.loja));
+  const linhas = ls.map(l=>({l, p:pontosU(l.id)})).sort((a,b)=>b.p-a.p);
+  const faixaDe = p => (S.excelencia.faixas.slice().sort((a,b)=>b.min-a.min).find(f=>p>=f.min)||{nome:T('Fora de faixa'),id:'fora'});
+  const total = linhas.reduce((a,x)=>a+x.p,0);
+  const val = provas.filter(p=>p.st==='aprovado').length, pend = provas.filter(p=>p.st==='pendente').length, rec = provas.filter(p=>p.st==='recusado').length;
+  const naFaixa = linhas.filter(x=>faixaDe(x.p).id!=='fora').length;
+  const porFaixa = S.excelencia.faixas.map((f,i)=>({n:f.nome, v:linhas.filter(x=>faixaDe(x.p).id===f.id).length, cor:PALETA[[5,7,3][i%3]]}))
+    .concat([{n:T('Fora de faixa'), v:linhas.length-naFaixa, cor:PALETA[7]}]).filter(x=>x.v>0);
+  const crit={}; provas.forEach(p=>{ crit[p.criterioNome]=(crit[p.criterioNome]||0)+1; });
+  const critTop = Object.keys(crit).map(k=>[k,crit[k]]).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  v.innerHTML =
+    ph('Indicadores do Programa de Excelência', T('Pontuação da rede no ciclo, comprovações validadas e em que faixa de bonificação cada unidade está.'),
+      '<a class="btn" href="#/excelencia">'+esc(T('Abrir o programa'))+' →</a>','bipex')+
+    biNav('bipex')+ biFiltroHTML()+
+    '<div class="grid g4" style="margin-bottom:22px">'+
+      kpiD(T('Pontos da rede'), nf(total), S.excelencia.ciclo, '', 'ranking')+
+      kpiD(T('Comprovações validadas'), nf(val), rec? rec+' '+T('recusadas'):T('nenhuma recusada'), 'k-ok','validadas')+
+      kpiD(T('Esperando validação'), nf(pend), T('comprovações na fila'), pend?'k-warn':'k-ok','pendentes')+
+      kpiD(T('Unidades em faixa'), naFaixa+'/'+linhas.length, T('já alcançaram bonificação'), naFaixa>linhas.length/2?'k-ok':'k-warn','faixas')+
+    '</div>'+
+    '<div class="grid g23" style="margin-bottom:22px">'+
+      biCard(T('Ranking de unidades'), 'bpRank', '', 'ranking', T('10 primeiras'))+
+      biCard(T('Distribuição por faixa'), 'bpFaixa', '<div id="bpFaixaLeg"></div>', 'faixas')+
+    '</div>'+
+    '<div class="grid g23">'+
+      biCard(T('Critérios mais comprovados'), 'bpCrit', '', 'criterios')+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Comprovações recentes'))+'</h3><div class="r"><button class="btn sm" data-drill="provas">'+esc(T('ver todas'))+'</button></div></div>'+
+      '<div class="tw" style="max-height:380px;overflow:auto"><table><thead><tr><th>'+esc(T('Unidade'))+'</th><th>'+esc(T('Critério'))+'</th><th class="num">'+esc(T('Pontos'))+'</th><th>'+esc(T('Situação'))+'</th></tr></thead><tbody>'+
+      (provas.slice().sort((a,b)=>a.q<b.q?1:-1).slice(0,12).map(p=>'<tr><td style="font-weight:600">'+esc(lojaDe(p.loja).nome)+'</td><td class="mini">'+esc(p.criterioNome)+'</td>'+
+        '<td class="num">'+p.pts+'</td><td>'+(p.st==='aprovado'?'<span class="tag ok">'+esc(T('Validada'))+'</span>':p.st==='pendente'?'<span class="tag warn">'+esc(T('Pendente'))+'</span>':'<span class="tag bad">'+esc(T('Recusada'))+'</span>')+'</td></tr>').join('')
+        ||'<tr><td colspan="4"><div class="empty">'+esc(T('Nenhuma comprovação no filtro atual.'))+'</div></td></tr>')+
+      '</tbody></table></div></div>'+
+    '</div>';
+
+  const top=linhas.slice(0,10);
+  gBarrasH($('#bpRank'), top.map(x=>NOME_CURTO(x.l)), top.map(x=>x.p), {alt:Math.max(140, top.length*30+16), sufixo:T('pontos')});
+  gRosca($('#bpFaixa'), porFaixa, {alt:250, centro:String(naFaixa), rotulo:T('em faixa')});
+  $('#bpFaixaLeg').innerHTML=legenda(porFaixa);
+  gBarrasH($('#bpCrit'), critTop.map(x=>x[0]), critTop.map(x=>x[1]), {alt:Math.max(120, critTop.length*30+16), sufixo:T('comprovações')});
+
+  biLigaFiltro(v);
+  ligaDrill(v, {
+    ranking: ()=>biDetalhe(T('Ranking do Programa de Excelência'),'',[T('Unidade'),T('Regional'),T('Pontos'),T('Faixa')],
+      linhas.map(x=>[esc(x.l.nome), esc(masterDe(x.l.master).nome), nf(x.p), faixaDe(x.p).nome]),'ranking-excelencia'),
+    validadas: ()=>biDetalhe(T('Comprovações validadas'),'',[T('Unidade'),T('Critério'),T('Pontos'),T('Validador')],
+      provas.filter(p=>p.st==='aprovado').map(p=>[esc(lojaDe(p.loja).nome), esc(p.criterioNome), p.pts, esc(p.validador||'')]),'comprovacoes-validadas'),
+    pendentes: ()=>biDetalhe(T('Comprovações esperando validação'),'',[T('Unidade'),T('Critério'),T('Pontos'),T('Enviada em')],
+      provas.filter(p=>p.st==='pendente').map(p=>[esc(lojaDe(p.loja).nome), esc(p.criterioNome), p.pts, new Date(p.q).toLocaleDateString('pt-BR')]),'comprovacoes-pendentes'),
+    faixas: ()=>biDetalhe(T('Unidades por faixa'),'',[T('Unidade'),T('Pontos'),T('Faixa'),T('Prêmio')],
+      linhas.map(x=>{ const f=faixaDe(x.p); return [esc(x.l.nome), nf(x.p), f.nome, esc(f.premio||'')]; }),'unidades-por-faixa'),
+    criterios: ()=>biDetalhe(T('Critérios comprovados'),'',[T('Critério'),T('Comprovações')],
+      Object.keys(crit).map(k=>[esc(k), crit[k]]).sort((a,b)=>b[1]-a[1]),'criterios-comprovados'),
+    provas: ()=>biDetalhe(T('Todas as comprovações'),'',[T('Unidade'),T('Critério'),T('Pontos'),T('Situação'),T('Enviada em')],
+      provas.slice().sort((a,b)=>a.q<b.q?1:-1).map(p=>[esc(lojaDe(p.loja).nome), esc(p.criterioNome), p.pts,
+        p.st==='aprovado'?T('Validada'):p.st==='pendente'?T('Pendente'):T('Recusada'), new Date(p.q).toLocaleDateString('pt-BR')]),'comprovacoes')
+  });
+};
+</script>
 <script>
 /* =======================================================================
    ÍCONES — traçado de 1,6px, herdam a cor do contexto
