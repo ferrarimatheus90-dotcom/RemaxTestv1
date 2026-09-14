@@ -12,7 +12,7 @@ const MODULOS = [
     {id:'prontos',     t:'Campanhas da rede',        mvp:1},
     {id:'redes',       t:'Redes sociais',            mvp:1},
     {id:'marketing',   t:'Indicadores de redes sociais', mvp:1}]},
-  {n:3, id:'gov',     nome:'Compliance & Governance', desc:'Jornadas de adequação, prazos, evidências, aprovações em alçadas e usuários.', telas:[
+  {n:3, id:'gov',     nome:'Jornada', desc:'Jornada de adequação da rede: etapas, prazos, evidências, fachadas, aprovações em alçadas e usuários.', telas:[
     {id:'jornada',     t:'Jornada de adequação',     mvp:1},
     {id:'jornadas',    t:'Gestão de jornadas',       mvp:1, papeis:['brasil','construtor']},
     {id:'fachadas',    t:'Fachadas',                 mvp:1},
@@ -29,7 +29,7 @@ const MODULOS = [
     {id:'painel',      t:'Painel da rede',           mvp:1, papeis:['brasil','master','construtor']},
     {id:'bibrand',     t:'Brand Center',             mvp:1, papeis:['brasil','master','franquia','construtor']},
     {id:'bisocial',    t:'Social Hub',               mvp:1, papeis:['brasil','master','franquia','construtor']},
-    {id:'bigov',       t:'Compliance & Governance',  mvp:1, papeis:['brasil','master','franquia','construtor']},
+    {id:'bigov',       t:'Jornada',                  mvp:1, papeis:['brasil','master','franquia','construtor']},
     {id:'bicomm',      t:'Centro de Comunicação',    mvp:1, papeis:['brasil','master','franquia','construtor']},
     {id:'bipex',       t:'Programa de Excelência',   mvp:1, papeis:['brasil','master','franquia','construtor']},
     {id:'bi',          t:'Marketing digital e tradicional', mvp:1, papeis:['brasil','master','franquia','construtor']}]},
@@ -357,7 +357,7 @@ function respostaIA(t){
   const f=FAQ.find(x=> low.split(/\s+/).some(w=>w.length>3 && (x.q.toLowerCase().includes(w)||x.a.toLowerCase().includes(w))));
   if(f) return {tx:f.a, fonte:f.fonte};
   if(/cart[aã]o/.test(low)) return {tx:'O cartão de visita da nova identidade está na Biblioteca, em Papelaria. Para personalizar com o seu nome e CRECI, use o Estúdio de Arte — o arquivo sai em 90×50 mm, pronto para a gráfica.', fonte:'Brand Center · Biblioteca'};
-  if(/fachad/.test(low)) return {tx:'A adequação de fachada tem duas etapas: projeto aprovado até 30/01/2027 e instalação até 15/03/2027. O passo a passo, o envio do projeto e a foto final estão em Compliance · Fachadas.', fonte:'Compliance & Governance'};
+  if(/fachad/.test(low)) return {tx:'A adequação de fachada tem duas etapas: projeto aprovado até 30/01/2027 e instalação até 15/03/2027. O passo a passo, o envio do projeto e a foto final estão em Jornada · Fachadas.', fonte:'Jornada'};
   if(/logo|marca/.test(low)) return {tx:'As versões homologadas do logotipo, a área de proteção e o tamanho mínimo estão no Guia da marca. Alterar cor, proporção ou aplicar sombra é vedado.', fonte:'Brand Center · Guia da marca'};
   if(/bonific|excel|pr[êe]mio/.test(low)) return {tx:'O Programa de Excelência dá pontos por entrega comprovada. Você envia a foto da prova, a RE/MAX valida e os pontos entram na sua faixa de bonificação.', fonte:'Intelligence · Programa de Excelência'};
   return {tx:'Veja abaixo os materiais, comunicados e regras relacionados. Se nada resolver, o assistente do suporte abre um chamado com uma pessoa da operação.', fonte:null};

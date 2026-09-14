@@ -67,7 +67,7 @@ const biNominal = ()=> T('Lista nominal das unidades com base carregada. As dema
 const BI_PAINEIS = [
   {id:'bibrand',  t:'Brand Center',  ic:'🎨'},
   {id:'bisocial', t:'Social Hub',    ic:'📣'},
-  {id:'bigov',    t:'Compliance',    ic:'✅'},
+  {id:'bigov',    t:'Jornada',       ic:'✅'},
   {id:'bicomm',   t:'Comunicação',   ic:'📨'},
   {id:'bipex',    t:'Excelência',    ic:'🏆'},
   {id:'bi',       t:'Marketing',     ic:'📈'}
@@ -328,7 +328,7 @@ VIEWS.bigov = function(v){
     T(FACH_LABEL[x.d.fachada]), x.d.atrasada?T('sim'):T('não')];
 
   v.innerHTML =
-    ph('Indicadores de Compliance', T('A jornada de adequação da rede, item por item: quem cumpriu, quem está atrasado e o que está esperando aprovação. O painel só lê o que as unidades enviaram na plataforma.'),
+    ph('Indicadores da Jornada', T('A jornada de adequação da rede, item por item: quem cumpriu, quem está atrasado e o que está esperando aprovação. O painel só lê o que as unidades enviaram na plataforma.'),
       '<a class="btn" href="#/jornada">'+esc(T('Abrir a jornada'))+' →</a>','bigov')+
     biNav('bigov')+ biFiltroHTML(ls)+
     '<div class="grid g4" style="margin-bottom:22px">'+
@@ -377,7 +377,7 @@ VIEWS.bigov = function(v){
       ETAPAS.map((e,i)=>[esc(e.nome), nf(dados.filter(x=>x.d.etapasOk>i).length)+'/'+nf(dados.length), porEtapa[i]+'%']),'etapas-da-rede'),
     mapa: ()=>biDetalhe(T('Mapa da jornada'),'',[T('Unidade')].concat(ETAPA_CURTA),
       dados.map(x=>[esc(x.l.nome)].concat(ETAPAS.map((e,i)=> i<x.d.etapasOk? T('Concluída') : i===x.d.etapasOk? (x.d.atrasada?T('Atrasada'):T('Em andamento')) : T('Pendente')))),'mapa-da-jornada'),
-    tabela: ()=>biDetalhe(T('Compliance por unidade'),'',[T('Unidade'),T('Regional'),T('Adesão'),T('Etapas'),T('Fachada'),T('Atrasada')],
+    tabela: ()=>biDetalhe(T('Jornada por unidade'),'',[T('Unidade'),T('Regional'),T('Adesão'),T('Etapas'),T('Fachada'),T('Atrasada')],
       dados.map(linhaUni),'compliance-por-unidade')
   });
 };
