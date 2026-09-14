@@ -16,9 +16,14 @@ return [
     'bundle_api_key'    => '',   // a chave criada em Organização → Chaves de API (pode ser pk_live_... ou um código com traços)
     'bundle_team_id'    => '',   // opcional: vazio usa o primeiro time da organização
 
-    // e-mail (conta de e-mail criada no hPanel, do mesmo domínio do site)
+    // e-mail — opção 1: pela conta de e-mail do domínio (hPanel → E-mails); só o remetente
     'email_remetente'   => '',   // ex.: avisos@connectagendapro.com
     'email_nome'        => 'Prontos em Rede',
+    // e-mail — opção 2: por uma conta Gmail/Outlook com SENHA DE APP (myaccount.google.com/apppasswords)
+    'smtp_host'         => 'smtp.gmail.com',
+    'smtp_port'         => 465,
+    'smtp_user'         => '',   // ex.: seunome@gmail.com
+    'smtp_pass'         => '',   // a senha de app de 16 letras, sem espaços
 
     // WhatsApp Cloud API (Meta for Developers → WhatsApp → Configuração da API)
     'whatsapp_token'    => '',   // token permanente do usuário do sistema

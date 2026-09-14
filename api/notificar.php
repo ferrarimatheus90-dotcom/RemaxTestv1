@@ -21,11 +21,44 @@ if ($acao === 'ping') {
 }
 exigirChave();
 
+/* envio por SMTP com TLS (Gmail, Outlook, Hostinger…) — sem biblioteca externa */
+function smtpEnviar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto, $texto) {
+    $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
+    $s = @stream_socket_client('ssl://' . $host . ':' . $porta, $en, $es, 25, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$s) return [false, 'não conectou em ' . $host . ':' . $porta . ' (' . $es . ')'];
+    stream_set_timeout($s, 25);
+    $ler = function () use ($s) { $r = ''; while (($l = fgets($s, 1024)) !== false) { $r .= $l; if (strlen($l) < 4 || $l[3] !== '-') break; } return $r; };
+    $cmd = function ($c, $ok) use ($s, $ler) { fwrite($s, $c . "
+"); $r = $ler(); return [substr($r, 0, 1) === (string) $ok, trim($r)]; };
+    $ler();
+    foreach ([['EHLO connectagendapro.com', 2], ['AUTH LOGIN', 3], [base64_encode($usuario), 3], [base64_encode($senha), 2],
+              ['MAIL FROM:<' . $de . '>', 2], ['RCPT TO:<' . $para . '>', 2], ['DATA', 3]] as $par) {
+        [$ok, $r] = $cmd($par[0], $par[1]);
+        if (!$ok) { fclose($s); return [false, (strpos($par[0], 'AUTH') === 0 || strlen($par[0]) > 40 ? 'autenticação recusada' : $par[0]) . ' → ' . $r]; }
+    }
+    $msg = "From: =?UTF-8?B?" . base64_encode($nome) . "?= <" . $de . ">
+To: <" . $para . ">
+" .
+           "Subject: =?UTF-8?B?" . base64_encode($assunto) . "?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+" .
+           "Date: " . date(DATE_RFC2822) . "
+
+" . str_replace("
+.", "
+..", $texto) . "
+.";
+    [$ok, $r] = $cmd($msg, 2);
+    $cmd('QUIT', 2); fclose($s);
+    return [$ok, $r];
+}
+
 if ($acao === 'status') {
-    $temMail = cfg('email_remetente') !== '';
+    $temMail = cfg('email_remetente') !== '' || cfg('smtp_user') !== '';
     $temZap  = cfg('whatsapp_token') !== '' && cfg('whatsapp_phone_id') !== '';
     responder(['ok' => $temMail || $temZap,
-               'msg' => 'E-mail: ' . ($temMail ? 'configurado (' . cfg('email_remetente') . ')' : 'falta email_remetente') .
+               'msg' => 'E-mail: ' . ($temMail ? 'configurado (' . cfg('email_remetente', cfg('smtp_user')) . (cfg('smtp_user') !== '' ? ', via SMTP' : ', via servidor') . ')' : 'falta email_remetente') .
                         ' · WhatsApp: ' . ($temZap ? 'configurado' : 'falta whatsapp_token e whatsapp_phone_id') . '.']);
 }
 
@@ -33,9 +66,16 @@ if ($acao === 'email') {
     $d = corpoJson();
     $para = trim((string) ($d['para'] ?? ''));
     if (!filter_var($para, FILTER_VALIDATE_EMAIL)) responder(['ok' => false, 'erro' => 'E-mail do destinatário inválido.'], 400);
-    $de = cfg('email_remetente');
-    if ($de === '') responder(['ok' => false, 'configurado' => false, 'erro' => 'Falta email_remetente no prontos-config.php.'], 503);
+    $de = cfg('email_remetente', cfg('smtp_user'));
+    if ($de === '') responder(['ok' => false, 'configurado' => false, 'erro' => 'Falta email_remetente (ou smtp_user) no prontos-config.php.'], 503);
     $nome = cfg('email_nome', 'Prontos em Rede');
+    if (cfg('smtp_user') !== '') {
+        $assuntoTxt = mb_substr((string) ($d['assunto'] ?? 'Aviso da plataforma'), 0, 150);
+        [$ok, $det] = smtpEnviar(cfg('smtp_host', 'smtp.gmail.com'), (int) cfg('smtp_port', 465), cfg('smtp_user'), cfg('smtp_pass'),
+                                 $de, $nome, $para, $assuntoTxt, mb_substr((string) ($d['texto'] ?? ''), 0, 5000));
+        responder($ok ? ['ok' => true, 'msg' => 'E-mail enviado por ' . $de . ' para ' . $para . '.']
+                      : ['ok' => false, 'erro' => 'O servidor de e-mail recusou: ' . $det], $ok ? 200 : 502);
+    }
     $assunto = '=?UTF-8?B?' . base64_encode(mb_substr((string) ($d['assunto'] ?? 'Aviso da plataforma'), 0, 150)) . '?=';
     $texto = mb_substr((string) ($d['texto'] ?? ''), 0, 5000);
     $cab = "From: =?UTF-8?B?" . base64_encode($nome) . "?= <" . $de . ">\r\n" .
