@@ -48,7 +48,8 @@ if ($acao === 'email') {
 if ($acao === 'whatsapp') {
     $d = corpoJson();
     $para = preg_replace('/\D/', '', (string) ($d['para'] ?? ''));
-    if (strlen($para) < 12) responder(['ok' => false, 'erro' => 'Número inválido: use DDI + DDD + número (ex.: 5511999990000).'], 400);
+    if (strlen($para) === 10 || strlen($para) === 11) $para = '55' . $para;          // número brasileiro sem o DDI
+    if (strlen($para) < 12) responder(['ok' => false, 'erro' => 'Número inválido: use DDD + número (ex.: 15988041775) ou DDI + DDD + número.'], 400);
     $token = cfg('whatsapp_token'); $fone = cfg('whatsapp_phone_id');
     if ($token === '' || $fone === '') responder(['ok' => false, 'configurado' => false, 'erro' => 'Falta whatsapp_token ou whatsapp_phone_id no prontos-config.php.'], 503);
     $msg = ['messaging_product' => 'whatsapp', 'to' => $para];
@@ -61,8 +62,20 @@ if ($acao === 'whatsapp') {
     }
     [$cod, $j] = http('POST', 'https://graph.facebook.com/v21.0/' . rawurlencode($fone) . '/messages',
                       ['Authorization: Bearer ' . $token, 'Content-Type: application/json'], json_encode($msg));
+    $codErro = (int) ($j['error']['code'] ?? 0);
+    if (($cod < 200 || $cod >= 300) && $msg['type'] === 'text' && in_array($codErro, [131047, 131026, 100], true)) {
+        // fora da janela de 24 h a Meta só aceita modelo aprovado: manda o modelo de teste da própria Meta
+        $msg = ['messaging_product' => 'whatsapp', 'to' => $para, 'type' => 'template',
+                'template' => ['name' => 'hello_world', 'language' => ['code' => 'en_US']]];
+        [$cod, $j] = http('POST', 'https://graph.facebook.com/v21.0/' . rawurlencode($fone) . '/messages',
+                          ['Authorization: Bearer ' . $token, 'Content-Type: application/json'], json_encode($msg));
+        if ($cod >= 200 && $cod < 300) responder(['ok' => true, 'msg' => 'Enviado o modelo de teste da Meta (hello_world) para +' . $para . '. Texto livre só é aceito nas 24 h seguintes a uma mensagem da pessoa para o número.', 'id' => $j['messages'][0]['id'] ?? null]);
+    }
     if ($cod < 200 || $cod >= 300) {
-        responder(['ok' => false, 'erro' => 'A API do WhatsApp recusou (HTTP ' . $cod . '): ' . ($j['error']['message'] ?? 'sem detalhe') . '.'], 502);
+        $detalhe = $j['error']['message'] ?? 'sem detalhe';
+        if ($codErro === 131030) $detalhe = 'este número não está na lista de destinatários de teste da Meta (WhatsApp → Configuração da API → Para → Gerenciar lista)';
+        if ($codErro === 190) $detalhe = 'token expirado ou inválido: gere outro em Meta for Developers → WhatsApp → Configuração da API';
+        responder(['ok' => false, 'erro' => 'A API do WhatsApp recusou (HTTP ' . $cod . '): ' . $detalhe . '.'], 502);
     }
     responder(['ok' => true, 'msg' => 'Mensagem aceita pelo WhatsApp para +' . $para . '.', 'id' => $j['messages'][0]['id'] ?? null]);
 }
