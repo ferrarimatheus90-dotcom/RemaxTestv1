@@ -31,6 +31,18 @@ Senha de todas: `Rede@2026`
 | `/demo/` | Demonstração genérica, sem a marca RE/MAX e com nomes fictícios — para apresentar a outras empresas (`demo/index.html`). Os dados dela ficam separados dos da versão RE/MAX. |
 | `/v3/` | **Cópia de segurança congelada da versão de 14/09/2026** — a que foi apresentada na reunião com o Bruno. Não recebe alterações. Serve para comparar ou voltar a mostrar o que já estava aprovado. |
 
+## v3.10 — o que mudou depois da reunião de 14/09
+
+- **Intelligence (BI) com submenu por módulo.** Brand Center, Social Hub, Compliance, Centro de
+  Comunicação e Programa de Excelência, cada um com os indicadores do seu módulo. Todo indicador
+  abre a lista que está por trás dele (drill-down), com exportação para planilha.
+- **A rede inteira: 600 unidades** em 27 regionais e cerca de 11 mil associados. As 20 unidades com
+  base carregada continuam sendo as operacionais (pessoas, jornada, fachadas, chamados); as demais
+  dão a escala nos indicadores, com números de semente fixa, e **não entram no estado sincronizado**.
+- **Biblioteca de mídia no Brand Center**: vinhetas de abertura e encerramento, trilhas e spots de
+  rádio. Saiu da RE/MAX TV, que era do Centro de Comunicação.
+- **O associado também publica**: botão Postar agora na campanha da rede, na conta dele.
+
 ## Cópias de segurança
 
 Antes de cada rodada de alterações, a versão que está no ar é congelada em duas frentes:
