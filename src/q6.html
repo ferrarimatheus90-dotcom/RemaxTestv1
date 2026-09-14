@@ -54,6 +54,8 @@ VIEWS.inicio=function(v){
   if(ROLE==='corretor') return inicioCorretor(v);
   if(ROLE==='franquia') return inicioFranquia(v);
   const ls=lojasVisiveis();
+  const lr=(typeof redeLojas==='function')? redeLojas() : ls;      // a rede inteira (600 unidades)
+  const usuariosRede=(typeof uDados==='function')? lr.reduce((a,l)=>a+uDados(l).corretores,0)+lr.length : 0;
   const usuarios=ls.reduce((a,l)=>a+corretoresDe(l.id).length,0)+ls.length;
   const ativos=ls.reduce((a,l)=>a+ativosDe(l.id),0);
   const ad=mediaAdesao(ls), faltam=dias(DEADLINE);
@@ -66,15 +68,15 @@ VIEWS.inicio=function(v){
     banner({
       eb:'Prontos em Rede · '+(souMatriz()?'RE/MAX Brasil':masterDe(MASTER_DEMO).nome+(masterVeRede()?' · toda a rede':'')),
       h1:T('A rede inteira')+' <b>'+T('falando a mesma língua')+'</b>',
-      rot:['<b>'+ls.length+'</b> '+T('unidades acompanhadas etapa a etapa, com evidência e prazo'),
+      rot:['<b>'+nf(lr.length)+'</b> '+T('unidades na rede, acompanhadas etapa a etapa, com evidência e prazo'),
            '<b>'+compacto(M.alcance)+'</b> '+T('de alcance somado no período pelas peças oficiais'),
            '<b>'+pct(ad)+'</b> '+T('de adesão média à nova identidade'),
            '<b>'+faltam+'</b> '+T('dias até o encerramento da adequação')],
       acts:'<a class="btnh pri" href="#/jornada">Ver a jornada da rede</a>'+
            '<a class="btnh" href="#/marketing">Indicadores de marketing</a>'+
            '<a class="btnh" href="#/prontos">Próxima campanha</a>',
-      stats:[['Unidades', ls.length, ls.filter(l=>S.unidades[l.id].onboard==='ativa').length+' ativas'],
-             ['Usuários', usuarios, ativos+' ativos em 30 dias'],
+      stats:[['Unidades', nf(lr.length), ls.length+' com base carregada'],
+             ['Usuários', nf(usuariosRede||usuarios), ativos+' ativos em 30 dias na base carregada'],
              ['Adesão média', pct(ad), 'das 7 etapas'],
              ['Alcance', compacto(M.alcance), 'no período']]
     })+

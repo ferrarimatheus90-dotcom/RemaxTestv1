@@ -1,0 +1,136 @@
+<script>
+/* =======================================================================
+   v3.10 — A REDE NACIONAL (600 unidades)
+
+   Pedido do Bruno em 14/09: "Não deixa esse 20 aí, pode por 600. É nacional,
+   eles já têm que enxergar aqui."
+
+   Como isto funciona, para não crescer o que é sincronizado:
+   · as 20 unidades com base carregada (nomes, CRECI e fotos públicas) seguem
+     sendo as operacionais — jornada, fachadas, chamados e usuários são delas;
+   · as outras 580 são da base de demonstração e existem só para dar a escala
+     da rede nos indicadores. Os números delas saem de semente fixa a partir
+     do código da unidade, então não mudam entre um acesso e outro e não
+     ocupam espaço no estado que viaja entre os navegadores.
+
+   Quem usa isto são os painéis do Intelligence (BI) e o Início. As telas de
+   operação continuam exatamente como estavam.
+   ======================================================================= */
+
+/* unidades por estado — soma 600, a escala que a RE/MAX Brasil tem hoje */
+const REDE_UF = [
+  ['SP','São Paulo',171,['São Paulo','Campinas','Santos','Ribeirão Preto','Sorocaba','São José dos Campos','Bauru','Jundiaí','Piracicaba','Santo André','Osasco','Guarulhos','São Bernardo do Campo','Araraquara','Marília','Presidente Prudente','Limeira','Taubaté','Itu','Indaiatuba']],
+  ['RJ','Rio de Janeiro',70,['Rio de Janeiro','Niterói','Petrópolis','Campos dos Goytacazes','Cabo Frio','Nova Friburgo','Volta Redonda','Macaé','Angra dos Reis','Teresópolis']],
+  ['MG','Minas Gerais',55,['Belo Horizonte','Uberlândia','Juiz de Fora','Contagem','Betim','Montes Claros','Uberaba','Poços de Caldas','Divinópolis','Ipatinga']],
+  ['PR','Paraná',40,['Curitiba','Londrina','Maringá','Ponta Grossa','Cascavel','Foz do Iguaçu','São José dos Pinhais','Guarapuava']],
+  ['RS','Rio Grande do Sul',38,['Porto Alegre','Caxias do Sul','Pelotas','Santa Maria','Canoas','Novo Hamburgo','Passo Fundo','Gramado']],
+  ['SC','Santa Catarina',35,['Florianópolis','Joinville','Blumenau','Balneário Camboriú','Chapecó','Criciúma','Itajaí','São José']],
+  ['BA','Bahia',28,['Salvador','Feira de Santana','Vitória da Conquista','Ilhéus','Camaçari','Porto Seguro']],
+  ['GO','Goiás',22,['Goiânia','Aparecida de Goiânia','Anápolis','Rio Verde','Caldas Novas']],
+  ['PE','Pernambuco',20,['Recife','Jaboatão dos Guararapes','Olinda','Caruaru','Petrolina']],
+  ['CE','Ceará',18,['Fortaleza','Caucaia','Juazeiro do Norte','Sobral']],
+  ['DF','Distrito Federal',16,['Brasília','Águas Claras','Taguatinga']],
+  ['ES','Espírito Santo',15,['Vitória','Vila Velha','Serra','Cariacica','Guarapari']],
+  ['MT','Mato Grosso',12,['Cuiabá','Várzea Grande','Rondonópolis','Sinop']],
+  ['MS','Mato Grosso do Sul',10,['Campo Grande','Dourados','Três Lagoas']],
+  ['PA','Pará',9,['Belém','Ananindeua','Santarém']],
+  ['PB','Paraíba',7,['João Pessoa','Campina Grande']],
+  ['RN','Rio Grande do Norte',7,['Natal','Mossoró','Parnamirim']],
+  ['AL','Alagoas',5,['Maceió','Arapiraca']],
+  ['SE','Sergipe',4,['Aracaju']],
+  ['PI','Piauí',4,['Teresina']],
+  ['MA','Maranhão',4,['São Luís','Imperatriz']],
+  ['AM','Amazonas',3,['Manaus']],
+  ['RO','Rondônia',2,['Porto Velho']],
+  ['TO','Tocantins',2,['Palmas']],
+  ['AC','Acre',1,['Rio Branco']],
+  ['AP','Amapá',1,['Macapá']],
+  ['RR','Roraima',1,['Boa Vista']]
+];
+/* os três Masters da base carregada já são estados: RJ, MG e SP */
+const UF_DO_MASTER = {m1:'RJ', m2:'MG', m3:'SP'};
+
+/* ---------- monta a rede uma única vez, por semente fixa ---------- */
+const REDE = (function(){
+  const masters = BASE.masters.map(m=>Object.assign({}, m, {uf:UF_DO_MASTER[m.id]||'', carregado:true}));
+  const porUF = {}; masters.forEach(m=>{ if(m.uf) porUF[m.uf]=m.id; });
+  const lojas = BASE.lojas.map(l=>Object.assign({}, l, {uf:UF_DO_MASTER[l.master]||'', operacional:true}));
+  REDE_UF.forEach(([uf, estado, total, cidades])=>{
+    if(!porUF[uf]){
+      const id='m-'+uf.toLowerCase();
+      masters.push({id, nome:(GENERICA?'Regional ':'Master ')+estado, area:uf+' — capital e interior', uf, carregado:false});
+      porUF[uf]=id;
+    }
+    const mid=porUF[uf];
+    const jaTem = lojas.filter(l=>l.master===mid).length;     // as carregadas contam para o total do estado
+    for(let i=jaTem; i<total; i++){
+      const id='d-'+uf.toLowerCase()+'-'+('00'+(i+1)).slice(-3), r=seed('rede:'+id);
+      const cidade=cidades[i % cidades.length], seq=Math.floor(i/cidades.length)+1;
+      lojas.push({id, master:mid, uf, bairro:cidade, endereco:'',
+        nome:(GENERICA?'Unidade ':'RE/MAX ')+cidade+(seq>1?' '+seq:''),
+        n: rint(r,8,30), demo:true});
+    }
+  });
+  return {masters, lojas};
+})();
+const REDE_TOTAL = REDE.lojas.length;
+const REDE_ASSOCIADOS = REDE.lojas.reduce((a,l)=>a+(l.demo? l.n : corretoresDeBase(l.id)), 0);
+function corretoresDeBase(lid){ return BASE.corretores.filter(c=>c.loja===lid).length; }
+const lojaRede = id => REDE.lojas.find(l=>l.id===id) || lojaDe(id);
+const masterRede = id => REDE.masters.find(m=>m.id===id) || masterDe(id) || {nome:''};
+
+/* ---------- escopo: o mesmo critério das telas de operação, agora sobre a rede toda ---------- */
+function redeLojas(){
+  if(souMatriz()) return REDE.lojas;
+  if(ROLE==='master') return masterVeRede()? REDE.lojas : REDE.lojas.filter(l=>l.master===MASTER_DEMO);
+  const meu=escopoLoja(); return REDE.lojas.filter(l=>l.id===meu);
+}
+
+/* ---------- números de uma unidade de demonstração, por semente fixa ---------- */
+const SINT_CACHE={};
+function sint(l){
+  if(SINT_CACHE[l.id]) return SINT_CACHE[l.id];
+  const r=seed('sint4:'+l.id), n=l.n;
+  const con=Math.max(0, Math.round(n*(0.38+r()*0.56)));
+  const posts=Math.round(con*(5+r()*22));
+  const seguidores=Math.round(con*(380+r()*2600));
+  const eng=1.2+r()*4.2;
+  const alcance=Math.round(posts*(180+r()*520)+seguidores*0.7);
+  const criadas=Math.round(posts*(0.5+r()*1.1));
+  const ad=rint(r,18,100);
+  const etapasOk=Math.max(0, Math.min(ETAPAS.length, Math.round(ETAPAS.length*ad/100)));
+  const fach= ad>=92?'instalada' : ad>=72?'producao' : ad>=48?'em_analise' : 'nao_iniciada';
+  const o={
+    corretores:n, conectadas:con, adesaoContas: n? Math.round(con/n*100):0,
+    posts, alcance, seguidores, eng, curtidas:Math.round(alcance*eng/100*0.82),
+    reels:Math.round(posts*(0.12+r()*0.26)), stories:Math.round(posts*(0.5+r()*1.2)),
+    criadas, publicadas:Math.round(criadas*(0.35+r()*0.6)), criadores:Math.round(n*(0.25+r()*0.6)),
+    adesao:ad, etapasOk, fachada:fach, leitura:rint(r,28,98),
+    pontos: Math.round(ad*7 + posts*3 + con*25 + rint(r,0,400)),
+    atrasada: ad<55 && r()>0.45
+  };
+  SINT_CACHE[l.id]=o; return o;
+}
+
+/* ---------- adaptadores: a mesma pergunta funciona nos dois tipos de unidade ---------- */
+function uDados(l){
+  if(l.demo) return sint(l);
+  const cs=corretoresDe(l.id), m=metricasLoja(l.id), U=S.unidades[l.id];
+  const con=cs.filter(u=>u.ig).length;
+  const criadas=cs.reduce((a,u)=>a+artesDe(u.id),0), publicadas=cs.reduce((a,u)=>a+publicadasDe(u.id),0);
+  return {corretores:cs.length, conectadas:con, adesaoContas: cs.length? Math.round(con/cs.length*100):0,
+    posts:m.posts, alcance:m.alcance, seguidores:m.seguidores, eng:m.eng, curtidas:m.curtidas,
+    reels:m.reels, stories:m.stories,
+    criadas, publicadas, criadores:cs.filter(u=>artesDe(u.id)>0).length,
+    adesao:adesao(l.id), etapasOk:etapasOk(l.id), fachada:U.fachada.st, leitura:leituraDe(l.id),
+    pontos:pontosU(l.id), atrasada: ETAPAS.some(e=>statusEtapa(l.id,e.id)==='atrasada')};
+}
+/* soma da rede inteira (600 unidades), sem precisar de um registro por pessoa */
+function uSoma(ls, campos){
+  const acc={}; campos.forEach(c=>acc[c]=0);
+  ls.forEach(l=>{ const d=uDados(l); campos.forEach(c=>acc[c]+=(d[c]||0)); });
+  return acc;
+}
+const NOME_UNI = l => String(l.nome).replace(/^RE\/MAX /,'').replace(/^Unidade /,'');
+const tagDemo = l => l.demo? ' <span class="tag mut" title="'+esc('Unidade da base de demonstração: os números vêm de semente fixa, não há base de pessoas carregada.')+'">'+esc(T('demonstração'))+'</span>' : '';
+</script>
