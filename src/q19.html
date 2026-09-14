@@ -171,7 +171,7 @@ function termosAtivos(){
   const pr=(S&&S.param)||{}, t=pr.termos||{}, pares=[];
   Object.keys(t).forEach(de=>{ const para=t[de]; if(para && para!==de){ pares.push([de,para]); pares.push([de.toLowerCase(), para.toLowerCase()]); } });
   if(pr.plataforma && pr.plataforma!=='Prontos em Rede') pares.push(['Prontos em Rede', pr.plataforma]);
-  if(GENERICA) pares.push(['Matriz RE/MAX Brasil','Matriz'],['RE/MAX Brasil','Matriz'],['RE/MAX TV','TV da Rede'],['Master SP Capital III','Regional Sul'],
+  if(GENERICA) pares.push(['Matriz RE/MAX Brasil','Matriz'],['RE/MAX Brasil','Matriz'],['RE/MAX TV','TV da Rede'],['Master São Paulo','Regional Sul'],
                           ['RE/MAX','Rede Exemplo'],['REMAX','Rede Exemplo'],['Remax','Rede Exemplo'],['#RemaxBrasil','#RedeExemplo']);
   return pares.sort((a,b)=>b[0].length-a[0].length);
 }

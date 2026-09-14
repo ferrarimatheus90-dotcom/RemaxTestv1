@@ -108,7 +108,7 @@ VIEWS.marketing=function(v){
     if(MKT.unidade==='todas'){
       $('#tbM').innerHTML=ls.map(l=>{ const m=metricasLoja(l.id);
         return '<tr style="cursor:pointer" data-l="'+l.id+'"><td style="font-weight:600">'+esc(l.nome)+'<div class="mini">'+esc(l.bairro)+'</div></td>'+
-        '<td class="mini">'+esc(masterDe(l.master).nome.replace('Master SP ',''))+'</td>'+
+        '<td class="mini">'+esc(masterDe(l.master).nome.replace('Master ',''))+'</td>'+
         '<td class="num">'+m.ativos+'/'+m.corretores+'</td><td class="num">'+nf(m.posts)+'</td>'+
         '<td class="num">'+m.freq.toFixed(1).replace('.',',')+'</td><td class="num">'+compacto(m.alcance)+'</td><td class="num">'+compacto(m.curtidas)+'</td>'+
         '<td class="num">'+m.eng.toFixed(1).replace('.',',')+'%</td><td class="num">'+m.imoveis+'</td></tr>'; }).join('');
@@ -304,7 +304,7 @@ VIEWS.ranking=function(v){
       '<div class="tw"><table><thead><tr><th>#</th><th>Unidade</th><th>Regional</th><th>Adesão</th><th>Etapas</th><th>Pontos</th></tr></thead><tbody>'+
       ls.map((l,i)=>'<tr'+(minha&&l.id===minha.id?' style="background:var(--brand-soft)"':'')+'>'+
         '<td style="font-family:var(--font-d);font-weight:800;color:'+(i<3?'var(--red)':'var(--muted)')+'">'+(i+1)+'</td>'+
-        '<td style="font-weight:600">'+esc(l.nome)+'</td><td class="mini">'+esc(masterDe(l.master).nome.replace('Master SP ',''))+'</td>'+
+        '<td style="font-weight:600">'+esc(l.nome)+'</td><td class="mini">'+esc(masterDe(l.master).nome.replace('Master ',''))+'</td>'+
         '<td class="num">'+adesao(l.id)+'%</td><td class="num">'+etapasOk(l.id)+'/7</td>'+
         '<td style="font-family:var(--font-d);font-weight:800" class="num">'+pontosU(l.id)+'</td></tr>').join('')+
       '</tbody></table></div></div>'+

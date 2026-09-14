@@ -1562,7 +1562,7 @@ const telasDe = m => m.telas.filter(podeVer);
    ======================================================================= */
 const CONTAS=[
   {papel:'brasil',   email:'matriz@prontosemrede.test',   alias:['brasil@prontosemrede.test'], senha:'Rede@2026', nome:'Matriz RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
-  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital III',   desc:'Vê o desempenho de todas as unidades · aprova projetos e evidências'},
+  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master São Paulo',   desc:'Vê o desempenho de todas as unidades · aprova projetos e evidências'},
   {papel:'franquia', email:'loja@prontosemrede.test',     senha:'Rede@2026', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
   {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'},
   {papel:'construtor', email:'construtor@prontosemrede.test', senha:'Rede@2026', nome:'Construtor · BMAG',  desc:'Uso interno · parametriza a plataforma · auditoria e implantação'}
@@ -4247,7 +4247,7 @@ VIEWS.marketing=function(v){
     if(MKT.unidade==='todas'){
       $('#tbM').innerHTML=ls.map(l=>{ const m=metricasLoja(l.id);
         return '<tr style="cursor:pointer" data-l="'+l.id+'"><td style="font-weight:600">'+esc(l.nome)+'<div class="mini">'+esc(l.bairro)+'</div></td>'+
-        '<td class="mini">'+esc(masterDe(l.master).nome.replace('Master SP ',''))+'</td>'+
+        '<td class="mini">'+esc(masterDe(l.master).nome.replace('Master ',''))+'</td>'+
         '<td class="num">'+m.ativos+'/'+m.corretores+'</td><td class="num">'+nf(m.posts)+'</td>'+
         '<td class="num">'+m.freq.toFixed(1).replace('.',',')+'</td><td class="num">'+compacto(m.alcance)+'</td><td class="num">'+compacto(m.curtidas)+'</td>'+
         '<td class="num">'+m.eng.toFixed(1).replace('.',',')+'%</td><td class="num">'+m.imoveis+'</td></tr>'; }).join('');
@@ -4443,7 +4443,7 @@ VIEWS.ranking=function(v){
       '<div class="tw"><table><thead><tr><th>#</th><th>Unidade</th><th>Regional</th><th>Adesão</th><th>Etapas</th><th>Pontos</th></tr></thead><tbody>'+
       ls.map((l,i)=>'<tr'+(minha&&l.id===minha.id?' style="background:var(--brand-soft)"':'')+'>'+
         '<td style="font-family:var(--font-d);font-weight:800;color:'+(i<3?'var(--red)':'var(--muted)')+'">'+(i+1)+'</td>'+
-        '<td style="font-weight:600">'+esc(l.nome)+'</td><td class="mini">'+esc(masterDe(l.master).nome.replace('Master SP ',''))+'</td>'+
+        '<td style="font-weight:600">'+esc(l.nome)+'</td><td class="mini">'+esc(masterDe(l.master).nome.replace('Master ',''))+'</td>'+
         '<td class="num">'+adesao(l.id)+'%</td><td class="num">'+etapasOk(l.id)+'/7</td>'+
         '<td style="font-family:var(--font-d);font-weight:800" class="num">'+pontosU(l.id)+'</td></tr>').join('')+
       '</tbody></table></div></div>'+
@@ -5217,7 +5217,7 @@ function termosAtivos(){
   const pr=(S&&S.param)||{}, t=pr.termos||{}, pares=[];
   Object.keys(t).forEach(de=>{ const para=t[de]; if(para && para!==de){ pares.push([de,para]); pares.push([de.toLowerCase(), para.toLowerCase()]); } });
   if(pr.plataforma && pr.plataforma!=='Prontos em Rede') pares.push(['Prontos em Rede', pr.plataforma]);
-  if(GENERICA) pares.push(['Matriz RE/MAX Brasil','Matriz'],['RE/MAX Brasil','Matriz'],['RE/MAX TV','TV da Rede'],['Master SP Capital III','Regional Sul'],
+  if(GENERICA) pares.push(['Matriz RE/MAX Brasil','Matriz'],['RE/MAX Brasil','Matriz'],['RE/MAX TV','TV da Rede'],['Master São Paulo','Regional Sul'],
                           ['RE/MAX','Rede Exemplo'],['REMAX','Rede Exemplo'],['Remax','Rede Exemplo'],['#RemaxBrasil','#RedeExemplo']);
   return pares.sort((a,b)=>b[0].length-a[0].length);
 }
@@ -5450,7 +5450,7 @@ en:{
 'Selecione um acesso de teste — cada um abre a plataforma com o seu próprio escopo de dados e permissões.':'Pick a test account — each one opens the platform with its own data scope and permissions.',
 'E-mail':'Email','Senha':'Password','Entrar':'Sign in','Sair da conta':'Sign out','Trocar de acesso':'Switch account',
 'A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.':'The brand, content, governance and support platform for the RE/MAX network — in one place, with the right access for every level.',
-'Marketing RE/MAX Brasil':'RE/MAX Brazil Marketing','Master SP Capital III':'Master SP Capital III','Gestor da unidade':'Office manager','Associado':'Agent',
+'Marketing RE/MAX Brasil':'RE/MAX Brazil Marketing','Master São Paulo':'Master São Paulo','Gestor da unidade':'Office manager','Associado':'Agent',
 'Visão nacional · publica comunicados e campanhas · aprova':'National view · publishes announcements and campaigns · approves',
 'Acompanha a regional · aprova projetos e evidências':'Tracks the region · approves projects and evidence',
 'Executa o checklist · envia evidências · gerencia a equipe':'Runs the checklist · submits evidence · manages the team',
