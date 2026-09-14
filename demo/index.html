@@ -3227,11 +3227,12 @@ VIEWS.redes=function(v){
     fila.push({q:p.quando, tit:'Peça do Estúdio · '+p.tplNome, u, st:new Date(p.quando)<new Date()?'publicada':'fila'}); });
   fila.sort((a,b)=> a.q<b.q?1:-1);
   const eu_=souCorretor()?S.usuarios[euId()]:null;
+  const conexaoReal = /^https?:/.test(location.protocol) && !EM_QUADRO && !!LS.get('pr_chave_api');   // integração ligada neste navegador
   const M=metricasRede(lojasVisiveis());
 
   v.innerHTML =
     ph('Redes sociais','Conexão das contas dos associados e agendamento em massa. É daqui que a arte oficial sai para o perfil de cada corretor, no mesmo dia e na mesma hora.',
-      (eu_&&!eu_.ig)?'<button class="btn pri" id="conectar">Conectar meu Instagram</button>':
+      (eu_&&(!eu_.ig||(conexaoReal&&!eu_.teamSocial)))?'<button class="btn pri" id="conectar">Conectar meu Instagram</button>':
       (ROLE!=='corretor'?'<button class="btn pri" id="massa">Publicar em massa</button><button class="btn" id="conectarTodas">Conectar pendentes</button>':''),'redes')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Contas conectadas', con+'/'+us.length, pct(con/Math.max(1,us.length)*100)+' da base visível', con/Math.max(1,us.length)>.6?'k-ok':'k-warn')+
@@ -3254,8 +3255,8 @@ VIEWS.redes=function(v){
       '<div class="card"><div class="ch"><h3>Contas dos associados</h3><div class="r"><span class="mini">'+con+' de '+us.length+'</span></div></div><div class="lst" style="max-height:430px;overflow:auto">'+
         us.slice(0,40).map(u=>'<div class="li" style="cursor:default">'+avatar(u)+
           '<div class="bd"><div class="t" style="font-size:13px">'+esc(u.nome)+'</div><div class="s">'+esc(lojaDe(u.loja).nome)+'</div></div>'+
-          '<div class="rt">'+(u.ig?'<span class="tag ok">Conectada'+(u.igConta?' · '+esc(u.igConta):'')+'</span>':
-            (ROLE==='corretor'?'<span class="tag warn">Pendente</span>':'<button class="btn sm" data-con="'+u.id+'">Conectar</button>'))+'</div></div>').join('')+
+          '<div class="rt">'+((u.ig&&(!conexaoReal||u.teamSocial))?'<span class="tag ok">Conectada'+(u.igConta?' · '+esc(u.igConta):'')+'</span>':
+            (ROLE==='corretor'?'<span class="tag warn">Pendente</span>':'<button class="btn sm" data-con="'+u.id+'">'+(u.ig?'Conectar de verdade':'Conectar')+'</button>'))+'</div></div>').join('')+
       '</div></div>'+
     '</div>';
 
@@ -3271,7 +3272,6 @@ VIEWS.redes=function(v){
     if(aba) aba.location.href=r.url; else location.href=r.url;
     toast('<b>Autorização aberta numa aba nova.</b> Entre com o Instagram de '+esc(primeiro(u.nome))+' e autorize. Ao voltar, a conta aparece conectada.',1);
   };
-  const conexaoReal = /^https?:/.test(location.protocol) && !EM_QUADRO && !!LS.get('pr_chave_api');
   $$('[data-con]',v).forEach(b=>b.addEventListener('click',()=>conexaoReal? conectaReal(b.dataset.con) : conecta(b.dataset.con)));
   $$('[data-prov]',v).forEach(b=>b.addEventListener('click',()=>{
     commit('Trocou o provedor de publicação', PROVEDORES.find(p=>p.id===b.dataset.prov).nome, s=>{ s.social.provedor=b.dataset.prov; s.social.conectadoEm=agora(); });
