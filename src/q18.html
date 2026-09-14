@@ -55,6 +55,9 @@ const TUTORIAIS=[
 ];
 VIEWS.helpdesk=function(v){
   const zap=(S.param&&S.param.whatsSuporte)||'';
+  // link do WhatsApp: número sem o DDI ganha o 55; a conversa já abre com a mensagem inicial e o nome de quem pede
+  const zapNum=(function(){ let n=zap.replace(/\D/g,''); if(n.length===10||n.length===11) n='55'+n; return n; })();
+  const zapUrl='https://wa.me/'+zapNum+'?text='+encodeURIComponent('Olá! Sou '+eu().nome+' ('+eu().papel+'). Preciso de ajuda com a plataforma '+((S.param&&S.param.plataforma)||'Prontos em Rede')+': ');
   v.innerHTML=
     ph('Help Desk', T('Tutoriais em vídeo por módulo, respostas na hora e chamados com prazo — tudo o que é preciso para usar a plataforma sem treinamento presencial.'),
       '<a class="btn pri" href="#/suporte">'+esc(T('Abrir chamado'))+'</a>','helpdesk')+
@@ -62,7 +65,7 @@ VIEWS.helpdesk=function(v){
       '<div class="hd-in"><input id="hdQ" placeholder="'+esc(T('Ex.: como troco a foto do meu perfil?'))+'"><button class="btn pri" id="hdGo">'+esc(T('Perguntar'))+'</button></div><div id="hdR"></div></div>'+
     '<div class="grid g3" style="margin:16px 0">'+
       '<a class="hd-at" href="#/suporte"><b>'+esc(T('Chamados'))+'</b><span>'+esc(T('Abra e acompanhe: responsável, prazo e histórico. N1 atende, N2 assume o que é complexo.'))+'</span></a>'+
-      (zap?'<a class="hd-at" href="https://wa.me/'+esc(zap.replace(/\D/g,''))+'" target="_blank" rel="noopener"><b>WhatsApp do suporte</b><span>'+esc(zap)+' · '+esc(T('a conversa vira chamado'))+'</span></a>'
+      (zap?'<a class="hd-at" id="hdZap" href="'+zapUrl+'" target="_blank" rel="noopener"><b>WhatsApp do suporte</b><span>'+esc(zap)+' · '+esc(T('a conversa vira chamado'))+'</span></a>'
           :'<div class="hd-at"><b>WhatsApp do suporte</b><span>'+esc(T('O número oficial é definido na implantação. A mensagem vira chamado, com SLA.'))+'</span></div>')+
       '<div class="hd-at"><b>'+esc(T('Prazos de resposta'))+'</b><span>'+esc(T('Marca fora do padrão 2h · fachada e prazos 4h · erro 8h · dúvida 24h · arte fora do padrão 3 dias úteis'))+'</span></div>'+
     '</div>'+
