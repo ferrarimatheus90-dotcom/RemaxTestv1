@@ -138,7 +138,7 @@ function destinatariosN(dest){
   if(dest==='Associados') return us.filter(u=>u.nivel==='associado').length;
   if(/^Regional · /.test(dest)){ const m=BASE.masters.find(x=>'Regional · '+x.nome===dest); return m?daReg(m.id):0; }
   if(/regional/.test(dest)){ const f=/Franquias/.test(dest)? u=>u.nivel==='franquia' : /Associados/.test(dest)? u=>u.nivel==='associado' : ()=>true;
-    return us.filter(u=>(lojaDe(u.loja)||{}).master===MASTER_DEMO && f(u)).length; }
+    return us.filter(u=>lojaDoMaster(lojaDe(u.loja)) && f(u)).length; }
   return us.length + BASE.masters.length;
 }
 function midiaComunicado(k){

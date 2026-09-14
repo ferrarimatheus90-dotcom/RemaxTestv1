@@ -320,7 +320,7 @@ function pontosC(uidc){
 function naoLidos(){ const id=euId(); return S.comunicados.filter(k=>(S.leituras[k.id]||[]).indexOf(id)<0); }
 function pendentesAprov(){ return S.aprovacoes.filter(a=>a.st==='pendente' && (
   souMatriz()? podeDecidirNivel(rotuloNivel(a)) :
-  ROLE==='master'? lojaDe(a.loja).master===MASTER_DEMO && podeDecidirNivel(rotuloNivel(a)) :
+  ROLE==='master'? lojaDoMaster(lojaDe(a.loja)) && podeDecidirNivel(rotuloNivel(a)) :
   a.loja===escopoLoja())); }
 
 /* ---------- personas ---------- */
@@ -349,9 +349,13 @@ const euId = ()=> P[ROLE].id;
 const escopoLoja = ()=> ROLE==='franquia'? 'l18' : ROLE==='corretor'? S.usuarios[DEMO_ID].loja : null;
 function lojasVisiveis(){
   if(souMatriz()) return BASE.lojas;
-  if(ROLE==='master') return BASE.lojas.filter(l=>l.master===MASTER_DEMO);
+  if(ROLE==='master') return masterVeRede()? BASE.lojas : BASE.lojas.filter(l=>l.master===MASTER_DEMO);
   return BASE.lojas.filter(l=>l.id===escopoLoja());
 }
+/* pedido do Bruno (14/09): o Master enxerga o desempenho de TODAS as unidades; o gestor só a dele.
+   Fica como parâmetro do cliente (Parametrização), ligado por padrão. */
+const masterVeRede = ()=> !(S && S.param && S.param.masterRegional);
+const lojaDoMaster = l => masterVeRede() || (l && l.master===MASTER_DEMO);
 const minhaLoja = ()=> escopoLoja()? lojaDe(escopoLoja()) : null;
 const souCorretor = ()=> ROLE==='corretor';
 const MASTER_DEMO = 'm3';   // regional da unidade de teste (RE/MAX SMART): a Master de teste aprova o que o gestor de teste envia

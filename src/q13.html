@@ -174,17 +174,17 @@ function marketingCorretor(v){
 /* ---------- painel da rede ---------- */
 VIEWS.painel=function(v){
   const ls=lojasVisiveis();
-  const porMaster=BASE.masters.filter(m=>souMatriz()||m.id===MASTER_DEMO).map(m=>{
+  const porMaster=BASE.masters.filter(m=>souMatriz()||masterVeRede()||m.id===MASTER_DEMO).map(m=>{
     const sub=BASE.lojas.filter(l=>l.master===m.id);
     return {m, n:sub.length, ad:mediaAdesao(sub), us:sub.reduce((a,l)=>a+corretoresDe(l.id).length,0), at:sub.reduce((a,l)=>a+ativosDe(l.id),0)};
   });
   const conformes=ls.filter(l=>adesao(l.id)>=70).length;
   const M=metricasRede(ls);
   v.innerHTML =
-    ph(souMatriz()?'Painel da rede':'Painel da regional','Adesão, evolução, pendências, prazos, usuários ativos e compliance da marca — calculado sobre o estado real da plataforma. Nativo no produto: sem licença de BI por usuário, que a preços de mercado inviabilizaria estender o painel à rede inteira.',
+    ph(souMatriz()||masterVeRede()?'Painel da rede':'Painel da regional','Adesão, evolução, pendências, prazos, usuários ativos e compliance da marca — calculado sobre o estado real da plataforma. Nativo no produto: sem licença de BI por usuário, que a preços de mercado inviabilizaria estender o painel à rede inteira.',
       '<button class="btn" id="rel3">↓ Relatório CSV</button><a class="btn pri" href="#/marketing">Indicadores de marketing</a>','painel')+
     '<div class="grid g4" style="margin-bottom:16px">'+
-      kpi('Unidades', ls.length, souMatriz()?'projeto prevê ~600 na rede':'na sua regional')+
+      kpi('Unidades', ls.length, souMatriz()?'projeto prevê ~600 na rede':masterVeRede()?'todas as unidades da rede':'na sua regional')+
       kpi('Em conformidade', conformes+'/'+ls.length, 'adesão igual ou acima de 70%', conformes/ls.length>.5?'k-ok':'k-warn')+
       kpi('Usuários ativos', ls.reduce((a,l)=>a+ativosDe(l.id),0), 'últimos 30 dias')+
       kpi('Alcance da rede', compacto(M.alcance), nf(M.posts)+' publicações no período')+

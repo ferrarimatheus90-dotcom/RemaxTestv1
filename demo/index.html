@@ -1283,7 +1283,7 @@ function pontosC(uidc){
 function naoLidos(){ const id=euId(); return S.comunicados.filter(k=>(S.leituras[k.id]||[]).indexOf(id)<0); }
 function pendentesAprov(){ return S.aprovacoes.filter(a=>a.st==='pendente' && (
   souMatriz()? podeDecidirNivel(rotuloNivel(a)) :
-  ROLE==='master'? lojaDe(a.loja).master===MASTER_DEMO && podeDecidirNivel(rotuloNivel(a)) :
+  ROLE==='master'? lojaDoMaster(lojaDe(a.loja)) && podeDecidirNivel(rotuloNivel(a)) :
   a.loja===escopoLoja())); }
 
 /* ---------- personas ---------- */
@@ -1312,9 +1312,13 @@ const euId = ()=> P[ROLE].id;
 const escopoLoja = ()=> ROLE==='franquia'? 'l18' : ROLE==='corretor'? S.usuarios[DEMO_ID].loja : null;
 function lojasVisiveis(){
   if(souMatriz()) return BASE.lojas;
-  if(ROLE==='master') return BASE.lojas.filter(l=>l.master===MASTER_DEMO);
+  if(ROLE==='master') return masterVeRede()? BASE.lojas : BASE.lojas.filter(l=>l.master===MASTER_DEMO);
   return BASE.lojas.filter(l=>l.id===escopoLoja());
 }
+/* pedido do Bruno (14/09): o Master enxerga o desempenho de TODAS as unidades; o gestor só a dele.
+   Fica como parâmetro do cliente (Parametrização), ligado por padrão. */
+const masterVeRede = ()=> !(S && S.param && S.param.masterRegional);
+const lojaDoMaster = l => masterVeRede() || (l && l.master===MASTER_DEMO);
 const minhaLoja = ()=> escopoLoja()? lojaDe(escopoLoja()) : null;
 const souCorretor = ()=> ROLE==='corretor';
 const MASTER_DEMO = 'm3';   // regional da unidade de teste (RE/MAX SMART): a Master de teste aprova o que o gestor de teste envia
@@ -1540,7 +1544,7 @@ const telasDe = m => m.telas.filter(podeVer);
    ======================================================================= */
 const CONTAS=[
   {papel:'brasil',   email:'matriz@prontosemrede.test',   alias:['brasil@prontosemrede.test'], senha:'Rede@2026', nome:'Matriz RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
-  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital III',   desc:'Acompanha a regional · aprova projetos e evidências'},
+  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital III',   desc:'Vê o desempenho de todas as unidades · aprova projetos e evidências'},
   {papel:'franquia', email:'loja@prontosemrede.test',     senha:'Rede@2026', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
   {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'},
   {papel:'construtor', email:'construtor@prontosemrede.test', senha:'Rede@2026', nome:'Construtor · BMAG',  desc:'Uso interno · parametriza a plataforma · auditoria e implantação'}
@@ -1749,7 +1753,7 @@ $('#whoBtn').addEventListener('click',()=>{
   const linhas=CONTAS.map(c=>{
     const p=P[c.papel];
     const n = c.papel==='brasil'? BASE.lojas.length+' · '+TOTAL_USUARIOS()
-            : c.papel==='master'? String(BASE.lojas.filter(l=>l.master===MASTER_DEMO).length)
+            : c.papel==='master'? String(BASE.lojas.filter(lojaDoMaster).length)
             : c.papel==='franquia'? String(corretoresDe('l18').length) : '';
     return '<div class="li" data-r="'+c.papel+'" style="display:flex;gap:13px;padding:13px 15px;border:1px solid var(--line);border-radius:13px;cursor:pointer;align-items:center;margin-bottom:9px;'+(c.papel===ROLE?'border-color:var(--brand-line);background:var(--brand-soft)':'')+'">'+
       '<span class="avph">'+iniciais(p.nome)+'</span><div><div style="font-weight:600;font-size:13.5px;font-family:var(--font-d)">'+esc(T(p.nome))+'</div>'+
@@ -2326,7 +2330,7 @@ VIEWS.inicio=function(v){
 
   v.innerHTML =
     banner({
-      eb:'Prontos em Rede · '+(souMatriz()?'RE/MAX Brasil':masterDe(MASTER_DEMO).nome),
+      eb:'Prontos em Rede · '+(souMatriz()?'RE/MAX Brasil':masterDe(MASTER_DEMO).nome+(masterVeRede()?' · toda a rede':'')),
       h1:T('A rede inteira')+' <b>'+T('falando a mesma língua')+'</b>',
       rot:['<b>'+ls.length+'</b> '+T('unidades acompanhadas etapa a etapa, com evidência e prazo'),
            '<b>'+compacto(M.alcance)+'</b> '+T('de alcance somado no período pelas peças oficiais'),
@@ -3282,7 +3286,7 @@ VIEWS.fachadas=function(v){
 /* ---------- Aprovações ---------- */
 VIEWS.aprovacoes=function(v){
   const meu=ROLE==='franquia';
-  const lista = souMatriz()? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDe(a.loja).master===MASTER_DEMO) : S.aprovacoes.filter(a=>a.loja===escopoLoja());
+  const lista = souMatriz()? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDoMaster(lojaDe(a.loja))) : S.aprovacoes.filter(a=>a.loja===escopoLoja());
   const pend=lista.filter(a=>a.st==='pendente' && (meu || podeDecidirNivel(rotuloNivel(a))));
   v.innerHTML =
     ph('Fluxo de aprovação','Projetos de fachada, evidências de etapa e peças fora do padrão passam por aprovação. Cada decisão fica registrada com autor, data e justificativa — e o que é aprovado avança a jornada da unidade na hora.',
@@ -3472,7 +3476,7 @@ function destinatariosN(dest){
   if(dest==='Associados') return us.filter(u=>u.nivel==='associado').length;
   if(/^Regional · /.test(dest)){ const m=BASE.masters.find(x=>'Regional · '+x.nome===dest); return m?daReg(m.id):0; }
   if(/regional/.test(dest)){ const f=/Franquias/.test(dest)? u=>u.nivel==='franquia' : /Associados/.test(dest)? u=>u.nivel==='associado' : ()=>true;
-    return us.filter(u=>(lojaDe(u.loja)||{}).master===MASTER_DEMO && f(u)).length; }
+    return us.filter(u=>lojaDoMaster(lojaDe(u.loja)) && f(u)).length; }
   return us.length + BASE.masters.length;
 }
 function midiaComunicado(k){
@@ -4113,17 +4117,17 @@ function marketingCorretor(v){
 /* ---------- painel da rede ---------- */
 VIEWS.painel=function(v){
   const ls=lojasVisiveis();
-  const porMaster=BASE.masters.filter(m=>souMatriz()||m.id===MASTER_DEMO).map(m=>{
+  const porMaster=BASE.masters.filter(m=>souMatriz()||masterVeRede()||m.id===MASTER_DEMO).map(m=>{
     const sub=BASE.lojas.filter(l=>l.master===m.id);
     return {m, n:sub.length, ad:mediaAdesao(sub), us:sub.reduce((a,l)=>a+corretoresDe(l.id).length,0), at:sub.reduce((a,l)=>a+ativosDe(l.id),0)};
   });
   const conformes=ls.filter(l=>adesao(l.id)>=70).length;
   const M=metricasRede(ls);
   v.innerHTML =
-    ph(souMatriz()?'Painel da rede':'Painel da regional','Adesão, evolução, pendências, prazos, usuários ativos e compliance da marca — calculado sobre o estado real da plataforma. Nativo no produto: sem licença de BI por usuário, que a preços de mercado inviabilizaria estender o painel à rede inteira.',
+    ph(souMatriz()||masterVeRede()?'Painel da rede':'Painel da regional','Adesão, evolução, pendências, prazos, usuários ativos e compliance da marca — calculado sobre o estado real da plataforma. Nativo no produto: sem licença de BI por usuário, que a preços de mercado inviabilizaria estender o painel à rede inteira.',
       '<button class="btn" id="rel3">↓ Relatório CSV</button><a class="btn pri" href="#/marketing">Indicadores de marketing</a>','painel')+
     '<div class="grid g4" style="margin-bottom:16px">'+
-      kpi('Unidades', ls.length, souMatriz()?'projeto prevê ~600 na rede':'na sua regional')+
+      kpi('Unidades', ls.length, souMatriz()?'projeto prevê ~600 na rede':masterVeRede()?'todas as unidades da rede':'na sua regional')+
       kpi('Em conformidade', conformes+'/'+ls.length, 'adesão igual ou acima de 70%', conformes/ls.length>.5?'k-ok':'k-warn')+
       kpi('Usuários ativos', ls.reduce((a,l)=>a+ativosDe(l.id),0), 'últimos 30 dias')+
       kpi('Alcance da rede', compacto(M.alcance), nf(M.posts)+' publicações no período')+
@@ -5051,7 +5055,11 @@ VIEWS.param=function(v){
       '<div class="card pad"><h3>'+esc(T('Identidade do cliente'))+'</h3>'+
         '<div class="field" style="margin-top:12px"><label>'+esc(T('Nome da plataforma'))+'</label><input id="pmPlat" value="'+esc(pr.plataforma||'Prontos em Rede')+'"></div>'+
         '<div class="field"><label>'+esc(T('Marca do cliente'))+'</label><input id="pmMarca" value="'+esc(pr.marca||'RE/MAX')+'"></div>'+
-        '<div class="field"><label>'+esc(T('WhatsApp do suporte'))+'</label><input id="pmZap" value="'+esc(pr.whatsSuporte||'')+'" placeholder="+55 11 90000-0000"></div></div>'+
+        '<div class="field"><label>'+esc(T('WhatsApp do suporte'))+'</label><input id="pmZap" value="'+esc(pr.whatsSuporte||'')+'" placeholder="+55 11 90000-0000"></div>'+
+        '<div class="field"><label>'+esc(T('Alcance do perfil Master'))+'</label><select id="pmMasterEsc">'+
+          '<option value="rede"'+(pr.masterRegional?'':' selected')+'>'+esc(T('Vê o desempenho de todas as unidades da rede'))+'</option>'+
+          '<option value="regional"'+(pr.masterRegional?' selected':'')+'>'+esc(T('Vê só as unidades da própria regional'))+'</option></select>'+
+          '<div class="mini" style="margin-top:4px">'+esc(T('O gestor da unidade vê sempre só a dele; o corretor, só o próprio.'))+'</div></div></div>'+
       '<div class="card pad"><h3>'+esc(T('Módulos ligados'))+'</h3><div class="mini" style="margin:6px 0 10px">'+esc(T('Módulo desligado some do menu de todos os perfis deste cliente.'))+'</div>'+
         MODULOS.filter(m=>!m.interno).map(m=>'<label style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:13.4px">'+
           '<input type="checkbox" data-mod="'+m.id+'" style="width:auto"'+(off.indexOf(m.id)<0?' checked':'')+'> '+m.n+' · '+esc(m.nome)+'</label>').join('')+'</div>'+
@@ -5082,7 +5090,7 @@ VIEWS.param=function(v){
     $$('[data-tp]',v).forEach(i=>{ if(i.value.trim() && i.value.trim()!==i.dataset.tp) termos[i.dataset.tp]=i.value.trim(); });
     const offN=$$('[data-mod]',v).filter(c=>!c.checked).map(c=>c.dataset.mod);
     commit('Salvou a parametrização do cliente', $('#pmPlat').value.trim(), s=>{ Object.assign(s.param, {plataforma:$('#pmPlat').value.trim()||'Prontos em Rede', marca:$('#pmMarca').value.trim(),
-      whatsSuporte:$('#pmZap').value.trim(), termos, modulosOff:offN, provedor:$('#pmProv').value}); s.social.provedor=$('#pmProv').value; });
+      whatsSuporte:$('#pmZap').value.trim(), termos, modulosOff:offN, provedor:$('#pmProv').value, masterRegional:$('#pmMasterEsc').value==='regional'}); s.social.provedor=$('#pmProv').value; });
     LS.set('pr_chave_api', $('#pmChave').value.trim());
     renderNav(); route(); toast(T('Parametrização salva. Menus e textos já seguem o cliente.'),1);
   });
@@ -5349,6 +5357,11 @@ en:{
 'Média':'Medium',
 'Forte':'Strong',
 'Foto com marca d\'água':'Photo with watermark',
+'Alcance do perfil Master':'Master profile scope',
+'Vê o desempenho de todas as unidades da rede':'Sees the performance of every office in the network',
+'Vê só as unidades da própria regional':'Sees only the offices of their own region',
+'O gestor da unidade vê sempre só a dele; o corretor, só o próprio.':'The office manager always sees only their office; the agent, only themselves.',
+'Vê o desempenho de todas as unidades · aprova projetos e evidências':"Sees every office's performance · approves projects and evidence",
 'Provedor em uso':'Provider in use','Usar este provedor':'Use this provider','Você já agendou':'You already scheduled',
 /* seções */
 'Precisa de atenção':'Needs attention','Publicações da rede por semana':'Network posts per week','Adesão por unidade':'Adoption by office',
@@ -5587,6 +5600,11 @@ es:{
 'Média':'Media',
 'Forte':'Fuerte',
 'Foto com marca d\'água':'Foto con marca de agua',
+'Alcance do perfil Master':'Alcance del perfil Master',
+'Vê o desempenho de todas as unidades da rede':'Ve el desempeño de todas las oficinas de la red',
+'Vê só as unidades da própria regional':'Ve solo las oficinas de su propia regional',
+'O gestor da unidade vê sempre só a dele; o corretor, só o próprio.':'El gerente de la oficina siempre ve solo la suya; el asesor, solo lo propio.',
+'Vê o desempenho de todas as unidades · aprova projetos e evidências':'Ve el desempeño de todas las oficinas · aprueba proyectos y evidencias',
 'Provedor em uso':'Proveedor en uso','Usar este provedor':'Usar este proveedor','Você já agendou':'Ya programó',
 'Precisa de atenção':'Necesita atención','Publicações da rede por semana':'Publicaciones de la red por semana','Adesão por unidade':'Adopción por oficina',
 'Progresso por etapa':'Progreso por etapa','Situação por unidade':'Situación por oficina','Alertas desta unidade':'Alertas de esta oficina',

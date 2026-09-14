@@ -53,7 +53,7 @@ const telasDe = m => m.telas.filter(podeVer);
    ======================================================================= */
 const CONTAS=[
   {papel:'brasil',   email:'matriz@prontosemrede.test',   alias:['brasil@prontosemrede.test'], senha:'Rede@2026', nome:'Matriz RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
-  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital III',   desc:'Acompanha a regional · aprova projetos e evidências'},
+  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master SP Capital III',   desc:'Vê o desempenho de todas as unidades · aprova projetos e evidências'},
   {papel:'franquia', email:'loja@prontosemrede.test',     senha:'Rede@2026', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
   {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'},
   {papel:'construtor', email:'construtor@prontosemrede.test', senha:'Rede@2026', nome:'Construtor · BMAG',  desc:'Uso interno · parametriza a plataforma · auditoria e implantação'}
@@ -262,7 +262,7 @@ $('#whoBtn').addEventListener('click',()=>{
   const linhas=CONTAS.map(c=>{
     const p=P[c.papel];
     const n = c.papel==='brasil'? BASE.lojas.length+' · '+TOTAL_USUARIOS()
-            : c.papel==='master'? String(BASE.lojas.filter(l=>l.master===MASTER_DEMO).length)
+            : c.papel==='master'? String(BASE.lojas.filter(lojaDoMaster).length)
             : c.papel==='franquia'? String(corretoresDe('l18').length) : '';
     return '<div class="li" data-r="'+c.papel+'" style="display:flex;gap:13px;padding:13px 15px;border:1px solid var(--line);border-radius:13px;cursor:pointer;align-items:center;margin-bottom:9px;'+(c.papel===ROLE?'border-color:var(--brand-line);background:var(--brand-soft)':'')+'">'+
       '<span class="avph">'+iniciais(p.nome)+'</span><div><div style="font-weight:600;font-size:13.5px;font-family:var(--font-d)">'+esc(T(p.nome))+'</div>'+

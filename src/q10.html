@@ -222,7 +222,7 @@ VIEWS.fachadas=function(v){
 /* ---------- Aprovações ---------- */
 VIEWS.aprovacoes=function(v){
   const meu=ROLE==='franquia';
-  const lista = souMatriz()? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDe(a.loja).master===MASTER_DEMO) : S.aprovacoes.filter(a=>a.loja===escopoLoja());
+  const lista = souMatriz()? S.aprovacoes : ROLE==='master'? S.aprovacoes.filter(a=>lojaDoMaster(lojaDe(a.loja))) : S.aprovacoes.filter(a=>a.loja===escopoLoja());
   const pend=lista.filter(a=>a.st==='pendente' && (meu || podeDecidirNivel(rotuloNivel(a))));
   v.innerHTML =
     ph('Fluxo de aprovação','Projetos de fachada, evidências de etapa e peças fora do padrão passam por aprovação. Cada decisão fica registrada com autor, data e justificativa — e o que é aprovado avança a jornada da unidade na hora.',

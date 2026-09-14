@@ -64,7 +64,7 @@ VIEWS.inicio=function(v){
 
   v.innerHTML =
     banner({
-      eb:'Prontos em Rede · '+(souMatriz()?'RE/MAX Brasil':masterDe(MASTER_DEMO).nome),
+      eb:'Prontos em Rede · '+(souMatriz()?'RE/MAX Brasil':masterDe(MASTER_DEMO).nome+(masterVeRede()?' · toda a rede':'')),
       h1:T('A rede inteira')+' <b>'+T('falando a mesma língua')+'</b>',
       rot:['<b>'+ls.length+'</b> '+T('unidades acompanhadas etapa a etapa, com evidência e prazo'),
            '<b>'+compacto(M.alcance)+'</b> '+T('de alcance somado no período pelas peças oficiais'),
