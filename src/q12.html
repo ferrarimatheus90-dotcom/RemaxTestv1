@@ -17,7 +17,13 @@ function avisarSuporte(t){
   fetch('api/notificar.php?acao=chamado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     id:t.id, assunto:t.assunto, autor:t.autor, papel:eu().papel, unidade:l.nome||'', prio:t.prio, sla:t.sla, canal:t.canal,
     descricao:(t.msgs&&t.msgs[0]&&t.msgs[0].txt)||'', link:location.origin+location.pathname+'#/suporte'})})
-  .then(r=>r.json()).then(j=>{ if(j.ok) toast('<b>Suporte avisado</b> por '+esc(j.canais||'e-mail')+'.',1); else if(j.erro) console.warn('aviso ao suporte:', j.erro); }).catch(()=>{});
+  .then(r=>r.json()).then(j=>{
+    const zap=(typeof zapDoChamado==='function')? zapDoChamado(t) : '';
+    const falta = zap && !/whatsapp/i.test(j.canais||'');
+    if(j.ok) toast('<b>Suporte avisado</b> por '+esc(j.canais||'e-mail')+'.'+
+      (falta?' <a href="'+zap+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">Avisar no WhatsApp</a>':''),1);
+    else if(j.erro) console.warn('aviso ao suporte:', j.erro);
+  }).catch(()=>{});
 }
 VIEWS.suporte=function(v){
   const ls=lojasVisiveis();
@@ -26,7 +32,10 @@ VIEWS.suporte=function(v){
   const abertos=lista.filter(t=>!/Resolvido/.test(t.st));
   v.innerHTML =
     ph('Chamados e assistente','Suporte de verdade, não só chatbot. O assistente resolve a dúvida recorrente na hora; quando não resolve, vira chamado com responsável, prazo e histórico — e uma pessoa da operação assume.',
-      '<button class="btn pri" id="novoT">+ Abrir chamado</button><button class="btn" id="zap">Simular WhatsApp</button>','suporte')+
+      '<button class="btn pri" id="novoT">+ Abrir chamado</button>'+
+      ((abertos.length && typeof zapDoChamado==='function' && zapDoChamado(abertos[0]))?
+        '<a class="btn" href="'+zapDoChamado(abertos[0])+'" target="_blank" rel="noopener">Avisar no WhatsApp</a>':'')+
+      '<button class="btn" id="zap">Simular WhatsApp</button>','suporte')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Chamados abertos', abertos.length, meus?'seus e da sua unidade':'na rede', abertos.length>4?'k-warn':'')+
       kpi('Resolvidos pelo assistente', pct(lista.filter(t=>t.ia).length/Math.max(1,lista.length)*100), 'sem passar por pessoa','k-ok')+

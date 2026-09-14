@@ -99,6 +99,25 @@ function abrirEnvioDeMidia(){
   });
 }
 
+/* ---------- WhatsApp do suporte: funciona sem a API da Meta, pelo wa.me ----------
+   O número é definido em Parametrização e vale para todos os navegadores.
+   Quando a Cloud API estiver aprovada, o aviso passa a sair sozinho; até lá
+   este botão abre a conversa já escrita, com o chamado dentro. */
+function zapSuporteNum(){
+  let n=String((S.param&&S.param.whatsSuporte)||'').replace(/\D/g,'');
+  if(n.length===10||n.length===11) n='55'+n;
+  return n;
+}
+function zapSuporteUrl(texto){ const n=zapSuporteNum(); return n? 'https://wa.me/'+n+'?text='+encodeURIComponent(texto) : ''; }
+function zapDoChamado(t){
+  const l=(typeof lojaDe==='function'? lojaDe(t.loja) : null)||{};
+  const q=[ 'Chamado '+t.id+' · '+t.assunto,
+            'Aberto por '+t.autor+(l.nome?' · '+l.nome:''),
+            'Prioridade '+t.prio+' · SLA '+t.sla,
+            location.origin+location.pathname+'#/suporte' ].join(String.fromCharCode(10));
+  return zapSuporteUrl(q);
+}
+
 /* cartão de indicador que leva ao módulo de origem */
 document.addEventListener('click',e=>{ const c=e.target.closest('[data-ir]');
   if(c && !e.target.closest('a,button,input,select')) location.hash='#/'+c.dataset.ir; });

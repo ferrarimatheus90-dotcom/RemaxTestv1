@@ -25,7 +25,11 @@ if ($acao === 'chamado') {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !mesmoSite()) responder(['ok' => false, 'erro' => 'Só pelo próprio site.'], 403);
     if (!is_array($CFG)) responder(['ok' => false, 'erro' => 'Servidor sem configuração.'], 503);
     $d = corpoJson();
-    $para = cfg('email_suporte', cfg('smtp_user', cfg('email_remetente')));
+    // email_suporte aceita varios enderecos separados por virgula ou ponto-e-virgula
+    $destinos = array_values(array_filter(
+        array_map('trim', preg_split('/[;,]+/', (string) cfg('email_suporte', cfg('smtp_user', cfg('email_remetente'))))),
+        function ($e) { return $e !== '' && filter_var($e, FILTER_VALIDATE_EMAIL); }));
+    $destinos = array_slice(array_unique($destinos), 0, 5);
     $canais = [];
     $lim = function ($k, $n) use ($d) { return mb_substr(trim((string) ($d[$k] ?? '')), 0, $n); };
     $id = $lim('id', 12); $assunto = $lim('assunto', 120);
@@ -34,7 +38,8 @@ if ($acao === 'chamado') {
              "Unidade: " . $lim('unidade', 80) . "\n" . "Prioridade: " . $lim('prio', 20) . " · SLA " . $lim('sla', 20) . " · canal " . $lim('canal', 30) . "\n" .
              ($lim('descricao', 2000) !== '' ? "\nDescrição:\n" . $lim('descricao', 2000) . "\n" : '') .
              "\nAbrir na plataforma: " . $lim('link', 200) . "\n";
-    if ($para !== '' && filter_var($para, FILTER_VALIDATE_EMAIL)) {
+    $enviados = 0;
+    foreach ($destinos as $para) {
         $ok = false;
         if (cfg('smtp_user') !== '') {
             [$ok, $det] = smtpEnviar(cfg('smtp_host', 'smtp.gmail.com'), (int) cfg('smtp_port', 465), cfg('smtp_user'), cfg('smtp_pass'),
@@ -44,8 +49,9 @@ if ($acao === 'chamado') {
             if ($de !== '') $ok = @mail($para, '=?UTF-8?B?' . base64_encode('Chamado ' . $id . ' · ' . $assunto) . '?=', $texto,
                 "From: =?UTF-8?B?" . base64_encode(cfg('email_nome', 'Prontos em Rede')) . "?= <" . $de . ">\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n", '-f' . $de);
         }
-        if ($ok) $canais[] = 'e-mail';
+        if ($ok) $enviados++;
     }
+    if ($enviados) $canais[] = $enviados > 1 ? 'e-mail (' . $enviados . ' destinatários)' : 'e-mail';
     $zap = preg_replace('/\D/', '', (string) cfg('whatsapp_suporte'));
     if ($zap !== '' && cfg('whatsapp_token') !== '' && cfg('whatsapp_phone_id') !== '') {
         if (strlen($zap) === 10 || strlen($zap) === 11) $zap = '55' . $zap;
@@ -102,9 +108,12 @@ function smtpEnviar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto
 if ($acao === 'status') {
     $temMail = cfg('email_remetente') !== '' || cfg('smtp_user') !== '';
     $temZap  = cfg('whatsapp_token') !== '' && cfg('whatsapp_phone_id') !== '';
+    $sup = (string) cfg('email_suporte', cfg('smtp_user', cfg('email_remetente')));
     responder(['ok' => $temMail || $temZap,
                'msg' => 'E-mail: ' . ($temMail ? 'configurado (' . cfg('email_remetente', cfg('smtp_user')) . (cfg('smtp_user') !== '' ? ', via SMTP' : ', via servidor') . ')' : 'falta email_remetente') .
-                        ' · WhatsApp: ' . ($temZap ? 'configurado' : 'falta whatsapp_token e whatsapp_phone_id') . '.']);
+                        ' · WhatsApp: ' . ($temZap ? 'configurado' : 'falta whatsapp_token e whatsapp_phone_id') .
+                        ' · Aviso de chamado vai para: ' . ($sup !== '' ? $sup : '(ninguém)') .
+                        ' · WhatsApp do suporte no Help Desk: ' . (cfg('whatsapp_suporte') !== '' ? cfg('whatsapp_suporte') : '(vazio; dá para definir em Parametrização)') . '.']);
 }
 
 if ($acao === 'email') {
