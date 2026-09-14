@@ -144,7 +144,7 @@ function puxarConfigServidor(){
   }).catch(()=>{});
 }
 let APP_PRONTO=false;
-function sincAplicar(){ P=personas(); renderWho(); renderNav(); if(!$$('.ov').length){ route(); } toast('<b>Atualizado</b> com o que a rede fez em outro aparelho.',1); }
+function sincAplicar(silencioso){ P=personas(); renderWho(); renderNav(); if(!$$('.ov').length){ route(); } if(!silencioso) toast('<b>Atualizado</b> com o que a rede fez em outro aparelho.',1); }
 function iniciarApp(){
   voltaDoPortal();
   puxarConfigServidor();

@@ -50,6 +50,17 @@ if ($acao === 'gravar') {
     if (strlen($corpo) > 12 * 1024 * 1024) fim(['ok' => false, 'erro' => 'Estado grande demais (limite 12 MB).'], 413);
     $j = json_decode($corpo, true);
     if (!is_array($j) || !isset($j['estado']) || !is_array($j['estado']) || (int) ($j['estado']['v'] ?? 0) !== 4) fim(['ok' => false, 'erro' => 'Estado inválido.'], 400);
+    // conferência de versão: só grava por cima da versão que o navegador conhece; senão devolve a atual para ele reaplicar o que fez
+    clearstatcache();
+    if (is_file($arquivo)) {
+        $atual = (string) filemtime($arquivo) . '.' . filesize($arquivo);
+        if ((string) ($j['desde'] ?? '') !== $atual) {
+            $txt = file_get_contents($arquivo);
+            http_response_code(409);
+            echo '{"ok":false,"conflito":true,"atualizado":"' . $atual . '","estado":' . ($txt !== '' ? $txt : 'null') . '}';
+            exit;
+        }
+    }
     $tmp = $arquivo . '.tmp';
     if (file_put_contents($tmp, json_encode($j['estado'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) === false) fim(['ok' => false, 'erro' => 'Não consegui gravar no servidor.'], 500);
     rename($tmp, $arquivo); clearstatcache();
