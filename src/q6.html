@@ -190,7 +190,7 @@ function inicioFranquia(v){
 
 function inicioCorretor(v){
   const c=S.usuarios[euId()], l=lojaDe(c.loja), M=metricasCorretor(c.id);
-  const camp=S.campanhas.find(x=>x.st==='agendada')||S.campanhas[0];
+  const camp=proximaCampanha();
   const jaAg=camp.ag&&camp.ag[c.id];
   const minhas=S.pecas.filter(p=>p.uid===c.id);
   const pend=[];

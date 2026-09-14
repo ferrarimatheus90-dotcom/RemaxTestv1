@@ -10,62 +10,100 @@ const adesaoCampanha = c => {
   const us=usuariosVisiveis(); if(!us.length) return 0;
   return Math.round(us.filter(u=>c.ag&&c.ag[u.id]).length/us.length*100);
 };
-VIEWS.prontos=function(v){
+/* a próxima campanha: a mais perto no tempo entre as que ainda não foram publicadas */
+function proximaCampanha(){
+  const fut=S.campanhas.filter(c=>c.st!=='publicada').sort((a,b)=>a.dt<b.dt?-1:1);
+  return fut.find(c=>new Date(c.dt)>=HOJE) || fut[0] || S.campanhas[0];
+}
+const publicoRotulo = c => c.pub? c.pub.rotulo : '';
+const dataCurta = iso => new Date(iso).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}).replace('.','');
+let CAL_MES = null;   // {a, m} do calendário da rede
+
+VIEWS.prontos=function(v,arg){
   const us=usuariosVisiveis(), con=us.filter(u=>u.ig).length;
-  const camp=S.campanhas.find(c=>c.st==='agendada')||S.campanhas[0];
+  const camp=(arg && S.campanhas.find(c=>c.id===arg)) || proximaCampanha();
   const souBrasil=souMatriz(), euAg=camp.ag&&camp.ag[euId()];
+  const ordem=S.campanhas.slice().sort((a,b)=>a.dt<b.dt?-1:1);
+  const proximas=ordem.filter(c=>c.st!=='publicada'), passadas=ordem.filter(c=>c.st==='publicada');
+  const programadas=proximas.filter(c=>c.st==='agendada').length;
+  if(!CAL_MES){ const d=new Date(camp.dt); CAL_MES={a:d.getFullYear(), m:d.getMonth()}; }
+
+  const cartao=c=>{ const ad=adesaoCampanha(c), d=new Date(c.dt), eu_=c.ag&&c.ag[euId()], atual=c.id===camp.id;
+    return '<div class="camp'+(atual?' on':'')+'" data-camp="'+c.id+'">'+
+      '<div class="cd"><b>'+d.getDate()+'</b><span>'+d.toLocaleDateString('pt-BR',{month:'short'}).replace('.','')+'</span></div>'+
+      '<div class="ct"><div class="t">'+esc(c.tit)+'</div>'+
+        '<div class="mini">'+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' · '+esc(c.peca)+
+          (c.pub?' · '+esc(c.pub.rotulo):'')+'</div>'+
+        '<div class="cs">'+(c.st==='agendada'?'<span class="tag ok">Programada</span>':'<span class="tag mut">Planejada</span>')+
+          '<span class="mini num">'+ad+'% · '+Object.keys(c.ag||{}).length+' contas</span></div>'+
+        '<div class="ca">'+(souBrasil? '<button class="btn sm '+(c.st==='agendada'?'':'pri')+'" data-prog="'+c.id+'">'+(c.st==='agendada'?'Reprogramar':'Programar')+'</button><button class="btn sm" data-ver="'+c.id+'">Adesão</button>'
+          : souCorretor()? (eu_?'<span class="tag ok">Você agendou</span>':'<button class="btn sm pri" data-ag="'+c.id+'">Agendar</button>') : '<button class="btn sm" data-ver="'+c.id+'">Adesão</button>')+
+          (atual?'':'<a class="btn sm" href="#/prontos/'+c.id+'">Detalhes</a>')+'</div></div></div>'; };
+
   v.innerHTML =
-    ph('Campanhas da rede','Comunicação sincronizada: a Matriz publica arte e legenda e a rede inteira posta no mesmo dia e na mesma hora — em um clique, sem repassar arquivo por WhatsApp.',
+    ph('Campanhas da rede','Comunicação sincronizada: a Matriz publica arte e legenda e a rede inteira posta no mesmo dia e na mesma hora — em um clique, sem repassar arquivo por WhatsApp. Crie as campanhas dos próximos meses e programe cada uma para toda a rede, por regional ou por unidade.',
       souBrasil?'<button class="btn pri" id="novaC">+ Nova campanha</button>':(souCorretor()&&!euAg?'<button class="btn pri" id="agEu">Agendar na minha conta</button>':''),'prontos')+
     '<div class="grid g4" style="margin-bottom:16px">'+
-      kpi('Próxima publicação', new Date(camp.dt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), esc(camp.tit.split('—')[0].trim())+' · '+new Date(camp.dt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))+
+      kpi('Próxima publicação', new Date(proximaCampanha().dt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), esc(proximaCampanha().tit.split('—')[0].trim())+' · '+new Date(proximaCampanha().dt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))+
+      kpi('Campanhas à frente', proximas.length, programadas+' programadas · '+(proximas.length-programadas)+' a programar', proximas.length-programadas?'k-warn':'k-ok')+
       kpi('Contas conectadas', con+'/'+us.length, pct(con/Math.max(1,us.length)*100)+' dos associados', con/Math.max(1,us.length)>.6?'k-ok':'k-warn')+
-      kpi('Adesão da campanha', pct(adesaoCampanha(camp)), 'já agendaram a publicação', adesaoCampanha(camp)>60?'k-ok':'k-warn')+
-      kpi('Campanhas no ano', S.campanhas.length, S.campanhas.filter(c=>c.st==='publicada').length+' publicadas')+
+      kpi('Adesão da campanha', pct(adesaoCampanha(camp)), esc(camp.tit.split('—')[0].trim().slice(0,28)), adesaoCampanha(camp)>60?'k-ok':'k-warn')+
     '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Próximas campanhas</h3><div class="r"><span class="mini">'+(souBrasil?'cada uma com o seu botão de programar':'na ordem em que vão ao ar')+'</span></div></div>'+
+      '<div class="cb"><div class="camp-grid">'+(proximas.map(cartao).join('')||'<div class="empty">Nenhuma campanha à frente. Crie a próxima.</div>')+'</div></div></div>'+
     '<div class="grid g23" style="margin-bottom:16px">'+
-      '<div class="card"><div class="ch"><h3>Campanha em preparação</h3><div class="r">'+(euAg?'<span class="tag ok">Você já agendou</span>':'<span class="tag red">Faltam '+dias(new Date(camp.dt))+' dias</span>')+'</div></div>'+
+      '<div class="card"><div class="ch"><h3>'+(camp.st==='agendada'?'Campanha programada':'Campanha em preparação')+'</h3><div class="r">'+(euAg?'<span class="tag ok">Você já agendou</span>':'<span class="tag '+(dias(new Date(camp.dt))<0?'mut':'red')+'">'+(dias(new Date(camp.dt))<0?'já passou':'Faltam '+dias(new Date(camp.dt))+' dias')+'</span>')+'</div></div>'+
       '<div class="cb" style="display:grid;grid-template-columns:190px 1fr;gap:18px;align-items:start">'+
         (camp.arte?'<img class="prev" src="'+camp.arte+'" alt="" style="width:100%;border-radius:12px">':'<canvas class="prev" id="cvC"></canvas>')+
         '<div><div style="font-family:var(--font-d);font-weight:800;font-size:17px">'+esc(camp.tit)+'</div>'+
-        '<div class="mini" style="margin:5px 0 12px">'+new Date(camp.dt).toLocaleString('pt-BR')+' · '+esc(camp.peca)+' · toda a rede</div>'+
+        '<div class="mini" style="margin:5px 0 12px">'+new Date(camp.dt).toLocaleString('pt-BR')+' · '+esc(camp.peca)+' · '+(camp.pub?esc(camp.pub.rotulo):'ainda não programada')+'</div>'+
         '<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12.9px;line-height:1.55">'+esc(camp.leg)+'</div>'+
         '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
-          (souBrasil?'<button class="btn pri" id="disparar">Programar para '+lojasVisiveis().length+' unidades</button>':
+          (souBrasil?'<button class="btn pri" id="disparar">'+(camp.st==='agendada'?'Reprogramar':'Programar para as unidades')+'</button>':
            euAg?'<button class="btn" id="desag">Cancelar meu agendamento</button>':'<button class="btn pri" id="agEu2">Agendar na minha conta</button>')+
           '<button class="btn" id="cpLeg">Copiar legenda</button>'+
           '<a class="btn" href="#/estudio/'+(camp.tpl||'t01')+'">Personalizar</a>'+
           '<button class="btn" id="dlArte">↓ Baixar arte</button></div>'+
         '</div></div></div>'+
-      '<div class="card"><div class="ch"><h3>Calendário da rede</h3><div class="r"><span class="mini">setembro/2026</span></div></div><div class="cb" id="cal"></div></div>'+
+      '<div class="card"><div class="ch"><h3>Calendário da rede</h3><div class="r" style="display:flex;gap:6px;align-items:center"><button class="btn sm" id="calAnt">‹</button><span class="mini" id="calTit" style="min-width:110px;text-align:center"></span><button class="btn sm" id="calProx">›</button></div></div><div class="cb" id="cal"></div></div>'+
     '</div>'+
-    '<div class="card"><div class="ch"><h3>Campanhas</h3><div class="r"><span class="mini">adesão medida sobre '+us.length+' associados do seu escopo</span></div></div>'+
-      '<div class="tw"><table><thead><tr><th>Campanha</th><th>Data</th><th>Peça</th><th>Situação</th><th>Adesão</th><th></th></tr></thead><tbody>'+
-      S.campanhas.map(c=>{ const ad=adesaoCampanha(c);
-        return '<tr><td style="font-weight:600">'+esc(c.tit)+'</td><td class="num">'+new Date(c.dt).toLocaleDateString('pt-BR')+'</td><td>'+esc(c.peca)+'</td>'+
-        '<td>'+(c.st==='publicada'?'<span class="tag ok">Publicada</span>':c.st==='agendada'?'<span class="tag">Agendada</span>':'<span class="tag mut">Planejada</span>')+'</td>'+
+    '<div class="card"><div class="ch"><h3>Todas as campanhas</h3><div class="r"><span class="mini">adesão medida sobre '+us.length+' associados do seu escopo</span></div></div>'+
+      '<div class="tw"><table><thead><tr><th>Campanha</th><th>Data</th><th>Peça</th><th>Público</th><th>Situação</th><th>Adesão</th><th></th></tr></thead><tbody>'+
+      ordem.map(c=>{ const ad=adesaoCampanha(c);
+        return '<tr'+(c.id===camp.id?' style="background:var(--brand-soft)"':'')+'><td style="font-weight:600">'+esc(c.tit)+'</td><td class="num">'+new Date(c.dt).toLocaleDateString('pt-BR')+'</td><td>'+esc(c.peca)+'</td>'+
+        '<td class="mini">'+(c.pub?esc(c.pub.rotulo):'—')+'</td>'+
+        '<td>'+(c.st==='publicada'?'<span class="tag ok">Publicada</span>':c.st==='agendada'?'<span class="tag">Programada</span>':'<span class="tag mut">Planejada</span>')+'</td>'+
         '<td style="min-width:130px">'+barra(ad)+'<span class="mini num">'+ad+'% · '+Object.keys(c.ag||{}).length+' contas</span></td>'+
-        '<td>'+(souCorretor()? (c.ag&&c.ag[euId()]?'<span class="tag ok">Agendada</span>':'<button class="btn sm" data-ag="'+c.id+'">Agendar</button>')
-                            : '<button class="btn sm" data-ver="'+c.id+'">Ver adesão</button>')+'</td></tr>';
+        '<td style="white-space:nowrap">'+(souCorretor()? (c.ag&&c.ag[euId()]?'<span class="tag ok">Agendada</span>':c.st==='publicada'?'':'<button class="btn sm" data-ag="'+c.id+'">Agendar</button>')
+                            : (souBrasil&&c.st!=='publicada'?'<button class="btn sm" data-prog="'+c.id+'">'+(c.st==='agendada'?'Reprogramar':'Programar')+'</button> ':'')+'<button class="btn sm" data-ver="'+c.id+'">Ver adesão</button>')+'</td></tr>';
       }).join('')+'</tbody></table></div></div>';
 
   montarPeca({fmt:'feed', tema:'azul', titulo:camp.tit.split('—')[0].trim(), sub:camp.peca+' · publicação sincronizada',
     nome:eu().nome, creci:'', tel:'', unidade:'RE/MAX Brasil', foto:eu().foto}).then(cv=>{
       const a=$('#cvC'); if(!a) return; a.width=cv.width; a.height=cv.height; a.getContext('2d').drawImage(cv,0,0);
       $('#dlArte')&&$('#dlArte').addEventListener('click',()=>canvasBlob(cv,'image/png').then(b=>{baixarBlob(b,'campanha-'+camp.id+'.png');toast('Arte baixada.',1);})); });
-
   if(camp.arte) $('#dlArte').addEventListener('click',()=>fetch(camp.arte).then(r=>r.blob()).then(b=>{ baixarBlob(b,'campanha-'+camp.id+'.jpg'); toast('Arte baixada.',1); }));
-  const prim=new Date(2026,8,1).getDay();
-  let cal=['D','S','T','Q','Q','S','S'].map(d=>'<div class="dh">'+d+'</div>').join('');
-  for(let i=0;i<prim;i++) cal+='<div class="dy off"></div>';
-  for(let d=1;d<=30;d++){
-    let ev='';
-    S.campanhas.forEach(c=>{ const cd=new Date(c.dt); if(cd.getMonth()===8&&cd.getDate()===d)
-      ev+='<div class="ev '+(c.st==='publicada'?'ok':'red')+'">'+cd.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' · '+esc(c.tit.split('—')[0].trim().slice(0,16))+'</div>'; });
-    S.comunicados.forEach(k=>{ const kd=dt(k.dt); if(kd.getMonth()===8&&kd.getDate()===d&&k.obr) ev+='<div class="ev">Comunicado</div>'; });
-    cal+='<div class="dy'+(d===9?' today':'')+'"><div class="n">'+d+'</div>'+ev+'</div>';
-  }
-  $('#cal').innerHTML='<div class="cal">'+cal+'</div>';
+
+  // calendário que anda pelos meses
+  const pintaCal=()=>{
+    const a=CAL_MES.a, m=CAL_MES.m, prim=new Date(a,m,1).getDay(), nd=new Date(a,m+1,0).getDate();
+    $('#calTit').textContent=new Date(a,m,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+    let cal=['D','S','T','Q','Q','S','S'].map(d=>'<div class="dh">'+d+'</div>').join('');
+    for(let i=0;i<prim;i++) cal+='<div class="dy off"></div>';
+    for(let d=1;d<=nd;d++){
+      let ev='';
+      S.campanhas.forEach(c=>{ const cd=new Date(c.dt); if(cd.getFullYear()===a&&cd.getMonth()===m&&cd.getDate()===d)
+        ev+='<div class="ev '+(c.st==='publicada'?'ok':c.st==='agendada'?'red':'')+'" data-go="'+c.id+'" title="'+esc(c.tit)+'">'+cd.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' · '+esc(c.tit.split('—')[0].trim().slice(0,16))+'</div>'; });
+      S.comunicados.forEach(k=>{ const kd=dt(k.dt); if(kd.getFullYear()===a&&kd.getMonth()===m&&kd.getDate()===d&&k.obr) ev+='<div class="ev">Comunicado</div>'; });
+      const hoje = a===HOJE.getFullYear()&&m===HOJE.getMonth()&&d===HOJE.getDate();
+      cal+='<div class="dy'+(hoje?' today':'')+'"><div class="n">'+d+'</div>'+ev+'</div>';
+    }
+    $('#cal').innerHTML='<div class="cal">'+cal+'</div>';
+    $$('#cal [data-go]').forEach(e=>e.addEventListener('click',()=>{ location.hash='#/prontos/'+e.dataset.go; }));
+  };
+  pintaCal();
+  $('#calAnt').addEventListener('click',()=>{ CAL_MES.m--; if(CAL_MES.m<0){ CAL_MES.m=11; CAL_MES.a--; } pintaCal(); });
+  $('#calProx').addEventListener('click',()=>{ CAL_MES.m++; if(CAL_MES.m>11){ CAL_MES.m=0; CAL_MES.a++; } pintaCal(); });
 
   const agendar=cid=>{ commit('Agendou campanha', S.campanhas.find(c=>c.id===cid).tit, s=>{ const c=s.campanhas.find(x=>x.id===cid); c.ag=c.ag||{}; c.ag[euId()]=c.dt; });
     toast('<b>Agendado.</b> Sua conta publica junto com a rede.',1); route(); };
@@ -77,63 +115,90 @@ VIEWS.prontos=function(v){
   $$('[data-ver]',v).forEach(b=>b.addEventListener('click',()=>{
     const c=S.campanhas.find(x=>x.id===b.dataset.ver);
     modal('Adesão · '+esc(c.tit),
+      (c.pub?'<div class="mini" style="margin-bottom:10px">Programada para: '+esc(c.pub.rotulo)+'</div>':'')+
       '<div class="tw" style="max-height:52vh;overflow:auto"><table><thead><tr><th>Unidade</th><th>Agendaram</th><th>Adesão</th></tr></thead><tbody>'+
       lojasVisiveis().map(l=>{ const cs=corretoresDe(l.id), n=cs.filter(u=>c.ag&&c.ag[u.id]).length;
         return '<tr><td>'+esc(l.nome)+'</td><td class="num">'+n+'/'+cs.length+'</td><td style="min-width:120px">'+barra(Math.round(n/Math.max(1,cs.length)*100))+'</td></tr>'; }).join('')+
       '</tbody></table></div>','<button class="btn pri" onclick="fechaModal()">Fechar</button>');
   }));
   $('#disparar')&&$('#disparar').addEventListener('click',()=>disparoEmMassa(camp.id));
+  $$('[data-prog]',v).forEach(b=>b.addEventListener('click',()=>disparoEmMassa(b.dataset.prog)));
   $('#novaC')&&$('#novaC').addEventListener('click',()=>{
+    const sug=new Date(HOJE); sug.setDate(sug.getDate()+14);
     const ov=modal('Nova campanha',
       '<div class="field"><label>Título</label><input id="nT" placeholder="Ex.: Outubro — semana do imóvel pronto"></div>'+
-      '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="nD" value="2026-10-06"></div>'+
+      '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="nD" value="'+sug.toISOString().slice(0,10)+'"></div>'+
       '<div class="field"><label>Hora</label><input type="time" id="nH" value="10:00"></div></div>'+
       '<div class="field"><label>Formato</label><select id="nP"><option>Feed</option><option>Feed + Story</option><option>Story</option><option>Carrossel</option></select></div>'+
       '<div class="field"><label>Legenda oficial</label><textarea id="nL" rows="3" placeholder="Texto que a rede publica…"></textarea></div>'+
       '<div class="field"><label>Modelo de arte</label><select id="nM">'+TPLS().filter(t=>t.cat==='Redes sociais').map(t=>'<option value="'+t.id+'">'+esc(t.nome)+'</option>').join('')+'</select></div>'+
-      '<div class="field"><label>Ou uma arte salva no Estúdio</label><select id="nA"><option value="">— usar o modelo acima —</option>'+S.pecas.map(p=>'<option value="'+p.id+'">'+esc(p.tplNome)+' · '+quando(p.criado)+'</option>').join('')+'</select></div>',
+      '<div class="field"><label>Ou uma arte salva no Estúdio</label><select id="nA"><option value="">— usar o modelo acima —</option>'+S.pecas.map(p=>'<option value="'+p.id+'">'+esc(p.tplNome)+' · '+quando(p.criado)+'</option>').join('')+'</select></div>'+
+      '<label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" id="nProg" checked style="width:auto"> Programar a publicação em massa em seguida (escolher o público)</label>',
       '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="nOk">Criar campanha</button>');
     $('#nOk',ov).addEventListener('click',()=>{
-      const tit=$('#nT',ov).value.trim()||'Nova campanha da rede';
-      commit('Criou campanha', tit, s=>{ s.campanhas.unshift({id:uid('c'), tit, dt:$('#nD',ov).value+'T'+$('#nH',ov).value,
+      const tit=$('#nT',ov).value.trim()||'Nova campanha da rede', id=uid('c'), prog=$('#nProg',ov).checked;
+      commit('Criou campanha', tit, s=>{ s.campanhas.unshift({id, tit, dt:$('#nD',ov).value+'T'+$('#nH',ov).value,
         st:'planejada', peca:$('#nP',ov).value, tpl:$('#nM',ov).value, leg:$('#nL',ov).value.trim()||'#RemaxBrasil #ProntosEmRede', ag:{}, arte:((S.pecas.find(p=>p.id===$('#nA',ov).value)||{}).thumb)||''}); });
-      fechaModal(); route(); toast('Campanha criada e visível para a rede.',1);
+      fechaModal(); CAL_MES=null; location.hash='#/prontos/'+id; route(); toast('Campanha criada e visível para a rede.',1);
+      if(prog) setTimeout(()=>disparoEmMassa(id),250);
     });
   });
 };
 
-/* disparo em massa — usado em Prontos em Rede e em Redes sociais */
+/* disparo em massa — usado em Campanhas da rede e em Redes sociais.
+   Público: toda a rede, uma ou mais regionais, ou unidades escolhidas uma a uma. */
 function disparoEmMassa(campId){
-  const camp=S.campanhas.find(c=>c.id===campId)||S.campanhas[0];
-  const prov=PROVEDORES.find(p=>p.id===S.social.provedor);
-  const ov=modal('Publicação em massa',
-    '<div class="field"><label>Campanha</label><select id="pC">'+S.campanhas.map(c=>'<option value="'+c.id+'"'+(c.id===camp.id?' selected':'')+'>'+esc(c.tit)+'</option>').join('')+'</select></div>'+
-    '<div class="field"><label>Público</label><select id="pPub"><option value="todas">Todas as unidades ('+BASE.lojas.length+')</option>'+
-      BASE.masters.map(m=>'<option value="'+m.id+'">Somente '+esc(m.nome)+'</option>').join('')+
-      BASE.lojas.map(l=>'<option value="L'+l.id+'">Somente '+esc(l.nome)+'</option>').join('')+'</select></div>'+
+  const camp=S.campanhas.find(c=>c.id===campId)||proximaCampanha();
+  const ov=modal('Programar publicação em massa',
+    '<div class="field"><label>Campanha</label><select id="pC">'+S.campanhas.filter(c=>c.st!=='publicada').sort((a,b)=>a.dt<b.dt?-1:1).map(c=>'<option value="'+c.id+'"'+(c.id===camp.id?' selected':'')+'>'+esc(c.tit)+' · '+dataCurta(c.dt)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>Público</label><div class="chips" id="pPub">'+
+      '<button class="chip on" data-p="todas">Toda a rede · '+BASE.lojas.length+' unidades</button>'+
+      BASE.masters.map(m=>'<button class="chip" data-p="'+m.id+'">'+esc(m.nome.replace('Master ',''))+' · '+BASE.lojas.filter(l=>l.master===m.id).length+'</button>').join('')+
+      '<button class="chip" data-p="unidades">Escolher unidades…</button></div>'+
+      '<div id="pUn" style="display:none;max-height:180px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-top:8px">'+
+        BASE.lojas.map(l=>'<label style="display:flex;gap:8px;align-items:center;font-size:12.8px;padding:3px 0"><input type="checkbox" data-l="'+l.id+'" style="width:auto"> '+esc(l.nome)+' <span class="mini">· '+esc(masterDe(l.master).nome.replace('Master ',''))+'</span></label>').join('')+'</div>'+
+      '<div class="mini" id="pRes" style="margin-top:6px"></div></div>'+
     '<div class="grid g2" style="gap:12px"><div class="field"><label>Data</label><input type="date" id="pD" value="'+camp.dt.slice(0,10)+'"></div>'+
     '<div class="field"><label>Hora</label><input type="time" id="pH" value="'+camp.dt.slice(11,16)+'"></div></div>'+
     '<div class="field"><label>Canais</label><div class="chips" id="pCan"><button class="chip on">Instagram feed</button><button class="chip on">Story</button><button class="chip">Facebook</button></div></div>'+
     '<div class="hint">Envio pela integração de publicação da plataforma. Só entram na fila as contas conectadas; as demais recebem arte e legenda com aviso de publicação manual e vão para a esteira de ativação do CS.</div>',
     '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="okD">Programar publicação</button>');
+  const chips=$$('#pPub .chip',ov);
+  const lojasAlvo=()=>{
+    const on=chips.filter(c=>c.classList.contains('on')).map(c=>c.dataset.p);
+    if(on.indexOf('unidades')>=0){ const ids=$$('#pUn input:checked',ov).map(i=>i.dataset.l); return {ls:BASE.lojas.filter(l=>ids.indexOf(l.id)>=0), rotulo:ids.length+' unidade'+(ids.length===1?'':'s')+' escolhida'+(ids.length===1?'':'s')}; }
+    if(!on.length || on.indexOf('todas')>=0) return {ls:BASE.lojas, rotulo:'Toda a rede · '+BASE.lojas.length+' unidades'};
+    const ls=BASE.lojas.filter(l=>on.indexOf(l.master)>=0);
+    return {ls, rotulo:on.map(id=>masterDe(id).nome.replace('Master ','')).join(' + ')+' · '+ls.length+' unidades'};
+  };
+  const resumo=()=>{ const a=lojasAlvo(), us=a.ls.flatMap(l=>corretoresDe(l.id)); $('#pRes',ov).textContent=a.rotulo+' · '+us.length+' associados, '+us.filter(u=>u.ig).length+' com conta conectada'; };
+  chips.forEach(c=>c.addEventListener('click',()=>{
+    const p=c.dataset.p;
+    if(p==='todas'||p==='unidades'){ chips.forEach(x=>x.classList.toggle('on', x===c)); }
+    else { c.classList.toggle('on'); chips.filter(x=>x.dataset.p==='todas'||x.dataset.p==='unidades').forEach(x=>x.classList.remove('on')); if(!chips.some(x=>x.classList.contains('on'))) chips[0].classList.add('on'); }
+    $('#pUn',ov).style.display = chips.find(x=>x.dataset.p==='unidades').classList.contains('on')? 'block':'none';
+    resumo();
+  }));
+  $$('#pUn input',ov).forEach(i=>i.addEventListener('change',resumo));
+  $('#pC',ov).addEventListener('change',e=>{ const c=S.campanhas.find(x=>x.id===e.target.value); if(c){ $('#pD',ov).value=c.dt.slice(0,10); $('#pH',ov).value=c.dt.slice(11,16); } });
+  resumo();
   $$('#pCan .chip',ov).forEach(c=>c.addEventListener('click',()=>c.classList.toggle('on')));
   $('#okD',ov).addEventListener('click',()=>{
-    const cid=$('#pC',ov).value, pub=$('#pPub',ov).value, d=$('#pD',ov).value, h=$('#pH',ov).value;
+    const cid=$('#pC',ov).value, d=$('#pD',ov).value, h=$('#pH',ov).value, alvo=lojasAlvo();
+    if(!alvo.ls.length) return toast('Escolha pelo menos uma unidade.');
+    const canais=$$('#pCan .chip.on',ov).map(c=>c.textContent);
     let n=0, semConta=0;
-    commit('Programou publicação em massa', S.campanhas.find(c=>c.id===cid).tit, s=>{
-      const c=s.campanhas.find(x=>x.id===cid); c.dt=d+'T'+h; c.ag=c.ag||{}; if(c.st==='planejada') c.st='agendada';
+    commit('Programou publicação em massa', S.campanhas.find(c=>c.id===cid).tit+' · '+alvo.rotulo, s=>{
+      const c=s.campanhas.find(x=>x.id===cid); c.dt=d+'T'+h; c.ag=c.ag||{}; c.st='agendada';
+      c.pub={rotulo:alvo.rotulo, lojas:alvo.ls.map(l=>l.id), canais, quando:agora()};
       Object.values(s.usuarios).forEach(u=>{
-        if(u.nivel!=='associado') return;
-        if(pub!=='todas'){
-          if(pub[0]==='L'){ if(u.loja!==pub.slice(1)) return; }
-          else if(lojaDe(u.loja).master!==pub) return;
-        }
+        if(u.nivel!=='associado' || !alvo.ls.some(l=>l.id===u.loja)) return;
         if(!u.ig){ semConta++; return; }
         if(!c.ag[u.id]){ c.ag[u.id]=c.dt; n++; }
       });
     }, 'Integração de publicação');
-    fechaModal(); route();
-    toast('<b>'+n+' contas</b> entraram na fila para '+new Date(d+'T'+h).toLocaleString('pt-BR')+(semConta?'.<br>'+semConta+' sem conta conectada receberam a arte para publicação manual.':'.'),1);
+    fechaModal(); CAL_MES=null; location.hash='#/prontos/'+cid; route();
+    toast('<b>'+n+' contas</b> entraram na fila para '+new Date(d+'T'+h).toLocaleString('pt-BR')+' · '+esc(alvo.rotulo)+(semConta?'.<br>'+semConta+' sem conta conectada receberam a arte para publicação manual.':'.'),1);
   });
 }
 
@@ -191,7 +256,7 @@ VIEWS.redes=function(v){
     commit('Trocou o provedor de publicação', PROVEDORES.find(p=>p.id===b.dataset.prov).nome, s=>{ s.social.provedor=b.dataset.prov; s.social.conectadoEm=agora(); });
     route(); toast('Provedor atualizado para <b>'+esc(PROVEDORES.find(p=>p.id===b.dataset.prov).nome)+'</b>.',1);
   }));
-  $('#massa')&&$('#massa').addEventListener('click',()=>disparoEmMassa((S.campanhas.find(c=>c.st==='agendada')||S.campanhas[0]).id));
+  $('#massa')&&$('#massa').addEventListener('click',()=>disparoEmMassa(proximaCampanha().id));
   $('#conectarTodas')&&$('#conectarTodas').addEventListener('click',()=>{
     const pend=us.filter(u=>!u.ig);
     if(!pend.length) return toast('Todas as contas do seu escopo já estão conectadas.',1);
