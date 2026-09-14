@@ -260,10 +260,11 @@ function saveState(local){
    No site publicado, o estado sobe para api/estado.php a cada ação (com 1,5 s de folga) e os outros
    navegadores puxam a cada 8 s. Último-a-gravar-ganha; o que é do aparelho (tema, idioma, sessão) fica local. */
 const SINCRONIZA = /^https?:/.test(location.protocol) && !(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
-let SINC_TS = LS.get('pr_sync')||'', sincTimer=null, sincOcupado=false, sincFalhas=0;
+let SINC_TS = LS.get('pr_sync')||'', sincTimer=null, sincOcupado=false, sincFalhas=0, SINC_PRONTA=false, sincPendente=false;
 const sincUrl = acao => 'api/estado.php?acao='+acao+'&q='+(typeof GENERICA!=='undefined'&&GENERICA?'demo':'remax');
 function sincSubir(){
   if(!SINCRONIZA) return;
+  if(!SINC_PRONTA){ sincPendente=true; return; }        // nunca gravar antes de ler o que já está no servidor
   clearTimeout(sincTimer);
   sincTimer=setTimeout(async()=>{
     try{
@@ -280,15 +281,16 @@ async function sincPuxar(inicial){
     const r=await fetch(sincUrl('ler')+'&desde='+encodeURIComponent(SINC_TS),{cache:'no-store'});
     const j=await r.json();
     if(!j.ok) return false;
+    if(inicial){ SINC_PRONTA=true; }
     if(j.vazio){ if(inicial) sincSubir(); return false; }          // servidor ainda sem estado: o deste navegador vira o comum
-    if(j.igual) return false;
+    if(j.igual){ if(inicial && sincPendente){ sincPendente=false; sincSubir(); } return false; }
     if(j.estado && j.estado.v===4){
-      S=j.estado; SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS);
+      S=j.estado; SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS); sincPendente=false;   // o que estava pendente era o estado inicial local: descartado
       if(typeof migra==='function') migra(); if(typeof garantirCampos==='function') garantirCampos();
       saveState(true);
       return true;
     }
-  }catch(e){}
+  }catch(e){ if(inicial){ SINC_PRONTA=true; } }   // servidor fora do ar: segue local
   finally{ sincOcupado=false; }
   return false;
 }

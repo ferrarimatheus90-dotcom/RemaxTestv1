@@ -90,7 +90,7 @@ function smtpTentar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto
 }
 function smtpEnviar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto, $texto) {
     $erros = [];
-    foreach (array_unique([(int) $porta, 465, 587]) as $pt) {
+    foreach (array_unique([587, (int) $porta, 465]) as $pt) {          // 587 primeiro: é a que a hospedagem deixa passar
         [$ok, $det] = smtpTentar($host, $pt, $usuario, $senha, $de, $nome, $para, $assunto, $texto);
         if ($ok) return [true, $det];
         $erros[] = $det;
