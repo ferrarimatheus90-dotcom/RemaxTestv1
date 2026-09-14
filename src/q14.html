@@ -143,9 +143,12 @@ function puxarConfigServidor(){
     if(j && j.whatsSuporte && S.param && S.param.whatsSuporte!==j.whatsSuporte){ S.param.whatsSuporte=j.whatsSuporte; saveState(); if(telaAtual()==='helpdesk') route(); }
   }).catch(()=>{});
 }
+let APP_PRONTO=false;
+function sincAplicar(){ P=personas(); renderWho(); renderNav(); if(!$$('.ov').length){ route(); } toast('<b>Atualizado</b> com o que a rede fez em outro aparelho.',1); }
 function iniciarApp(){
   voltaDoPortal();
   puxarConfigServidor();
+  APP_PRONTO=true;
   P = personas();
   marcarAcesso();
   renderWho(); renderNav();
@@ -165,6 +168,10 @@ function entrarNaPlataforma(){
 }
 loadState();
 garantirCampos();
+// estado compartilhado: puxa o do servidor antes de a tela montar; depois, confere a cada 8 s
+sincPuxar(true).then(mudou=>{ if(mudou && APP_PRONTO) sincAplicar(); });
+setInterval(()=>{ if(!APP_PRONTO || document.hidden) return; sincPuxar(false).then(mudou=>{ if(mudou) sincAplicar(); }); }, 8000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && APP_PRONTO) sincPuxar(false).then(mudou=>{ if(mudou) sincAplicar(); }); });
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
 aberturaVideo(entrarNaPlataforma);   // a vinheta abre o site em toda visita; a animada de reserva aparece uma vez por navegador

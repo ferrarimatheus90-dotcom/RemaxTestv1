@@ -1227,13 +1227,51 @@ function loadState(){
   S=seedState(); saveState();
 }
 let avisouArmazenamento=false;
-function saveState(){
+function saveState(local){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
   catch(e){
     SEM_STORAGE=true;
     if(!avisouArmazenamento){ avisouArmazenamento=true;
       toast('<b>Sem gravação neste navegador.</b><br>O protótipo continua funcionando, mas o que você fizer não sobrevive a um recarregamento.'); }
   }
+  if(!local && typeof sincSubir==='function') sincSubir();   // o que mudou aqui vale para todos os navegadores
+}
+
+/* ---------- estado compartilhado (servidor) ----------
+   No site publicado, o estado sobe para api/estado.php a cada ação (com 1,5 s de folga) e os outros
+   navegadores puxam a cada 8 s. Último-a-gravar-ganha; o que é do aparelho (tema, idioma, sessão) fica local. */
+const SINCRONIZA = /^https?:/.test(location.protocol) && !(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+let SINC_TS = LS.get('pr_sync')||'', sincTimer=null, sincOcupado=false, sincFalhas=0;
+const sincUrl = acao => 'api/estado.php?acao='+acao+'&q='+(typeof GENERICA!=='undefined'&&GENERICA?'demo':'remax');
+function sincSubir(){
+  if(!SINCRONIZA) return;
+  clearTimeout(sincTimer);
+  sincTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:S})});
+      const j=await r.json();
+      if(j.ok){ SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS); sincFalhas=0; }
+    }catch(e){ sincFalhas++; }
+  },1500);
+}
+async function sincPuxar(inicial){
+  if(!SINCRONIZA || sincOcupado) return false;
+  sincOcupado=true;
+  try{
+    const r=await fetch(sincUrl('ler')+'&desde='+encodeURIComponent(SINC_TS),{cache:'no-store'});
+    const j=await r.json();
+    if(!j.ok) return false;
+    if(j.vazio){ if(inicial) sincSubir(); return false; }          // servidor ainda sem estado: o deste navegador vira o comum
+    if(j.igual) return false;
+    if(j.estado && j.estado.v===4){
+      S=j.estado; SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS);
+      if(typeof migra==='function') migra(); if(typeof garantirCampos==='function') garantirCampos();
+      saveState(true);
+      return true;
+    }
+  }catch(e){}
+  finally{ sincOcupado=false; }
+  return false;
 }
 function commit(acao, objeto, fn, origem){
   if(fn) fn(S);
@@ -1241,7 +1279,7 @@ function commit(acao, objeto, fn, origem){
   S.audit = S.audit.slice(0,400);
   saveState();
 }
-function resetState(){ LS.del(KEY); S=seedState(); saveState(); if(typeof garantirCampos==='function') garantirCampos(); }
+function resetState(){ LS.del(KEY); S=seedState(); if(typeof garantirCampos==='function') garantirCampos(); saveState(); }
 
 /* ---------- leitura derivada do estado ---------- */
 const lojaDe = id => BASE.lojas.find(l=>l.id===id);
@@ -1827,7 +1865,7 @@ function viewAlertas(){
 function viewConfig(){
   const tam=(JSON.stringify(S).length/1024).toFixed(0);
   const ov=modal('Dados da plataforma',
-    '<div class="kv"><span class="k">Como funciona</span><span class="v">Tudo o que você faz fica gravado neste navegador. Aprovar uma evidência, agendar uma campanha, validar uma comprovação ou confirmar leitura muda os indicadores na hora.</span></div>'+
+    '<div class="kv"><span class="k">Como funciona</span><span class="v">'+(SINCRONIZA?'Tudo o que você faz é gravado e compartilhado: quem abrir o site em outro aparelho vê a mesma coisa em poucos segundos.':'Tudo o que você faz fica gravado neste navegador.')+' Aprovar uma evidência, agendar uma campanha, validar uma comprovação ou confirmar leitura muda os indicadores na hora.</span></div>'+
     '<div class="kv"><span class="k">Base real</span><span class="v">'+BASE.lojas.length+' unidades e '+BASE.corretores.length+' associados da capital de São Paulo, de dados públicos da RE/MAX. Com os gestores, '+TOTAL_USUARIOS()+' usuários.</span></div>'+
     '<div class="kv"><span class="k">Carga inicial</span><span class="v">Adesão, chamados, campanhas e leituras começam preenchidos para a tela não nascer vazia. A partir daí, quem move os números é você.</span></div>'+
     '<div class="kv"><span class="k">Ocupação</span><span class="v">'+tam+' KB gravados · '+S.audit.length+' registros de auditoria · '+S.excelencia.provas.length+' comprovações guardadas</span></div>',
@@ -1838,7 +1876,8 @@ function viewConfig(){
   });
   $('#rst',ov).addEventListener('click',()=>{
     if(!confirm('Isto apaga tudo o que foi feito e recarrega a demonstração. Continuar?')) return;
-    resetState(); fechaModal(); route(); renderNav(); toast('Demonstração recarregada.',1);
+    if(SINCRONIZA){ try{ fetch(sincUrl('zerar'),{method:'POST'}); }catch(e){} }
+    resetState(); fechaModal(); route(); renderNav(); toast('Demonstração recarregada para todos os aparelhos.',1);
   });
 }
 const EM_QUADRO=(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
@@ -4001,7 +4040,17 @@ function abrirTicket(o){
   const t=Object.assign({id:n, canal:'Plataforma', prio:'Média', sla:'8h', st:'Aberto', resp:'Fila N1',
     loja:escopoLoja()||'l18', autor:eu().nome, abertura:agora(), ia:false, msgs:[]}, o);
   commit('Abriu chamado', t.id+' · '+t.assunto, s=>{ s.tickets.unshift(t); }, o.canal||'Plataforma');
+  avisarSuporte(t);
   return t;
+}
+/* aviso ao suporte (e-mail e, quando configurado, WhatsApp) — o destinatário é fixo no servidor, por isso não pede chave */
+function avisarSuporte(t){
+  if(typeof SINCRONIZA==='undefined' || !SINCRONIZA) return;
+  const l=lojaDe(t.loja)||{};
+  fetch('api/notificar.php?acao=chamado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    id:t.id, assunto:t.assunto, autor:t.autor, papel:eu().papel, unidade:l.nome||'', prio:t.prio, sla:t.sla, canal:t.canal,
+    descricao:(t.msgs&&t.msgs[0]&&t.msgs[0].txt)||'', link:location.origin+location.pathname+'#/suporte'})})
+  .then(r=>r.json()).then(j=>{ if(j.ok) toast('<b>Suporte avisado</b> por '+esc(j.canais||'e-mail')+'.',1); else if(j.erro) console.warn('aviso ao suporte:', j.erro); }).catch(()=>{});
 }
 VIEWS.suporte=function(v){
   const ls=lojasVisiveis();
@@ -6370,9 +6419,12 @@ function puxarConfigServidor(){
     if(j && j.whatsSuporte && S.param && S.param.whatsSuporte!==j.whatsSuporte){ S.param.whatsSuporte=j.whatsSuporte; saveState(); if(telaAtual()==='helpdesk') route(); }
   }).catch(()=>{});
 }
+let APP_PRONTO=false;
+function sincAplicar(){ P=personas(); renderWho(); renderNav(); if(!$$('.ov').length){ route(); } toast('<b>Atualizado</b> com o que a rede fez em outro aparelho.',1); }
 function iniciarApp(){
   voltaDoPortal();
   puxarConfigServidor();
+  APP_PRONTO=true;
   P = personas();
   marcarAcesso();
   renderWho(); renderNav();
@@ -6392,6 +6444,10 @@ function entrarNaPlataforma(){
 }
 loadState();
 garantirCampos();
+// estado compartilhado: puxa o do servidor antes de a tela montar; depois, confere a cada 8 s
+sincPuxar(true).then(mudou=>{ if(mudou && APP_PRONTO) sincAplicar(); });
+setInterval(()=>{ if(!APP_PRONTO || document.hidden) return; sincPuxar(false).then(mudou=>{ if(mudou) sincAplicar(); }); }, 8000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && APP_PRONTO) sincPuxar(false).then(mudou=>{ if(mudou) sincAplicar(); }); });
 aplicarTema();
 document.documentElement.lang = LANG==='pt'?'pt-BR':LANG;
 aberturaVideo(entrarNaPlataforma);   // a vinheta abre o site em toda visita; a animada de reserva aparece uma vez por navegador

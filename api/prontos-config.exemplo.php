@@ -25,6 +25,9 @@ return [
     'smtp_user'         => '',   // ex.: seunome@gmail.com
     'smtp_pass'         => '',   // a senha de app de 16 letras, sem espaços
 
+    // para onde vai o aviso de chamado aberto (se vazio, usa o smtp_user ou o email_remetente)
+    'email_suporte'     => '',   // ex.: suporte@bmag.com.br
+
     // número do WhatsApp do suporte mostrado no Help Desk (qualquer formato; sem o 55 também vale)
     'whatsapp_suporte'  => '',   // ex.: +55 11 90000-0000
 

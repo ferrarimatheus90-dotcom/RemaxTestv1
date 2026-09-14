@@ -246,13 +246,51 @@ function loadState(){
   S=seedState(); saveState();
 }
 let avisouArmazenamento=false;
-function saveState(){
+function saveState(local){
   try{ localStorage.setItem(KEY, JSON.stringify(S)); }
   catch(e){
     SEM_STORAGE=true;
     if(!avisouArmazenamento){ avisouArmazenamento=true;
       toast('<b>Sem gravação neste navegador.</b><br>O protótipo continua funcionando, mas o que você fizer não sobrevive a um recarregamento.'); }
   }
+  if(!local && typeof sincSubir==='function') sincSubir();   // o que mudou aqui vale para todos os navegadores
+}
+
+/* ---------- estado compartilhado (servidor) ----------
+   No site publicado, o estado sobe para api/estado.php a cada ação (com 1,5 s de folga) e os outros
+   navegadores puxam a cada 8 s. Último-a-gravar-ganha; o que é do aparelho (tema, idioma, sessão) fica local. */
+const SINCRONIZA = /^https?:/.test(location.protocol) && !(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();
+let SINC_TS = LS.get('pr_sync')||'', sincTimer=null, sincOcupado=false, sincFalhas=0;
+const sincUrl = acao => 'api/estado.php?acao='+acao+'&q='+(typeof GENERICA!=='undefined'&&GENERICA?'demo':'remax');
+function sincSubir(){
+  if(!SINCRONIZA) return;
+  clearTimeout(sincTimer);
+  sincTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:S})});
+      const j=await r.json();
+      if(j.ok){ SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS); sincFalhas=0; }
+    }catch(e){ sincFalhas++; }
+  },1500);
+}
+async function sincPuxar(inicial){
+  if(!SINCRONIZA || sincOcupado) return false;
+  sincOcupado=true;
+  try{
+    const r=await fetch(sincUrl('ler')+'&desde='+encodeURIComponent(SINC_TS),{cache:'no-store'});
+    const j=await r.json();
+    if(!j.ok) return false;
+    if(j.vazio){ if(inicial) sincSubir(); return false; }          // servidor ainda sem estado: o deste navegador vira o comum
+    if(j.igual) return false;
+    if(j.estado && j.estado.v===4){
+      S=j.estado; SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS);
+      if(typeof migra==='function') migra(); if(typeof garantirCampos==='function') garantirCampos();
+      saveState(true);
+      return true;
+    }
+  }catch(e){}
+  finally{ sincOcupado=false; }
+  return false;
 }
 function commit(acao, objeto, fn, origem){
   if(fn) fn(S);
@@ -260,7 +298,7 @@ function commit(acao, objeto, fn, origem){
   S.audit = S.audit.slice(0,400);
   saveState();
 }
-function resetState(){ LS.del(KEY); S=seedState(); saveState(); if(typeof garantirCampos==='function') garantirCampos(); }
+function resetState(){ LS.del(KEY); S=seedState(); if(typeof garantirCampos==='function') garantirCampos(); saveState(); }
 
 /* ---------- leitura derivada do estado ---------- */
 const lojaDe = id => BASE.lojas.find(l=>l.id===id);

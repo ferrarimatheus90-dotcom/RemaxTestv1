@@ -7,7 +7,17 @@ function abrirTicket(o){
   const t=Object.assign({id:n, canal:'Plataforma', prio:'Média', sla:'8h', st:'Aberto', resp:'Fila N1',
     loja:escopoLoja()||'l18', autor:eu().nome, abertura:agora(), ia:false, msgs:[]}, o);
   commit('Abriu chamado', t.id+' · '+t.assunto, s=>{ s.tickets.unshift(t); }, o.canal||'Plataforma');
+  avisarSuporte(t);
   return t;
+}
+/* aviso ao suporte (e-mail e, quando configurado, WhatsApp) — o destinatário é fixo no servidor, por isso não pede chave */
+function avisarSuporte(t){
+  if(typeof SINCRONIZA==='undefined' || !SINCRONIZA) return;
+  const l=lojaDe(t.loja)||{};
+  fetch('api/notificar.php?acao=chamado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    id:t.id, assunto:t.assunto, autor:t.autor, papel:eu().papel, unidade:l.nome||'', prio:t.prio, sla:t.sla, canal:t.canal,
+    descricao:(t.msgs&&t.msgs[0]&&t.msgs[0].txt)||'', link:location.origin+location.pathname+'#/suporte'})})
+  .then(r=>r.json()).then(j=>{ if(j.ok) toast('<b>Suporte avisado</b> por '+esc(j.canais||'e-mail')+'.',1); else if(j.erro) console.warn('aviso ao suporte:', j.erro); }).catch(()=>{});
 }
 VIEWS.suporte=function(v){
   const ls=lojasVisiveis();

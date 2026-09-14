@@ -20,6 +20,43 @@ if ($acao === 'ping') {
     // dados públicos da instalação: o número do WhatsApp do suporte (aparece no Help Desk de todos os navegadores)
     responder(['ok' => true, 'configurado' => is_array($CFG), 'servico' => 'avisos', 'whatsSuporte' => (string) cfg('whatsapp_suporte')]);
 }
+/* chamado aberto na plataforma → e-mail (e WhatsApp, se configurado) para o suporte. Sem chave: destinatário fixo, só do próprio site. */
+if ($acao === 'chamado') {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !mesmoSite()) responder(['ok' => false, 'erro' => 'Só pelo próprio site.'], 403);
+    if (!is_array($CFG)) responder(['ok' => false, 'erro' => 'Servidor sem configuração.'], 503);
+    $d = corpoJson();
+    $para = cfg('email_suporte', cfg('smtp_user', cfg('email_remetente')));
+    $canais = [];
+    $lim = function ($k, $n) use ($d) { return mb_substr(trim((string) ($d[$k] ?? '')), 0, $n); };
+    $id = $lim('id', 12); $assunto = $lim('assunto', 120);
+    $texto = "Novo chamado " . $id . " na plataforma " . cfg('plataforma', 'Prontos em Rede') . "\n\n" .
+             "Assunto: " . $assunto . "\n" . "Quem abriu: " . $lim('autor', 80) . " (" . $lim('papel', 60) . ")\n" .
+             "Unidade: " . $lim('unidade', 80) . "\n" . "Prioridade: " . $lim('prio', 20) . " · SLA " . $lim('sla', 20) . " · canal " . $lim('canal', 30) . "\n" .
+             ($lim('descricao', 2000) !== '' ? "\nDescrição:\n" . $lim('descricao', 2000) . "\n" : '') .
+             "\nAbrir na plataforma: " . $lim('link', 200) . "\n";
+    if ($para !== '' && filter_var($para, FILTER_VALIDATE_EMAIL)) {
+        $ok = false;
+        if (cfg('smtp_user') !== '') {
+            [$ok, $det] = smtpEnviar(cfg('smtp_host', 'smtp.gmail.com'), (int) cfg('smtp_port', 465), cfg('smtp_user'), cfg('smtp_pass'),
+                                     cfg('email_remetente', cfg('smtp_user')), cfg('email_nome', 'Prontos em Rede'), $para, 'Chamado ' . $id . ' · ' . $assunto, $texto);
+        } else {
+            $de = cfg('email_remetente');
+            if ($de !== '') $ok = @mail($para, '=?UTF-8?B?' . base64_encode('Chamado ' . $id . ' · ' . $assunto) . '?=', $texto,
+                "From: =?UTF-8?B?" . base64_encode(cfg('email_nome', 'Prontos em Rede')) . "?= <" . $de . ">\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n", '-f' . $de);
+        }
+        if ($ok) $canais[] = 'e-mail';
+    }
+    $zap = preg_replace('/\D/', '', (string) cfg('whatsapp_suporte'));
+    if ($zap !== '' && cfg('whatsapp_token') !== '' && cfg('whatsapp_phone_id') !== '') {
+        if (strlen($zap) === 10 || strlen($zap) === 11) $zap = '55' . $zap;
+        [$cod] = http('POST', 'https://graph.facebook.com/v21.0/' . rawurlencode(cfg('whatsapp_phone_id')) . '/messages',
+                      ['Authorization: Bearer ' . cfg('whatsapp_token'), 'Content-Type: application/json'],
+                      json_encode(['messaging_product' => 'whatsapp', 'to' => $zap, 'type' => 'text', 'text' => ['body' => mb_substr($texto, 0, 1000)]]));
+        if ($cod >= 200 && $cod < 300) $canais[] = 'WhatsApp';
+    }
+    responder($canais ? ['ok' => true, 'canais' => implode(' e ', $canais)] : ['ok' => false, 'erro' => 'Nenhum canal de aviso configurado (email_suporte / smtp ou WhatsApp).']);
+}
+
 exigirChave();
 
 /* envio por SMTP — TLS direto (465) ou STARTTLS (587), sem biblioteca externa */

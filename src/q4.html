@@ -318,7 +318,7 @@ function viewAlertas(){
 function viewConfig(){
   const tam=(JSON.stringify(S).length/1024).toFixed(0);
   const ov=modal('Dados da plataforma',
-    '<div class="kv"><span class="k">Como funciona</span><span class="v">Tudo o que você faz fica gravado neste navegador. Aprovar uma evidência, agendar uma campanha, validar uma comprovação ou confirmar leitura muda os indicadores na hora.</span></div>'+
+    '<div class="kv"><span class="k">Como funciona</span><span class="v">'+(SINCRONIZA?'Tudo o que você faz é gravado e compartilhado: quem abrir o site em outro aparelho vê a mesma coisa em poucos segundos.':'Tudo o que você faz fica gravado neste navegador.')+' Aprovar uma evidência, agendar uma campanha, validar uma comprovação ou confirmar leitura muda os indicadores na hora.</span></div>'+
     '<div class="kv"><span class="k">Base real</span><span class="v">'+BASE.lojas.length+' unidades e '+BASE.corretores.length+' associados da capital de São Paulo, de dados públicos da RE/MAX. Com os gestores, '+TOTAL_USUARIOS()+' usuários.</span></div>'+
     '<div class="kv"><span class="k">Carga inicial</span><span class="v">Adesão, chamados, campanhas e leituras começam preenchidos para a tela não nascer vazia. A partir daí, quem move os números é você.</span></div>'+
     '<div class="kv"><span class="k">Ocupação</span><span class="v">'+tam+' KB gravados · '+S.audit.length+' registros de auditoria · '+S.excelencia.provas.length+' comprovações guardadas</span></div>',
@@ -329,7 +329,8 @@ function viewConfig(){
   });
   $('#rst',ov).addEventListener('click',()=>{
     if(!confirm('Isto apaga tudo o que foi feito e recarrega a demonstração. Continuar?')) return;
-    resetState(); fechaModal(); route(); renderNav(); toast('Demonstração recarregada.',1);
+    if(SINCRONIZA){ try{ fetch(sincUrl('zerar'),{method:'POST'}); }catch(e){} }
+    resetState(); fechaModal(); route(); renderNav(); toast('Demonstração recarregada para todos os aparelhos.',1);
   });
 }
 const EM_QUADRO=(function(){ try{ return window.self!==window.top; }catch(e){ return true; } })();

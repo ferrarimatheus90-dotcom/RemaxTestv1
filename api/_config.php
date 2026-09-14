@@ -39,6 +39,15 @@ function exigirChave() {
     }
 }
 
+/* a chamada veio do próprio site? (para ações sem chave, como o aviso de chamado e o estado compartilhado) */
+function mesmoSite() {
+    $host = preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? '');
+    foreach (['HTTP_ORIGIN', 'HTTP_REFERER'] as $h) {
+        if (!empty($_SERVER[$h])) { $u = parse_url($_SERVER[$h]); return isset($u['host']) && strcasecmp($u['host'], $host) === 0; }
+    }
+    return false;
+}
+
 function corpoJson() {
     $t = file_get_contents('php://input');
     $j = json_decode($t ?: '{}', true);
