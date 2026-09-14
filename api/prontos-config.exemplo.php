@@ -25,6 +25,9 @@ return [
     'smtp_user'         => '',   // ex.: seunome@gmail.com
     'smtp_pass'         => '',   // a senha de app de 16 letras, sem espaços
 
+    // número do WhatsApp do suporte mostrado no Help Desk (qualquer formato; sem o 55 também vale)
+    'whatsapp_suporte'  => '',   // ex.: +55 11 90000-0000
+
     // WhatsApp Cloud API (Meta for Developers → WhatsApp → Configuração da API)
     'whatsapp_token'    => '',   // token permanente do usuário do sistema
     'whatsapp_phone_id' => '',   // Phone number ID

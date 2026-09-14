@@ -17,7 +17,8 @@ require __DIR__ . '/_config.php';
 
 $acao = $_GET['acao'] ?? 'ping';
 if ($acao === 'ping') {
-    responder(['ok' => true, 'configurado' => is_array($CFG), 'servico' => 'avisos']);
+    // dados públicos da instalação: o número do WhatsApp do suporte (aparece no Help Desk de todos os navegadores)
+    responder(['ok' => true, 'configurado' => is_array($CFG), 'servico' => 'avisos', 'whatsSuporte' => (string) cfg('whatsapp_suporte')]);
 }
 exigirChave();
 

@@ -127,8 +127,16 @@ function voltaDoPortal(){
   setTimeout(()=>toast(erro? '<b>'+T('A conexão do Instagram não terminou.')+'</b><br>'+esc(erro)
                            : '<b>'+T('Instagram conectado.')+'</b> '+T('Em Parametrização, clique em “Testar conexão” para ver a conta.'), !erro), 800);
 }
+/* o WhatsApp do suporte vem do servidor (prontos-config.php), para valer em todos os navegadores */
+function puxarConfigServidor(){
+  if(!/^https?:/.test(location.protocol) || EM_QUADRO || GENERICA) return;
+  fetch('api/notificar.php?acao=ping',{cache:'no-store'}).then(r=>r.json()).then(j=>{
+    if(j && j.whatsSuporte && S.param && S.param.whatsSuporte!==j.whatsSuporte){ S.param.whatsSuporte=j.whatsSuporte; saveState(); if(telaAtual()==='helpdesk') route(); }
+  }).catch(()=>{});
+}
 function iniciarApp(){
   voltaDoPortal();
+  puxarConfigServidor();
   P = personas();
   marcarAcesso();
   renderWho(); renderNav();
