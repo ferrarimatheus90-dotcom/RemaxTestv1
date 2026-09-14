@@ -267,13 +267,22 @@ function sincSubir(){
   if(!SINC_PRONTA){ sincPendente=true; return; }        // nunca gravar antes de ler o que já está no servidor
   clearTimeout(sincTimer);
   sincTimer=setTimeout(async()=>{
+    sincTimer=null;
     try{
-      const r=await fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:S})});
+      const r=await fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:S}),keepalive:true});
       const j=await r.json();
       if(j.ok){ SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS); sincFalhas=0; }
     }catch(e){ sincFalhas++; }
-  },1500);
+  },800);
 }
+/* fechou ou escondeu a aba com envio pendente: manda na hora, sem esperar resposta */
+function sincDescarga(){
+  if(!SINCRONIZA || !sincTimer) return;
+  clearTimeout(sincTimer); sincTimer=null;
+  try{ navigator.sendBeacon(sincUrl('gravar'), new Blob([JSON.stringify({estado:S})],{type:'application/json'})); }catch(e){}
+}
+window.addEventListener('pagehide', sincDescarga);
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) sincDescarga(); });
 async function sincPuxar(inicial){
   if(!SINCRONIZA || sincOcupado) return false;
   sincOcupado=true;
