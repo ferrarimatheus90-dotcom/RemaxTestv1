@@ -30,10 +30,12 @@ $msgErro = function ($j) { return is_array($j) ? ($j['message'] ?? ($j['error'] 
 $time = cfg('bundle_team_id');
 $nomeTime = '';
 if (!$time) {
-    [$cod, $j, $erro] = http('GET', $base . '/teams', $cab);
+    [$cod, $j, $erro] = http('GET', $base . '/team/?limit=10', $cab);          // lista os times (a barra final faz parte do caminho)
+    if ($cod === 404) [$cod, $j, $erro] = http('GET', $base . '/organization/', $cab);
     if ($cod === 401 || $cod === 403) responder(['ok' => false, 'erro' => 'A chave da API foi recusada (HTTP ' . $cod . '). Confira bundle_api_key.'], 502);
     if ($cod !== 200) responder(['ok' => false, 'erro' => 'A API de publicação respondeu HTTP ' . $cod . ' ao listar os times.' . ($erro ? ' (' . $erro . ')' : '')], 502);
-    $lista = isset($j['items']) ? $j['items'] : (isset($j['data']) ? $j['data'] : (is_array($j) && isset($j[0]) ? $j : []));
+    $lista = isset($j['items']) ? $j['items'] : (isset($j['teams']) ? $j['teams'] : (isset($j['data']) ? $j['data'] : (is_array($j) && isset($j[0]) ? $j : [])));
+    $lista = array_values(array_filter((array) $lista, function ($t) { return empty($t['deletedAt']); }));
     if (!$lista || empty($lista[0]['id'])) responder(['ok' => false, 'erro' => 'A chave é válida, mas a organização não tem nenhum time. Crie um time no painel.'], 502);
     $time = $lista[0]['id']; $nomeTime = $lista[0]['name'] ?? '';
 }
@@ -103,8 +105,8 @@ if ($acao === 'publicar') {
         'socialAccountTypes' => ['INSTAGRAM'],
         'data' => ['INSTAGRAM' => ['type' => 'POST', 'text' => $legenda, 'uploadIds' => [$uploadId]]],
     ]);
-    [$cod, $j] = http('POST', $base . '/posts', $cabJson, $post);
-    if ($cod === 404) [$cod, $j] = http('POST', $base . '/post', $cabJson, $post);   // a documentação cita os dois caminhos
+    [$cod, $j] = http('POST', $base . '/post/', $cabJson, $post);
+    if ($cod === 404) [$cod, $j] = http('POST', $base . '/posts', $cabJson, $post);   // a documentação cita os dois caminhos
     if ($cod < 200 || $cod >= 300) {
         responder(['ok' => false, 'erro' => 'A API recusou a publicação (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
     }
