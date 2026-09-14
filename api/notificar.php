@@ -21,37 +21,44 @@ if ($acao === 'ping') {
 }
 exigirChave();
 
-/* envio por SMTP com TLS (Gmail, Outlook, Hostinger…) — sem biblioteca externa */
-function smtpEnviar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto, $texto) {
-    $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
-    $s = @stream_socket_client('ssl://' . $host . ':' . $porta, $en, $es, 25, STREAM_CLIENT_CONNECT, $ctx);
-    if (!$s) return [false, 'não conectou em ' . $host . ':' . $porta . ' (' . $es . ')'];
-    stream_set_timeout($s, 25);
+/* envio por SMTP — TLS direto (465) ou STARTTLS (587), sem biblioteca externa */
+function smtpTentar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto, $texto) {
+    $tls = ((int) $porta === 465);
+    $ctx = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'SNI_enabled' => true]]);
+    $s = @stream_socket_client(($tls ? 'ssl://' : 'tcp://') . $host . ':' . $porta, $en, $es, 20, STREAM_CLIENT_CONNECT, $ctx);
+    if (!$s) return [false, 'porta ' . $porta . ': não conectou (' . ($es ?: 'erro ' . $en) . ')'];
+    stream_set_timeout($s, 20);
     $ler = function () use ($s) { $r = ''; while (($l = fgets($s, 1024)) !== false) { $r .= $l; if (strlen($l) < 4 || $l[3] !== '-') break; } return $r; };
-    $cmd = function ($c, $ok) use ($s, $ler) { fwrite($s, $c . "
-"); $r = $ler(); return [substr($r, 0, 1) === (string) $ok, trim($r)]; };
-    $ler();
-    foreach ([['EHLO connectagendapro.com', 2], ['AUTH LOGIN', 3], [base64_encode($usuario), 3], [base64_encode($senha), 2],
-              ['MAIL FROM:<' . $de . '>', 2], ['RCPT TO:<' . $para . '>', 2], ['DATA', 3]] as $par) {
-        [$ok, $r] = $cmd($par[0], $par[1]);
-        if (!$ok) { fclose($s); return [false, (strpos($par[0], 'AUTH') === 0 || strlen($par[0]) > 40 ? 'autenticação recusada' : $par[0]) . ' → ' . $r]; }
+    $cmd = function ($c, $ok) use ($s, $ler) { fwrite($s, $c . "\r\n"); $r = $ler(); return [substr($r, 0, 1) === (string) $ok, trim($r)]; };
+    $banner = trim($ler());
+    if ($banner === '') { fclose($s); return [false, 'porta ' . $porta . ': conectou, mas o servidor não respondeu (saída SMTP bloqueada pela hospedagem?)']; }
+    [$ok, $r] = $cmd('EHLO connectagendapro.com', 2); if (!$ok) { fclose($s); return [false, 'EHLO → ' . $r]; }
+    if (!$tls) {
+        [$ok, $r] = $cmd('STARTTLS', 2); if (!$ok) { fclose($s); return [false, 'STARTTLS → ' . $r]; }
+        if (!@stream_socket_enable_crypto($s, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) { fclose($s); return [false, 'porta ' . $porta . ': falha ao ligar o TLS']; }
+        [$ok, $r] = $cmd('EHLO connectagendapro.com', 2); if (!$ok) { fclose($s); return [false, 'EHLO (TLS) → ' . $r]; }
     }
-    $msg = "From: =?UTF-8?B?" . base64_encode($nome) . "?= <" . $de . ">
-To: <" . $para . ">
-" .
-           "Subject: =?UTF-8?B?" . base64_encode($assunto) . "?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-" .
-           "Date: " . date(DATE_RFC2822) . "
-
-" . str_replace("
-.", "
-..", $texto) . "
-.";
+    foreach ([['AUTH LOGIN', 3, 'AUTH'], [base64_encode($usuario), 3, 'usuário'], [base64_encode($senha), 2, 'senha'],
+              ['MAIL FROM:<' . $de . '>', 2, 'MAIL FROM'], ['RCPT TO:<' . $para . '>', 2, 'RCPT TO'], ['DATA', 3, 'DATA']] as $par) {
+        [$ok, $r] = $cmd($par[0], $par[1]);
+        if (!$ok) { fclose($s); return [false, $par[2] . ' → ' . ($r ?: 'sem resposta')]; }
+    }
+    $msg = "From: =?UTF-8?B?" . base64_encode($nome) . "?= <" . $de . ">\r\nTo: <" . $para . ">\r\n" .
+           "Subject: =?UTF-8?B?" . base64_encode($assunto) . "?=\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n" .
+           "Date: " . date(DATE_RFC2822) . "\r\n\r\n" . str_replace("\n.", "\n..", $texto) . "\r\n.";
     [$ok, $r] = $cmd($msg, 2);
     $cmd('QUIT', 2); fclose($s);
-    return [$ok, $r];
+    return [$ok, $ok ? $r : 'envio → ' . $r];
+}
+function smtpEnviar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto, $texto) {
+    $erros = [];
+    foreach (array_unique([(int) $porta, 465, 587]) as $pt) {
+        [$ok, $det] = smtpTentar($host, $pt, $usuario, $senha, $de, $nome, $para, $assunto, $texto);
+        if ($ok) return [true, $det];
+        $erros[] = $det;
+        if (strpos($det, 'senha') === 0 || strpos($det, 'usuário') === 0) break;   // credencial errada: não adianta trocar de porta
+    }
+    return [false, implode(' | ', $erros)];
 }
 
 if ($acao === 'status') {
