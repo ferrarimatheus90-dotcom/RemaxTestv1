@@ -29,8 +29,21 @@ Senha de todas: `Rede@2026`
 |---|---|
 | `/` | Prontos em Rede, com a marca RE/MAX (`index.html`) |
 | `/demo/` | Demonstração genérica, sem a marca RE/MAX e com nomes fictícios — para apresentar a outras empresas (`demo/index.html`). Os dados dela ficam separados dos da versão RE/MAX. |
+| `/v3/` | **Cópia de segurança congelada da versão de 14/09/2026** — a que foi apresentada na reunião com o Bruno. Não recebe alterações. Serve para comparar ou voltar a mostrar o que já estava aprovado. |
 
-A versão anterior a esta (v2) está guardada na branch `v2`.
+## Cópias de segurança
+
+Antes de cada rodada de alterações, a versão que está no ar é congelada em duas frentes:
+
+| Versão | Branch | Endereço congelado |
+|---|---|---|
+| v2 · antes da reunião de 10/09 | `v2` | — |
+| v3 · apresentada em 14/09 | `v3` | `/v3/` |
+
+A pasta `/v3/` é o próprio `index.html` daquele dia, com os caminhos de `api/` e da vinheta
+apontando para a raiz, para não duplicar arquivo. Ela mostra um selo no canto inferior esquerdo.
+
+Para voltar o site inteiro a uma versão anterior, implante a branch correspondente pelo hPanel.
 
 ## Publicar na Hostinger
 
