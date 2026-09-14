@@ -1,0 +1,154 @@
+<style>
+.midia-li{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
+.midia-li:last-child{border-bottom:0}
+.midia-li audio{height:34px;max-width:240px}
+.midia-li .bd{flex:1;min-width:0}
+.midia-li .bd b{font-size:13.6px;letter-spacing:-.012em}
+@media(max-width:640px){ .midia-li{flex-wrap:wrap} }
+</style>
+<script>
+/* =======================================================================
+   v3.10 — DOIS PEDIDOS DA REUNIÃO DE 14/09
+
+   1) Biblioteca de mídia no Brand Center
+      "Se eles quiserem padronizar, todo mundo ter a mesma intro de Reels,
+       eles vão colocar aqui: vinhetas, trilhas de vídeo e spots de rádio.
+       Essa biblioteca tem que estar lá no Brand Center mesmo. Brand Center,
+       não misturar de novo."
+      Estava dentro da RE/MAX TV, que é do Centro de Comunicação. Passa a ser
+      tela própria do Brand Center; a RE/MAX TV aponta para cá.
+
+   2) O associado também publica
+      "Tá travado para o corretor postar." O associado passa a ter Postar
+      agora na campanha da rede, na conta dele, do mesmo jeito que já existia
+      no Estúdio de Arte.
+   ======================================================================= */
+
+/* ---------- 1 · Biblioteca de mídia (Brand Center) ---------- */
+const MIDIA_TIPOS = ['Vinheta de abertura','Vinheta de encerramento','Trilha','Spot de rádio'];
+/* o que a rede espera encontrar aqui, mesmo antes de a Matriz subir o arquivo */
+const MIDIA_PADRAO = [
+  {id:'mp1', nome:'Vinheta de abertura · Reels', tipo:'Vinheta de abertura', obs:'3 segundos · abre todo Reels da rede', padrao:true},
+  {id:'mp2', nome:'Vinheta de encerramento · assinatura', tipo:'Vinheta de encerramento', obs:'2 segundos · fecha com o balão e a assinatura', padrao:true},
+  {id:'mp3', nome:'Trilha institucional 2026', tipo:'Trilha', obs:'liberada para vídeos da rede', padrao:true},
+  {id:'mp4', nome:'Spot de rádio · 30 segundos', tipo:'Spot de rádio', obs:'locução aprovada, para rádio e áudio patrocinado', padrao:true}
+];
+let MIDIA_CAT='Todos';
+VIEWS.midia=function(v){
+  const enviados=(S.audios||[]);
+  const lista=MIDIA_PADRAO.filter(p=>!enviados.some(a=>a.nome===p.nome)).concat(enviados);
+  const cats=['Todos'].concat(MIDIA_TIPOS);
+  const mostra=lista.filter(x=>MIDIA_CAT==='Todos'||x.tipo===MIDIA_CAT);
+  const comArquivo=lista.filter(x=>x.src).length;
+
+  v.innerHTML=
+    ph('Biblioteca de mídia', T('Vinhetas, trilhas de vídeo e spots de rádio da marca. É daqui que sai a mesma intro de Reels para a rede inteira: quem grava o vídeo baixa a vinheta oficial e monta em cima dela.'),
+      souMatriz()?'<button class="btn pri" id="mdNovo">＋ '+esc(T('Publicar mídia'))+'</button>':'','midia')+
+    '<div class="grid g4" style="margin-bottom:18px">'+
+      kpi(T('Itens na biblioteca'), lista.length, T('vinhetas, trilhas e spots'))+
+      kpi(T('Com arquivo publicado'), comArquivo+'/'+lista.length, comArquivo<lista.length? T('os demais esperam o arquivo da Matriz') : T('tudo disponível'), comArquivo===lista.length?'k-ok':'k-warn')+
+      kpi(T('Vinhetas'), lista.filter(x=>/Vinheta/.test(x.tipo||'')).length, T('abertura e encerramento'))+
+      kpi(T('Spots de rádio'), lista.filter(x=>x.tipo==='Spot de rádio').length, T('locução aprovada'))+
+    '</div>'+
+    '<div class="chips" id="mdCats" style="margin-bottom:16px">'+cats.map(c=>'<button class="chip '+(c===MIDIA_CAT?'on':'')+'" data-c="'+esc(c)+'">'+esc(T(c))+'</button>').join('')+'</div>'+
+    '<div class="card"><div class="ch"><h3>'+esc(T(MIDIA_CAT==='Todos'?'Todos os arquivos':MIDIA_CAT))+'</h3><div class="r"><span class="mini">'+esc(T('a versão vigente da marca'))+'</span></div></div><div class="cb">'+
+      (mostra.map(a=>'<div class="midia-li"><span class="tag mut">'+esc(T(a.tipo||'Trilha'))+'</span>'+
+        '<div class="bd"><b>'+esc(a.nome)+'</b><div class="mini">'+esc(a.obs||'')+'</div></div>'+
+        (a.src? '<audio controls preload="none" src="'+a.src+'"></audio>'
+              : '<span class="tag warn">'+esc(T('aguardando o arquivo da Matriz'))+'</span>')+
+        (a.src?'<button class="btn sm" data-baixa="'+a.id+'">↓ '+esc(T('Baixar'))+'</button>':'')+
+        (souMatriz()&&!a.padrao?'<button class="btn sm" data-mdtira="'+a.id+'">×</button>':'')+'</div>').join('')||
+        '<div class="empty">'+esc(T('Nada nesta categoria ainda.'))+'</div>')+
+    '</div></div>'+
+    '<div class="hint" style="margin-top:16px">'+esc(T('Padronizar a abertura é o que faz a rede parecer uma marca só no vídeo. Baixe a vinheta oficial, monte o seu Reels em cima dela e publique pelo Social Hub.'))+
+      ' <a href="#/estudio">'+esc(T('Abrir o Estúdio de Arte'))+' →</a></div>';
+
+  $$('#mdCats .chip',v).forEach(b=>b.addEventListener('click',()=>{ MIDIA_CAT=b.dataset.c; route(); }));
+  $$('[data-mdtira]',v).forEach(b=>b.addEventListener('click',()=>{
+    commit('Removeu mídia da marca', (enviados.find(x=>x.id===b.dataset.mdtira)||{}).nome||'', s=>{ s.audios=(s.audios||[]).filter(x=>x.id!==b.dataset.mdtira); });
+    route(); toast(T('Arquivo removido da biblioteca.'));
+  }));
+  $$('[data-baixa]',v).forEach(b=>b.addEventListener('click',()=>{
+    const a=lista.find(x=>x.id===b.dataset.baixa); if(!a||!a.src) return;
+    fetch(a.src).then(r=>r.blob()).then(bl=>{ baixarBlob(bl, a.nome.replace(/[^\w\-]+/g,'-').toLowerCase()+'.mp3'); toast(T('Arquivo baixado.'),1); });
+  }));
+  $('#mdNovo')&&$('#mdNovo').addEventListener('click',()=>abrirEnvioDeMidia());
+};
+/* o mesmo formulário que estava na RE/MAX TV, agora aqui */
+function abrirEnvioDeMidia(){
+  let arq=null;
+  const ov=modal(T('Publicar mídia da marca'),
+    '<div class="field"><label>'+esc(T('Nome'))+'</label><input id="auN" placeholder="Ex.: Vinheta de abertura · Reels 2026"></div>'+
+    '<div class="field"><label>'+esc(T('Tipo'))+'</label><select id="auT">'+MIDIA_TIPOS.map(t=>'<option>'+esc(t)+'</option>').join('')+'</select></div>'+
+    '<div class="field"><label>'+esc(T('Como usar'))+'</label><input id="auO" placeholder="Ex.: 3 segundos, abre todo Reels da rede"></div>'+
+    '<button class="btn" id="auF" style="width:100%;justify-content:center">'+esc(T('Escolher arquivo (MP3, até 2 MB)'))+'</button><div class="mini" id="auI" style="margin-top:6px"></div>',
+    '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn pri" id="auOk">'+esc(T('Publicar'))+'</button>');
+  $('#auF',ov).addEventListener('click',()=>{ const inp=$('#filePicker'); inp.value=''; inp.accept='audio/*'; inp.multiple=false;
+    inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+      if(f.size>2*1048576){ arq={nome:f.name, tam:f.size}; $('#auI',ov).textContent=f.name+' · '+kb(f.size)+' — '+T('grande demais para a demonstração: fica só o registro.'); return; }
+      const fr=new FileReader(); fr.onload=()=>{ arq={nome:f.name, tam:f.size, src:fr.result}; $('#auI',ov).textContent=f.name+' · '+kb(f.size); }; fr.readAsDataURL(f); };
+    inp.click(); });
+  $('#auOk',ov).addEventListener('click',()=>{
+    const nome=$('#auN',ov).value.trim()||(arq&&arq.nome)||T('Mídia da marca');
+    const obs=$('#auO',ov).value.trim() || (arq? arq.nome+' · '+kb(arq.tam) : '');
+    commit('Publicou mídia da marca', nome, s=>{ s.audios=(s.audios||[]); s.audios.unshift({id:uid('au'), nome, tipo:$('#auT',ov).value, src:arq&&arq.src||'', obs}); });
+    fechaModal(); route(); toast(T('Mídia publicada na biblioteca do Brand Center.'),1);
+  });
+}
+
+/* ---------- 2 · o associado publica a campanha na conta dele ---------- */
+async function arteDaCampanha(camp){
+  if(camp.arte){
+    const b=await fetch(camp.arte).then(r=>r.blob());
+    return await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); });
+  }
+  const u=eu();
+  const cv=await montarPeca({fmt:'feed', tema:'azul', titulo:camp.tit.split('—')[0].trim(),
+    sub:camp.peca+' · publicação sincronizada', nome:u.nome, creci:u.creci||'', tel:u.tel||'',
+    unidade:(u.loja? lojaDe(u.loja).nome : 'RE/MAX Brasil'), foto:u.foto});
+  return cv.toDataURL('image/jpeg',0.9);
+}
+function postarCampanhaAgora(camp){
+  const noServidor=/^https?:/.test(location.protocol) && (typeof EM_QUADRO==='undefined' || !EM_QUADRO);
+  if(!noServidor){ toast('<b>'+esc(T('Só no site publicado.'))+'</b> '+esc(T('Aberto do computador, a plataforma não tem com quem falar.'))); return; }
+  if(!LS.get('pr_chave_api')){ toast('<b>'+esc(T('Publicação real ainda não liberada neste navegador.'))+'</b><br>'+esc(T('Peça ao Construtor a chave de operação (Parametrização).'))); return; }
+  const u=S.usuarios[euId()]||{};
+  const conta = (u.teamSocial && u.ig) ? (u.igConta||T('sua conta')) : T('conta padrão da rede');
+  const ov=modal(T('Postar agora no Instagram'),
+    '<div class="hint warn" style="margin-bottom:12px"><b>'+esc(T('Isto publica de verdade, em público'))+'</b>, '+esc(T('em'))+' <b>'+esc(conta)+'</b>. '+
+      esc(T('Dá para apagar depois no próprio Instagram.'))+
+      ((u.teamSocial&&u.ig)?'':' '+esc(T('Para publicar na sua própria conta, conecte-a em'))+' <a href="#/redes">'+esc(T('Redes sociais'))+'</a>.')+'</div>'+
+    '<div class="field" style="margin:0"><label>'+esc(T('Legenda'))+'</label><textarea id="cpLegT" rows="5">'+esc(camp.leg||camp.tit)+'</textarea></div>'+
+    '<div id="cpRes" class="mini" style="margin-top:10px"></div>',
+    '<button class="btn" onclick="fechaModal()">'+esc(T('Cancelar'))+'</button><button class="btn pri" id="cpOk">'+esc(T('Postar agora'))+'</button>');
+  $('#cpOk',ov).addEventListener('click',async()=>{
+    const leg=$('#cpLegT',ov).value.trim();
+    const res=$('#cpRes',ov); const bt=$('#cpOk',ov); bt.disabled=true;
+    res.innerHTML='<span class="tag">…</span> '+esc(T('Preparando a arte da campanha…'));
+    let imagem;
+    try{ imagem=await arteDaCampanha(camp); }
+    catch(e){ res.innerHTML='<span class="tag bad">'+esc(T('Atenção'))+'</span> '+esc(T('não consegui preparar a arte.')); bt.disabled=false; return; }
+    res.innerHTML='<span class="tag">…</span> '+esc(T('Enviando para a integração de publicação…'));
+    const r=await chamarApi('social.php','publicar',{legenda:leg, imagem, agora:true, teamId:(u.teamSocial&&u.ig)? u.teamSocial : ''});
+    if(!r.ok){ res.innerHTML='<span class="tag bad">'+esc(T('Atenção'))+'</span> '+esc(r.erro||T('não foi possível publicar')); bt.disabled=false; return; }
+    commit('Postou a campanha no Instagram', camp.tit, s=>{
+      const c=s.campanhas.find(x=>x.id===camp.id); if(c){ c.ag=c.ag||{}; c.ag[euId()]=agora(); }
+      s.social.fila=(s.social.fila||[]).concat([{id:uid('f'), uid:euId(), tpl:camp.tpl||'t01', tplNome:'Campanha · '+camp.tit,
+        thumb:'', leg, fmt:'Feed', quando:agora(), st:'publicada', postId:r.id}]);
+    }, 'Integração de publicação');
+    res.innerHTML='<span class="tag ok">'+esc(T('Enviado'))+'</span> '+esc(r.msg||'')+' '+esc(T('Acompanhando a publicação…'));
+    let vez=0;
+    const acompanha=async()=>{ vez++;
+      const st=await chamarApi('social.php','situacao&id='+encodeURIComponent(r.id));
+      if(!document.body.contains(res)) return;
+      if(!st.ok){ res.innerHTML='<span class="tag warn">?</span> '+esc(st.erro||''); return; }
+      if(st.status==='POSTED'){ res.innerHTML='<span class="tag ok">'+esc(T('Publicado no Instagram'))+'</span> '+(st.link?'<a href="'+esc(st.link)+'" target="_blank" rel="noopener">'+esc(T('abrir a publicação'))+' →</a>':'');
+        toast('<b>'+esc(T('Publicado no Instagram.'))+'</b>',1); return; }
+      if(st.status==='ERROR'){ res.innerHTML='<span class="tag bad">'+esc(T('Não publicou'))+'</span> '+esc(st.erro||T('a rede social recusou')); return; }
+      res.innerHTML='<span class="tag">'+esc(st.rotulo||st.status)+'</span> '+esc(T('a integração está publicando…'))+' ('+vez+')';
+      if(vez<24) setTimeout(acompanha,5000);
+    };
+    setTimeout(acompanha,8000);
+  });
+}
+</script>

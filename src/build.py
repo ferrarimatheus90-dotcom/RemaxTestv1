@@ -37,6 +37,7 @@ PARTES = [
     'q18.html',  # v3 · Help Desk, pessoas da rede, perfil, aviso ao entrar
     'q19.html',  # v3 · jornadas, alçadas, regras do PEX, nomenclatura por cliente
     'q20.html',  # v3 · BI (marketing digital e tradicional) e Parametrização
+    'q23.html',  # v3.10 · biblioteca de mídia no Brand Center e Postar agora do associado
     'q22.html',  # v3.10 · a rede nacional (600 unidades) para os indicadores
     'q21.html',  # v3.10 · BI por módulo (submenu do Intelligence) com detalhamento
     'q16.html',  # ícones, idiomas, tema, marca luminosa e abertura

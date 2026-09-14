@@ -157,26 +157,21 @@ VIEWS.tv=function(v){
   if(cats.indexOf(TV_CAT)<0) TV_CAT='Todos';
   const lista=(S.tv||[]).filter(x=>TV_CAT==='Todos'||x.cat===TV_CAT);
   v.innerHTML=
-    ph('RE/MAX TV', GENERICA? T('Vídeos institucionais, mensagens da liderança e treinamentos da rede — mais as trilhas e áudios da marca. Tudo abre aqui dentro, sem sair da plataforma.')
-                           : T('Vídeos institucionais, mensagens da liderança e palestras do presidente da RE/MAX Brasil, Peixoto Accyoli — mais as trilhas e áudios da marca. Tudo abre aqui dentro, sem sair da plataforma.'),
-      souMatriz()?'<button class="btn" id="tvAudio">＋ '+esc(T('Áudio'))+'</button><button class="btn pri" id="tvNovo">＋ '+esc(T('Adicionar vídeo'))+'</button>':'','tv')+
+    ph('RE/MAX TV', GENERICA? T('Vídeos institucionais, mensagens da liderança e treinamentos da rede — Tudo abre aqui dentro, sem sair da plataforma.')
+                           : T('Vídeos institucionais, mensagens da liderança e palestras do presidente da RE/MAX Brasil, Peixoto Accyoli — Tudo abre aqui dentro, sem sair da plataforma.'),
+      souMatriz()?'<button class="btn pri" id="tvNovo">＋ '+esc(T('Adicionar vídeo'))+'</button>':'','tv')+
     '<div class="chips" id="tvCats" style="margin-bottom:16px">'+cats.map(c=>'<button class="chip '+(c===TV_CAT?'on':'')+'" data-c="'+esc(c)+'">'+esc(T(c))+'</button>').join('')+'</div>'+
     '<div class="tvgrid">'+(lista.map(x=>'<div class="tvcard" data-tv="'+x.id+'">'+capaHTML(x)+
       '<div class="tx"><b>'+esc(x.tit)+'</b><span>'+esc(x.canal||'')+(x.dur?' · '+esc(x.dur):'')+'</span>'+
       (souMatriz()?'<div class="acoes"><button class="btn sm" data-dest="'+x.id+'">'+(x.dest?'★ '+esc(T('Em destaque')):esc(T('Destacar na home')))+'</button><button class="btn sm" data-tira="'+x.id+'">'+esc(T('Remover'))+'</button></div>':'')+
       '</div></div>').join('')||'<div class="empty">'+esc(T('Nenhum vídeo nesta categoria.'))+'</div>')+'</div>'+
-    '<div class="card" style="margin-top:22px"><div class="ch"><h3>'+esc(T('Trilhas e áudios da marca'))+'</h3><div class="r"><span class="mini">'+esc(T('vinhetas, trilhas de vídeo e spots de rádio'))+'</span></div></div><div class="cb">'+
-      ((S.audios||[]).map(a=>'<div class="audio-li"><span class="tag mut">'+esc(a.tipo||'Trilha')+'</span><div style="flex:1;min-width:0"><b style="font-size:13.4px">'+esc(a.nome)+'</b><div class="mini">'+esc(a.obs||'')+'</div></div>'+
-        (a.src?'<audio controls preload="none" src="'+a.src+'"></audio>':'<span class="mini">'+esc(T('arquivo no servidor na versão final'))+'</span>')+
-        (souMatriz()?'<button class="btn sm" data-atira="'+a.id+'">×</button>':'')+'</div>').join('')||
-        '<div class="empty">'+esc(T('A Matriz ainda não publicou áudios. As trilhas institucionais entram aqui.'))+'</div>')+
-    '</div></div>';
+    '<div class="hint" style="margin-top:22px">'+esc(T('As vinhetas, trilhas de vídeo e spots de rádio da marca ficam no Brand Center, na Biblioteca de mídia.'))+
+      ' <a href="#/midia">'+esc(T('Abrir a Biblioteca de mídia'))+' →</a></div>';
   $$('#tvCats .chip',v).forEach(b=>b.addEventListener('click',()=>{ TV_CAT=b.dataset.c; route(); }));
   $$('[data-dest]',v).forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
     commit('Destacou vídeo na home', (S.tv.find(x=>x.id===b.dataset.dest)||{}).tit, s=>{ s.tv.forEach(x=>x.dest= x.id===b.dataset.dest?1:0); }); route(); toast(T('Vídeo em destaque na tela inicial.'),1); }));
   $$('[data-tira]',v).forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
     commit('Removeu vídeo da RE/MAX TV', (S.tv.find(x=>x.id===b.dataset.tira)||{}).tit, s=>{ s.tv=s.tv.filter(x=>x.id!==b.dataset.tira); }); route(); }));
-  $$('[data-atira]',v).forEach(b=>b.addEventListener('click',()=>{ commit('Removeu áudio','', s=>{ s.audios=s.audios.filter(x=>x.id!==b.dataset.atira); }); route(); }));
   $('#tvNovo')&&$('#tvNovo').addEventListener('click',()=>{
     const ov=modal(T('Adicionar vídeo'),
       '<div class="field"><label>'+esc(T('Link do vídeo'))+'</label><input id="tvU" placeholder="https://www.youtube.com/watch?v=…  ou  https://www.instagram.com/reel/…"></div>'+

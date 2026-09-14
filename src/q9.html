@@ -42,7 +42,8 @@ VIEWS.prontos=function(v,arg){
 
   v.innerHTML =
     ph('Campanhas da rede','Comunicação sincronizada: a Matriz publica arte e legenda e a rede inteira posta no mesmo dia e na mesma hora — em um clique, sem repassar arquivo por WhatsApp. Crie as campanhas dos próximos meses e programe cada uma para toda a rede, por regional ou por unidade.',
-      souBrasil?'<button class="btn pri" id="novaC">+ Nova campanha</button>':(souCorretor()&&!euAg?'<button class="btn pri" id="agEu">Agendar na minha conta</button>':''),'prontos')+
+      souBrasil?'<button class="btn pri" id="novaC">+ Nova campanha</button>':
+        (souCorretor()? (euAg?'':'<button class="btn pri" id="agEu">Agendar na minha conta</button>')+'<button class="btn" id="postarJaH">Postar agora</button>' : ''),'prontos')+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi('Próxima publicação', new Date(proximaCampanha().dt).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}), esc(proximaCampanha().tit.split('—')[0].trim())+' · '+new Date(proximaCampanha().dt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}))+
       kpi('Campanhas à frente', proximas.length, programadas+' programadas · '+(proximas.length-programadas)+' a programar', proximas.length-programadas?'k-warn':'k-ok')+
@@ -61,6 +62,7 @@ VIEWS.prontos=function(v,arg){
         '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'+
           (souBrasil?'<button class="btn pri" id="disparar">'+(camp.st==='agendada'?'Reprogramar':'Programar para as unidades')+'</button>':
            euAg?'<button class="btn" id="desag">Cancelar meu agendamento</button>':'<button class="btn pri" id="agEu2">Agendar na minha conta</button>')+
+          (souCorretor()?'<button class="btn" id="postarJa">Postar agora</button>':'')+
           '<button class="btn" id="cpLeg">Copiar legenda</button>'+
           '<a class="btn" href="#/estudio/'+(camp.tpl||'t01')+'">Personalizar</a>'+
           '<button class="btn" id="dlArte">↓ Baixar arte</button></div>'+
@@ -108,6 +110,8 @@ VIEWS.prontos=function(v,arg){
   const agendar=cid=>{ commit('Agendou campanha', S.campanhas.find(c=>c.id===cid).tit, s=>{ const c=s.campanhas.find(x=>x.id===cid); c.ag=c.ag||{}; c.ag[euId()]=c.dt; });
     toast('<b>Agendado.</b> Sua conta publica junto com a rede.',1); route(); };
   $('#agEu')&&$('#agEu').addEventListener('click',()=>agendar(camp.id));
+  /* pedido do Bruno (14/09): o associado tambem publica na conta dele, sem esperar o agendamento */
+  [$('#postarJa'), $('#postarJaH')].forEach(b=>{ if(b) b.addEventListener('click',()=>postarCampanhaAgora(camp)); });
   $('#agEu2')&&$('#agEu2').addEventListener('click',()=>agendar(camp.id));
   $$('[data-ag]',v).forEach(b=>b.addEventListener('click',()=>agendar(b.dataset.ag)));
   $('#desag')&&$('#desag').addEventListener('click',()=>{ commit('Cancelou agendamento',camp.tit,s=>{delete s.campanhas.find(x=>x.id===camp.id).ag[euId()];}); route(); toast('Agendamento cancelado.'); });
