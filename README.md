@@ -58,6 +58,13 @@ A plataforma chama `api/social.php` (publicação pela bundle.social) e `api/not
 
 Para conferir se o servidor está pronto: `https://seudominio/api/social.php?acao=ping`.
 
+**Estado compartilhado:** `api/estado.php` guarda o estado da demonstração em `prontos-estado-remax.json`
+(e `-demo.json` para a versão genérica), na mesma pasta do `prontos-config.php`. Cada navegador envia o que
+faz e confere a cada 8 s; “Recarregar demonstração” zera para todos. Só o próprio site consegue gravar.
+
+**Aviso de chamado:** ao abrir um chamado, `api/notificar.php?acao=chamado` manda e-mail para `email_suporte`
+(ou, se vazio, para o `smtp_user`) e WhatsApp para `whatsapp_suporte` quando a Cloud API estiver configurada.
+
 ## Documentos
 
 - `docs/Guia-de-Apresentacao-Prontos-em-Rede-v3.pdf` — o sistema inteiro, tela por tela, com roteiro de apresentação e perguntas prováveis.

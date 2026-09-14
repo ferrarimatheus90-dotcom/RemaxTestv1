@@ -269,7 +269,7 @@ function sincSubir(){
   sincTimer=setTimeout(async()=>{
     sincTimer=null;
     try{
-      const r=await fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:S}),keepalive:true});
+      const r=await fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:S})});   // sem keepalive: ele limita o corpo a 64 KB
       const j=await r.json();
       if(j.ok){ SINC_TS=j.atualizado; LS.set('pr_sync',SINC_TS); sincFalhas=0; }
     }catch(e){ sincFalhas++; }
@@ -279,7 +279,11 @@ function sincSubir(){
 function sincDescarga(){
   if(!SINCRONIZA || !sincTimer) return;
   clearTimeout(sincTimer); sincTimer=null;
-  try{ navigator.sendBeacon(sincUrl('gravar'), new Blob([JSON.stringify({estado:S})],{type:'application/json'})); }catch(e){}
+  const corpo=JSON.stringify({estado:S});
+  try{
+    if(corpo.length<60000) navigator.sendBeacon(sincUrl('gravar'), new Blob([corpo],{type:'application/json'}));   // o beacon aceita até 64 KB
+    else fetch(sincUrl('gravar'),{method:'POST',headers:{'Content-Type':'application/json'},body:corpo});             // maior: tenta o envio comum
+  }catch(e){}
 }
 window.addEventListener('pagehide', sincDescarga);
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) sincDescarga(); });
