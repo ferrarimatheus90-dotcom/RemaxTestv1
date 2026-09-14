@@ -55,15 +55,35 @@ if ($acao === 'chamado') {
     $zap = preg_replace('/\D/', '', (string) cfg('whatsapp_suporte'));
     if ($zap !== '' && cfg('whatsapp_token') !== '' && cfg('whatsapp_phone_id') !== '') {
         if (strlen($zap) === 10 || strlen($zap) === 11) $zap = '55' . $zap;
-        [$cod] = http('POST', 'https://graph.facebook.com/v21.0/' . rawurlencode(cfg('whatsapp_phone_id')) . '/messages',
-                      ['Authorization: Bearer ' . cfg('whatsapp_token'), 'Content-Type: application/json'],
-                      json_encode(['messaging_product' => 'whatsapp', 'to' => $zap, 'type' => 'text', 'text' => ['body' => mb_substr($texto, 0, 1000)]]));
-        if ($cod >= 200 && $cod < 300) $canais[] = 'WhatsApp';
+        [$okz, $comoz] = zapEnviar(cfg('whatsapp_token'), cfg('whatsapp_phone_id'), $zap, $texto);
+        if ($okz) $canais[] = $comoz === 'modelo' ? 'WhatsApp (modelo de teste)' : 'WhatsApp';
+        else $aviso = 'WhatsApp recusou: ' . $comoz;
     }
-    responder($canais ? ['ok' => true, 'canais' => implode(' e ', $canais)] : ['ok' => false, 'erro' => 'Nenhum canal de aviso configurado (email_suporte / smtp ou WhatsApp).']);
+    $r = $canais ? ['ok' => true, 'canais' => implode(' e ', $canais)]
+                 : ['ok' => false, 'erro' => 'Nenhum canal de aviso configurado (email_suporte / smtp ou WhatsApp).'];
+    if (isset($aviso)) $r['aviso'] = $aviso;
+    responder($r);
 }
 
 exigirChave();
+
+/* envio de WhatsApp pela Cloud API.
+   Fora da janela de 24 h a Meta recusa texto livre; nesse caso vai o modelo
+   hello_world, que toda conta nova já tem aprovado. Devolve [ok, como]. */
+function zapEnviar($token, $fone, $para, $texto) {
+    $url = 'https://graph.facebook.com/v21.0/' . rawurlencode($fone) . '/messages';
+    $cab = ['Authorization: Bearer ' . $token, 'Content-Type: application/json'];
+    [$cod, $j] = http('POST', $url, $cab, json_encode(['messaging_product' => 'whatsapp', 'to' => $para,
+        'type' => 'text', 'text' => ['body' => mb_substr($texto, 0, 4000)]]));
+    if ($cod >= 200 && $cod < 300) return [true, 'texto'];
+    $codErro = (int) ($j['error']['code'] ?? 0);
+    if (in_array($codErro, [131047, 131026, 100], true)) {
+        [$cod, $j] = http('POST', $url, $cab, json_encode(['messaging_product' => 'whatsapp', 'to' => $para,
+            'type' => 'template', 'template' => ['name' => 'hello_world', 'language' => ['code' => 'en_US']]]));
+        if ($cod >= 200 && $cod < 300) return [true, 'modelo'];
+    }
+    return [false, (string) ($j['error']['message'] ?? ('HTTP ' . $cod))];
+}
 
 /* envio por SMTP — TLS direto (465) ou STARTTLS (587), sem biblioteca externa */
 function smtpTentar($host, $porta, $usuario, $senha, $de, $nome, $para, $assunto, $texto) {
