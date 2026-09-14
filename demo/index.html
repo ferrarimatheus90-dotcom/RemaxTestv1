@@ -2881,8 +2881,10 @@ VIEWS.estudio=function(v,arg){
           '<button class="btn pri" id="dPng">↓ Baixar PNG</button>'+
           '<button class="btn" id="dPdf">↓ PDF para impressão</button>'+
           '<button class="btn" id="dSave">Salvar nas minhas peças</button>'+
-          (souCorretor()?'<button class="btn" id="dPub">Publicar / agendar</button>':'')+
+          '<button class="btn" id="dPostar">Postar agora</button>'+
+          (souCorretor()?'<button class="btn" id="dPub">Agendar</button>':'')+
         '</div>'+
+        '<div id="dPostRes" class="mini" style="margin-top:10px"></div>'+
         (minhas.length?'<div class="card" style="margin-top:16px"><div class="ch"><h3>Minhas peças</h3><div class="r"><span class="mini">'+minhas.length+' salvas</span></div></div>'+
           '<div class="cb"><div class="pecas" id="mp">'+minhas.map(p=>'<div class="pc"><img src="'+p.thumb+'" alt=""><div class="l"><b>'+esc(p.tplNome)+'</b>'+quando(p.criado)+
           '<div style="display:flex;gap:5px;margin-top:5px"><button class="btn sm" data-rep="'+p.id+'">Reabrir</button><button class="btn sm" data-del="'+p.id+'">×</button></div></div></div>').join('')+'</div></div></div>':'')+
@@ -2947,6 +2949,35 @@ VIEWS.estudio=function(v,arg){
     commit('Salvou peça', t.nome, s=>{ s.pecas.unshift({id:uid('p'), uid:u.id, tpl:t.id, tplNome:t.nome, thumb, criado:agora(),
       dados:{titulo:ST.titulo, sub:ST.sub, tema:ST.tema}}); });
     toast('Peça salva. Ela conta pontos para você e para a unidade.',1); route();
+  });
+  // Postar agora: a peça vai de verdade para o Instagram conectado à plataforma, pela integração de publicação
+  $('#dPostar').addEventListener('click',()=>{
+    if(!cvAtual) return;
+    const noServidor=/^https?:/.test(location.protocol) && !EM_QUADRO;
+    if(!noServidor){ toast('<b>Só no site publicado.</b> Aberto do computador, a plataforma não tem com quem falar.'); return; }
+    if(!LS.get('pr_chave_api')){ toast('<b>Publicação real ainda não liberada neste navegador.</b><br>Peça ao Construtor a chave de operação (Parametrização).'); return; }
+    const legenda=[ST.titulo, ST.sub].filter(Boolean).join(' — ')+'\n'+[ST.nome, ST.creci?'CRECI '+ST.creci:'', ST.unidade].filter(Boolean).join(' · ')+'\n#RemaxBrasil #ProntosEmRede';
+    const ov=modal('Postar agora no Instagram',
+      '<div class="hint warn" style="margin-bottom:12px"><b>Isto publica de verdade, em público</b>, na conta de Instagram conectada à plataforma. Dá para apagar depois no próprio Instagram.</div>'+
+      '<div style="display:grid;grid-template-columns:120px 1fr;gap:14px;align-items:start"><img src="'+cvAtual.toDataURL('image/jpeg',0.6)+'" style="width:120px;border-radius:10px" alt="">'+
+      '<div class="field" style="margin:0"><label>Legenda</label><textarea id="pLeg" rows="5">'+esc(legenda)+'</textarea></div></div>',
+      '<button class="btn" onclick="fechaModal()">Cancelar</button><button class="btn pri" id="pOk">Postar agora</button>');
+    $('#pOk',ov).addEventListener('click',async()=>{
+      const leg=$('#pLeg',ov).value.trim(); fechaModal();
+      const res=$('#dPostRes'); res.innerHTML='<span class="tag">…</span> Enviando a peça para a integração de publicação…';
+      const b=await canvasBlob(cvAtual,'image/jpeg',0.9); const dataUrl=await new Promise(r=>{ const fr=new FileReader(); fr.onload=()=>r(fr.result); fr.readAsDataURL(b); });
+      const r=await chamarApi('social.php','publicar',{legenda:leg, imagem:dataUrl, agora:true});
+      if(!r.ok){ res.innerHTML='<span class="tag bad">Atenção</span> '+esc(r.erro||'não foi possível publicar'); return; }
+      commit('Postou no Instagram pela plataforma', t.nome, s=>{ s.pecas.unshift({id:uid('p'), uid:u.id, tpl:t.id, tplNome:t.nome, thumb:cvAtual.toDataURL('image/jpeg',0.5), criado:agora(), dados:{titulo:ST.titulo, sub:ST.sub, tema:ST.tema}, postId:r.id}); }, 'Integração de publicação');
+      res.innerHTML='<span class="tag ok">Enviado</span> '+esc(r.msg||'')+' Acompanhando a publicação…';
+      let vez=0; const acompanha=async()=>{ vez++; const st=await chamarApi('social.php','situacao&id='+encodeURIComponent(r.id));
+        if(!st.ok){ res.innerHTML='<span class="tag warn">?</span> '+esc(st.erro||''); return; }
+        if(st.status==='POSTED'){ res.innerHTML='<span class="tag ok">Publicado no Instagram</span> '+(st.link?'<a href="'+esc(st.link)+'" target="_blank" rel="noopener">abrir a publicação →</a>':''); toast('<b>Publicado no Instagram.</b>',1); return; }
+        if(st.status==='ERROR'){ res.innerHTML='<span class="tag bad">Não publicou</span> '+esc(st.erro||'a rede social recusou'); return; }
+        res.innerHTML='<span class="tag">'+esc(st.rotulo||st.status)+'</span> a integração está publicando… ('+vez+')';
+        if(vez<24) setTimeout(acompanha,5000); else res.innerHTML+=' — confira mais tarde nas suas peças.'; };
+      setTimeout(acompanha,8000);
+    });
   });
   $('#dPub')&&$('#dPub').addEventListener('click',()=>{
     if(!cvAtual) return;
@@ -5309,7 +5340,7 @@ const PRESETS_TERMOS={
 async function chamarApi(arq, acao, corpo){
   const chave=LS.get('pr_chave_api')||'';
   try{
-    const r=await fetch('api/'+arq+'?acao='+encodeURIComponent(acao),{method:corpo?'POST':'GET', cache:'no-store',
+    const r=await fetch('api/'+arq+'?acao='+(acao.indexOf('&')>=0? acao : encodeURIComponent(acao)),{method:corpo?'POST':'GET', cache:'no-store',
       headers:Object.assign({'X-Prontos-Chave':chave}, corpo?{'Content-Type':'application/json'}:{}), body:corpo?JSON.stringify(corpo):undefined});
     const t=await r.text();
     try{ return JSON.parse(t); }catch(e){ return {ok:false, erro:'Resposta inesperada do servidor (HTTP '+r.status+').'}; }
@@ -5660,6 +5691,9 @@ en:{
 "Escolher unidades…":"Choose offices…",
 "Detalhes":"Details",
 "Adesão":"Adoption",
+"Postar agora":"Post now",
+"Agendar":"Schedule",
+"Postar agora no Instagram":"Post now on Instagram",
 'Provedor em uso':'Provider in use','Usar este provedor':'Use this provider','Você já agendou':'You already scheduled',
 /* seções */
 'Precisa de atenção':'Needs attention','Publicações da rede por semana':'Network posts per week','Adesão por unidade':'Adoption by office',
@@ -5931,6 +5965,9 @@ es:{
 "Escolher unidades…":"Elegir oficinas…",
 "Detalhes":"Detalles",
 "Adesão":"Adhesión",
+"Postar agora":"Publicar ahora",
+"Agendar":"Programar",
+"Postar agora no Instagram":"Publicar ahora en Instagram",
 'Provedor em uso':'Proveedor en uso','Usar este provedor':'Usar este proveedor','Você já agendou':'Ya programó',
 'Precisa de atenção':'Necesita atención','Publicações da rede por semana':'Publicaciones de la red por semana','Adesão por unidade':'Adopción por oficina',
 'Progresso por etapa':'Progreso por etapa','Situação por unidade':'Situación por oficina','Alertas desta unidade':'Alertas de esta oficina',

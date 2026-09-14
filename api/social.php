@@ -95,8 +95,8 @@ if ($acao === 'publicar') {
         responder(['ok' => false, 'erro' => 'Falha ao enviar a peça (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
     }
 
-    // 2) agenda o post (padrão: daqui a 2 minutos)
-    $quando = !empty($d['quando']) ? strtotime((string) $d['quando']) : time() + 120;
+    // 2) agenda o post (padrão: daqui a 2 minutos; "agora" = daqui a 30 s, o mínimo que a fila aceita)
+    $quando = !empty($d['agora']) ? time() + 30 : (!empty($d['quando']) ? strtotime((string) $d['quando']) : time() + 120);
     $post = json_encode([
         'teamId' => $time,
         'title' => mb_substr($legenda !== '' ? $legenda : 'Publicação da plataforma', 0, 80),
@@ -111,6 +111,21 @@ if ($acao === 'publicar') {
         responder(['ok' => false, 'erro' => 'A API recusou a publicação (HTTP ' . $cod . '). ' . $msgErro($j)], 502);
     }
     responder(['ok' => true, 'msg' => 'Publicação agendada para ' . date('d/m/Y H:i', $quando) . ' (horário do servidor).', 'id' => $j['id'] ?? null]);
+}
+
+if ($acao === 'situacao') {
+    $id = (string) ($_GET['id'] ?? (corpoJson()['id'] ?? ''));
+    if ($id === '') responder(['ok' => false, 'erro' => 'Falta o id do post.'], 400);
+    [$cod, $j] = http('GET', $base . '/post/' . rawurlencode($id), $cab);
+    if ($cod !== 200) responder(['ok' => false, 'erro' => 'Não consegui consultar o post (HTTP ' . $cod . ').'], 502);
+    $st = (string) ($j['status'] ?? '');
+    $link = '';
+    foreach ((array) ($j['externalData'] ?? []) as $plat => $ext) { if (is_array($ext) && !empty($ext['permalink'])) { $link = $ext['permalink']; break; } }
+    $erro = '';
+    foreach ((array) ($j['errorsVerbose'] ?? []) as $plat => $e) { if (is_array($e)) { $erro = $e['userFacingMessage'] ?? ($e['errorMessage'] ?? ''); if ($erro) break; } }
+    if ($erro === '') foreach ((array) ($j['errors'] ?? []) as $plat => $e) { if (is_string($e) && $e !== '') { $erro = $e; break; } }
+    $rotulo = ['SCHEDULED' => 'na fila', 'PROCESSING' => 'publicando', 'RETRYING' => 'tentando de novo', 'POSTED' => 'publicado', 'ERROR' => 'erro', 'REVIEW' => 'em revisão', 'DRAFT' => 'rascunho', 'DELETED' => 'apagado'];
+    responder(['ok' => true, 'status' => $st, 'rotulo' => $rotulo[$st] ?? strtolower($st), 'link' => $link, 'erro' => $erro, 'postDate' => $j['postDate'] ?? null]);
 }
 
 responder(['ok' => false, 'erro' => 'Ação desconhecida.'], 400);

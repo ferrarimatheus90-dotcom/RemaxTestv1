@@ -76,7 +76,7 @@ const PRESETS_TERMOS={
 async function chamarApi(arq, acao, corpo){
   const chave=LS.get('pr_chave_api')||'';
   try{
-    const r=await fetch('api/'+arq+'?acao='+encodeURIComponent(acao),{method:corpo?'POST':'GET', cache:'no-store',
+    const r=await fetch('api/'+arq+'?acao='+(acao.indexOf('&')>=0? acao : encodeURIComponent(acao)),{method:corpo?'POST':'GET', cache:'no-store',
       headers:Object.assign({'X-Prontos-Chave':chave}, corpo?{'Content-Type':'application/json'}:{}), body:corpo?JSON.stringify(corpo):undefined});
     const t=await r.text();
     try{ return JSON.parse(t); }catch(e){ return {ok:false, erro:'Resposta inesperada do servidor (HTTP '+r.status+').'}; }
