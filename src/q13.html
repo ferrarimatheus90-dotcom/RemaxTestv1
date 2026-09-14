@@ -171,6 +171,34 @@ function marketingCorretor(v){
   $$('[data-go]',v).forEach(el=>el.addEventListener('click',()=>location.hash=el.dataset.go));
 }
 
+/* ---------- indicadores gráficos compartilhados (Início, Painel e BI) ---------- */
+const NOME_CURTO = l => l.nome.replace('RE/MAX ','');
+const ETAPA_CURTA = ['Cadastro','Digital','Papelaria','Placas','Projeto fachada','Instalação','Interior'];
+function pctConectadas(ls){ const us=ls.flatMap(l=>corretoresDe(l.id)); return us.length? Math.round(us.filter(u=>u.ig).length/us.length*100) : 0; }
+function leituraMedia(ls){ return Math.round(ls.reduce((a,l)=>a+leituraDe(l.id),0)/Math.max(1,ls.length)); }
+function medidoresHTML(){
+  return '<div class="gauges">'+
+    '<div class="card"><h3>Adesão média à identidade</h3><div class="grafico"><canvas id="gmAd"></canvas></div></div>'+
+    '<div class="card"><h3>Leitura dos comunicados obrigatórios</h3><div class="grafico"><canvas id="gmLe"></canvas></div></div>'+
+    '<div class="card"><h3>Contas de Instagram conectadas</h3><div class="grafico"><canvas id="gmIg"></canvas></div></div></div>';
+}
+function medidoresPintar(ls){
+  gMedidor($('#gmAd'), mediaAdesao(ls), {rotulo:'das 7 etapas', meta:70, metaRotulo:'meta 70%'});
+  gMedidor($('#gmLe'), leituraMedia(ls), {rotulo:'confirmações de leitura', meta:80, metaRotulo:'meta 80%', cor:PALETA[2]});
+  gMedidor($('#gmIg'), pctConectadas(ls), {rotulo:'dos associados', meta:90, metaRotulo:'meta 90%', cor:PALETA[4]});
+}
+function funilJornada(cv, ls){
+  gBarrasH(cv, ETAPA_CURTA, ETAPAS.map(e=>Math.round(ls.filter(l=>S.unidades[l.id].etapas[e.id].ok).length/Math.max(1,ls.length)*100)), {fmt:v=>v+'%', max:100, sufixo:'das unidades concluíram'});
+}
+function calorJornada(cv, ls){
+  const peso={concluida:1, aprovacao:.7, andamento:.4, atrasada:.15, pendente:0}, rot={concluida:'✓', aprovacao:'⇧', andamento:'…', atrasada:'!', pendente:''};
+  const nomeSt={concluida:'concluída', aprovacao:'em aprovação', andamento:'em andamento', atrasada:'atrasada', pendente:'pendente'};
+  const ord=ls.slice().sort((a,b)=>adesao(b.id)-adesao(a.id));
+  gCalor(cv, ord.map(NOME_CURTO), ['E1','E2','E3','E4','E5','E6','E7'],
+    ord.map(l=>ETAPAS.map((e,j)=>{ const s=statusEtapa(l.id,e.id); return {v:peso[s], rot:rot[s], s:ETAPA_CURTA[j]+' — '+nomeSt[s]+' · prazo '+dataBR(dt(e.prazo))}; })),
+    {altLinha: ls.length>12? 22 : 26});
+}
+
 /* ---------- painel da rede ---------- */
 VIEWS.painel=function(v){
   const ls=lojasVisiveis();
@@ -189,6 +217,13 @@ VIEWS.painel=function(v){
       kpi('Usuários ativos', ls.reduce((a,l)=>a+ativosDe(l.id),0), 'últimos 30 dias')+
       kpi('Alcance da rede', compacto(M.alcance), nf(M.posts)+' publicações no período')+
     '</div>'+
+    medidoresHTML()+
+    '<div class="grid g2" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Funil da jornada</h3><div class="r"><span class="mini">% das unidades que concluíram cada etapa</span></div></div><div class="cb"><div class="grafico"><canvas id="gFunil"></canvas></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Ranking de adesão</h3><div class="r"><span class="mini">8 maiores · linha tracejada = meta</span></div></div><div class="cb"><div class="grafico"><canvas id="gRankAd"></canvas></div></div></div>'+
+    '</div>'+
+    '<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Mapa de calor · unidades × etapas</h3><div class="r"><span class="mini">quanto mais escuro, mais adiantada · passe o mouse para o detalhe</span></div></div>'+
+      '<div class="cb"><div class="grafico"><canvas id="gCalor"></canvas></div>'+legenda([{n:'✓ concluída',cor:PALETA[0]},{n:'⇧ em aprovação',cor:corAlfa(PALETA[0],.75)},{n:'… em andamento',cor:corAlfa(PALETA[0],.5)},{n:'! atrasada',cor:corAlfa(PALETA[0],.28)},{n:'pendente',cor:cssVar('--fill-2','#F2F2F5')}])+'</div></div>'+
     (souMatriz()?'<div class="card" style="margin-bottom:16px"><div class="ch"><h3>Por Master Regional</h3><div class="r"><span class="mini">agrupamento de demonstração — em produção, as 16 Masters reais</span></div></div><div class="cb">'+
       porMaster.map(x=>'<div style="display:grid;grid-template-columns:1.2fr 1fr 150px 60px;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)">'+
         '<div><div style="font-weight:600;font-size:13.3px">'+esc(x.m.nome)+'</div><div class="mini">'+esc(x.m.area)+'</div></div>'+
@@ -206,10 +241,15 @@ VIEWS.painel=function(v){
         '<td class="num">'+ativosDe(l.id)+'/'+corretoresDe(l.id).length+'</td>'+
         '<td class="num">'+leituraDe(l.id)+'%</td><td class="num">'+ticketsDe(l.id)+'</td></tr>'; }).join('')+
       '</tbody></table></div></div>'+
+    '<div class="grid g3" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>Chamados por situação</h3></div><div class="cb"><div class="grafico"><canvas id="gTk"></canvas></div><div id="gTkLeg"></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Publicações por semana</h3></div><div class="cb"><div class="grafico"><canvas id="gPub"></canvas></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>Leitura por regional</h3><div class="r"><span class="mini">comunicados obrigatórios</span></div></div><div class="cb"><div class="grafico"><canvas id="gLeReg"></canvas></div></div></div>'+
+    '</div>'+
     '<div class="grid g2">'+
       '<div class="card"><div class="ch"><h3>Evolução da adesão</h3></div><div class="cb"><div class="grafico"><canvas id="gEvo"></canvas></div></div></div>'+
       '<div class="card"><div class="ch"><h3>Situação das unidades</h3></div><div class="cb"><div class="grafico"><canvas id="gSit"></canvas></div>'+
-        legenda([{n:'Em conformidade',v:conformes,cor:cssVar('--ok','#1F6B45')},{n:'Em andamento',v:ls.filter(l=>adesao(l.id)<70&&adesao(l.id)>=40).length,cor:PALETA[1]},{n:'Em risco',v:ls.filter(l=>adesao(l.id)<40).length,cor:cssVar('--red','#D4222F')}])+
+        legenda([{n:'Em conformidade',v:conformes,cor:cssVar('--ok','#1F6B45')},{n:'Em andamento',v:ls.filter(l=>adesao(l.id)<70&&adesao(l.id)>=40).length,cor:PALETA[5]},{n:'Em risco',v:ls.filter(l=>adesao(l.id)<40).length,cor:cssVar('--red','#D4222F')}])+
       '</div></div>'+
     '</div>';
   const base=mediaAdesao(ls);
@@ -217,9 +257,21 @@ VIEWS.painel=function(v){
     [{nome:'Adesão média', dados:[0,1,2,3,4,5].map(i=> i===5? base : Math.max(3,Math.round(base*(0.25+i*0.15)))), cor:PALETA[0]}],
     {alt:230, fmt:v=>Math.round(v)+'%'});
   gRosca($('#gSit'), [{n:'Em conformidade',v:conformes,cor:cssVar('--ok','#1F6B45')},
-                      {n:'Em andamento',v:ls.filter(l=>adesao(l.id)<70&&adesao(l.id)>=40).length,cor:PALETA[1]},
+                      {n:'Em andamento',v:ls.filter(l=>adesao(l.id)<70&&adesao(l.id)>=40).length,cor:PALETA[5]},
                       {n:'Em risco',v:ls.filter(l=>adesao(l.id)<40).length,cor:cssVar('--red','#D4222F')}],
     {alt:230, centro:String(ls.length), rotulo:'unidades'});
+  medidoresPintar(ls);
+  funilJornada($('#gFunil'), ls);
+  const top8=ls.slice().sort((a,b)=>adesao(b.id)-adesao(a.id)).slice(0,8);
+  gBarrasH($('#gRankAd'), top8.map(NOME_CURTO), top8.map(l=>adesao(l.id)), {fmt:v=>v+'%', max:100, meta:70, metaRotulo:'meta 70%'});
+  calorJornada($('#gCalor'), ls);
+  const tk=S.tickets.filter(t=>souMatriz()||masterVeRede()||ls.some(l=>l.id===t.loja));
+  const grp=[['Em atendimento',t=>/atendimento|Aberto/.test(t.st),PALETA[0]],['Escalado · N2',t=>/Escalado/.test(t.st),PALETA[5]],['Aguardando',t=>/Aguardando|aprovação/.test(t.st),PALETA[3]],['Resolvidos',t=>/Resolvido/.test(t.st),PALETA[4]]]
+    .map(x=>({n:x[0], v:tk.filter(x[1]).length, cor:x[2]}));
+  gRosca($('#gTk'), grp, {alt:200, centro:String(tk.length), rotulo:'chamados'}); $('#gTkLeg').innerHTML=legenda(grp);
+  gLinha($('#gPub'), M.semanas, [{nome:'Publicações', dados:M.serie, cor:PALETA[0]}], {alt:200});
+  const regs=BASE.masters.filter(m=>ls.some(l=>l.master===m.id)).map(m=>({m, ls:ls.filter(l=>l.master===m.id)}));
+  gBarrasH($('#gLeReg'), regs.map(r=>r.m.nome.replace('Master ','')), regs.map(r=>leituraMedia(r.ls)), {fmt:v=>v+'%', max:100, meta:80, metaRotulo:'meta 80%', cor:PALETA[2], alt:200});
   $('#rel3').addEventListener('click',()=>relatorioModal(ls));
 };
 

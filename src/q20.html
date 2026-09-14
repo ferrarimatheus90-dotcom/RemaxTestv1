@@ -23,12 +23,21 @@ VIEWS.bi=function(v){
     '<div class="grid g4" style="margin-bottom:22px">'+
       kpi(T('Publicações'), nf(M.posts), T('últimas 12 semanas'))+kpi(T('Alcance'), compacto(M.alcance), T('contas conectadas'),'k-ok')+
       kpi(T('Curtidas'), compacto(curt), T('estimadas sobre o alcance'))+kpi(T('Engajamento'), M.eng.toFixed(1).replace('.',',')+'%', T('média das peças'))+'</div>'+
+    '<div class="grid g3" style="margin-bottom:22px">'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Publicações por semana'))+'</h3></div><div class="cb"><div class="grafico"><canvas id="biSerie"></canvas></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Formatos publicados'))+'</h3></div><div class="cb"><div class="grafico"><canvas id="biMix"></canvas></div><div id="biMixLeg"></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Alcance por unidade'))+'</h3><div class="r"><span class="mini">'+esc(T('8 maiores'))+'</span></div></div><div class="cb"><div class="grafico"><canvas id="biTop"></canvas></div></div></div>'+
+    '</div>'+
     '<h2 class="bi-h">'+esc(T('Tradicional'))+' <a class="btn sm" href="#/jornada">'+esc(T('Jornada de adequação'))+' →</a></h2>'+
     '<div class="grid g4" style="margin-bottom:16px">'+
       kpi(T('Papelaria nova'), n('papelaria')+'/'+ls.length, T('unidades com cartões e papelaria'), n('papelaria')/ls.length>.5?'k-ok':'k-warn')+
       kpi(T('Placas e faixas'), n('placas')+'/'+ls.length, T('materiais de campo trocados'))+
       kpi(T('Fachadas instaladas'), tr.filter(x=>x.t.fachada==='instalada').length+'/'+ls.length, T('nova identidade na rua'))+
       kpi(T('Peças impressas'), tr.reduce((a,x)=>a+x.t.impressas,0), T('papelaria e placas geradas no Estúdio'))+'</div>'+
+    '<div class="grid g23" style="margin-bottom:16px">'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Tradicional por unidade'))+'</h3><div class="r"><span class="mini">'+esc(T('frentes concluídas de 4'))+'</span></div></div><div class="cb"><div class="grafico"><canvas id="biEmp"></canvas></div><div id="biEmpLeg"></div></div></div>'+
+      '<div class="card"><div class="ch"><h3>'+esc(T('Frentes do tradicional'))+'</h3><div class="r"><span class="mini">'+esc(T('% das unidades'))+'</span></div></div><div class="cb"><div class="grafico"><canvas id="biFrentes"></canvas></div></div></div>'+
+    '</div>'+
     '<div class="card"><div class="tw"><table><thead><tr><th>'+esc(T('Unidade'))+'</th><th>'+esc(T('Publicações'))+'</th><th>'+esc(T('Alcance'))+'</th><th>'+esc(T('Engajamento'))+'</th>'+
       '<th>'+esc(T('Papelaria'))+'</th><th>'+esc(T('Placas'))+'</th><th>'+esc(T('Fachada'))+'</th><th>'+esc(T('Interior'))+'</th></tr></thead><tbody>'+
       tr.map(x=>{ const ok=b=>b?'<span class="tag ok">OK</span>':'<span class="tag mut">'+esc(T('pendente'))+'</span>';
@@ -36,6 +45,16 @@ VIEWS.bi=function(v){
         '<td class="num">'+x.m.eng.toFixed(1).replace('.',',')+'%</td><td>'+ok(x.t.papelaria)+'</td><td>'+ok(x.t.placas)+'</td>'+
         '<td>'+(x.t.fachada==='instalada'?'<span class="tag ok">OK</span>':'<span class="tag warn">'+esc(T(FACH_LABEL[x.t.fachada]))+'</span>')+'</td><td>'+ok(x.t.interior)+'</td></tr>'; }).join('')+
     '</tbody></table></div></div>';
+  gLinha($('#biSerie'), M.semanas, [{nome:'Publicações', dados:M.serie, cor:PALETA[0]}], {alt:210});
+  const mix=[{n:'Feed',v:Math.max(0,M.posts-M.reels),cor:PALETA[0]},{n:'Reels',v:M.reels,cor:PALETA[2]},{n:'Stories',v:M.stories,cor:PALETA[6]}];
+  gRosca($('#biMix'), mix, {alt:210, centro:compacto(mix.reduce((a,b)=>a+b.v,0)), rotulo:T('peças publicadas')}); $('#biMixLeg').innerHTML=legenda(mix);
+  const top=tr.slice().sort((a,b)=>b.m.alcance-a.m.alcance).slice(0,8);
+  gBarrasH($('#biTop'), top.map(x=>NOME_CURTO(x.l)), top.map(x=>x.m.alcance), {fmt:compacto, alt:210, altLinha:26});
+  const fr=[['Papelaria',x=>x.t.papelaria,PALETA[0]],['Placas',x=>x.t.placas,PALETA[2]],['Fachada',x=>x.t.fachada==='instalada',PALETA[6]],['Interior',x=>x.t.interior,PALETA[4]]];
+  const ordT=tr.slice().sort((a,b)=>fr.filter(f=>f[1](b)).length-fr.filter(f=>f[1](a)).length);
+  gEmpilhado($('#biEmp'), ordT.map(x=>NOME_CURTO(x.l)), fr.map(f=>({nome:f[0], cor:f[2], dados:ordT.map(x=>f[1](x)?1:0)})), {alt:250, max:4.4, fmt:v=>Math.round(v)});
+  $('#biEmpLeg').innerHTML=legenda(fr.map(f=>({n:f[0], cor:f[2], v:tr.filter(f[1]).length+'/'+tr.length})));
+  gBarrasH($('#biFrentes'), fr.map(f=>f[0]), fr.map(f=>Math.round(tr.filter(f[1]).length/Math.max(1,tr.length)*100)), {fmt:v=>v+'%', max:100, cores:fr.map(f=>f[2]), alt:150});
   $('#biReg')&&$('#biReg').addEventListener('change',e=>{ BI_F=e.target.value; route(); });
   $('#biExp').addEventListener('click',()=>{
     const lin=[['unidade','regional','publicacoes','alcance','curtidas_estimadas','engajamento_%','papelaria','placas','fachada','interior','pecas_impressas']];
