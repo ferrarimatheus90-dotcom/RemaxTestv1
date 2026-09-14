@@ -1,4 +1,7 @@
 <style>
+.card.ir{cursor:pointer;transition:transform .16s var(--e), box-shadow .16s var(--e)}
+.card.ir:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
+.card.ir .irseta{float:right;color:var(--link);font-weight:600;opacity:.75}
 .midia-li{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
 .midia-li:last-child{border-bottom:0}
 .midia-li audio{height:34px;max-width:240px}
@@ -95,6 +98,12 @@ function abrirEnvioDeMidia(){
     fechaModal(); route(); toast(T('Mídia publicada na biblioteca do Brand Center.'),1);
   });
 }
+
+/* cartão de indicador que leva ao módulo de origem */
+document.addEventListener('click',e=>{ const c=e.target.closest('[data-ir]');
+  if(c && !e.target.closest('a,button,input,select')) location.hash='#/'+c.dataset.ir; });
+document.addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const c=e.target.closest&&e.target.closest('[data-ir]');
+  if(c) location.hash='#/'+c.dataset.ir; });
 
 /* ---------- 2 · o associado publica a campanha na conta dele ---------- */
 async function arteDaCampanha(camp){

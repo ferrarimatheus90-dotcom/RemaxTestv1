@@ -177,10 +177,13 @@ const ETAPA_CURTA = ['Cadastro','Digital','Papelaria','Placas','Projeto fachada'
 function pctConectadas(ls){ const us=ls.flatMap(l=>corretoresDe(l.id)); return us.length? Math.round(us.filter(u=>u.ig).length/us.length*100) : 0; }
 function leituraMedia(ls){ return Math.round(ls.reduce((a,l)=>a+leituraDe(l.id),0)/Math.max(1,ls.length)); }
 function medidoresHTML(){
+  /* cada medidor leva ao módulo de onde o número vem (pedido do Bruno em 14/09) */
+  const cartao=(ir,tit,cv)=>'<div class="card ir" data-ir="'+ir+'" role="link" tabindex="0"><h3>'+tit+'<span class="irseta">→</span></h3>'+
+    '<div class="grafico"><canvas id="'+cv+'"></canvas></div></div>';
   return '<div class="gauges">'+
-    '<div class="card"><h3>Adesão média à identidade</h3><div class="grafico"><canvas id="gmAd"></canvas></div></div>'+
-    '<div class="card"><h3>Leitura dos comunicados obrigatórios</h3><div class="grafico"><canvas id="gmLe"></canvas></div></div>'+
-    '<div class="card"><h3>Contas de Instagram conectadas</h3><div class="grafico"><canvas id="gmIg"></canvas></div></div></div>';
+    cartao('jornada','Adesão média à identidade','gmAd')+
+    cartao('comunicados','Leitura dos comunicados obrigatórios','gmLe')+
+    cartao('redes','Contas de Instagram conectadas','gmIg')+'</div>';
 }
 function medidoresPintar(ls){
   gMedidor($('#gmAd'), mediaAdesao(ls), {rotulo:'das 7 etapas', meta:70, metaRotulo:'meta 70%'});

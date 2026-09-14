@@ -4451,10 +4451,13 @@ const ETAPA_CURTA = ['Cadastro','Digital','Papelaria','Placas','Projeto fachada'
 function pctConectadas(ls){ const us=ls.flatMap(l=>corretoresDe(l.id)); return us.length? Math.round(us.filter(u=>u.ig).length/us.length*100) : 0; }
 function leituraMedia(ls){ return Math.round(ls.reduce((a,l)=>a+leituraDe(l.id),0)/Math.max(1,ls.length)); }
 function medidoresHTML(){
+  /* cada medidor leva ao módulo de onde o número vem (pedido do Bruno em 14/09) */
+  const cartao=(ir,tit,cv)=>'<div class="card ir" data-ir="'+ir+'" role="link" tabindex="0"><h3>'+tit+'<span class="irseta">→</span></h3>'+
+    '<div class="grafico"><canvas id="'+cv+'"></canvas></div></div>';
   return '<div class="gauges">'+
-    '<div class="card"><h3>Adesão média à identidade</h3><div class="grafico"><canvas id="gmAd"></canvas></div></div>'+
-    '<div class="card"><h3>Leitura dos comunicados obrigatórios</h3><div class="grafico"><canvas id="gmLe"></canvas></div></div>'+
-    '<div class="card"><h3>Contas de Instagram conectadas</h3><div class="grafico"><canvas id="gmIg"></canvas></div></div></div>';
+    cartao('jornada','Adesão média à identidade','gmAd')+
+    cartao('comunicados','Leitura dos comunicados obrigatórios','gmLe')+
+    cartao('redes','Contas de Instagram conectadas','gmIg')+'</div>';
 }
 function medidoresPintar(ls){
   gMedidor($('#gmAd'), mediaAdesao(ls), {rotulo:'das 7 etapas', meta:70, metaRotulo:'meta 70%'});
@@ -5526,6 +5529,9 @@ VIEWS.param=function(v){
 .bi-h{font-size:20px;font-weight:600;letter-spacing:-.02em;margin:6px 0 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 </style>
 <style>
+.card.ir{cursor:pointer;transition:transform .16s var(--e), box-shadow .16s var(--e)}
+.card.ir:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
+.card.ir .irseta{float:right;color:var(--link);font-weight:600;opacity:.75}
 .midia-li{display:flex;align-items:center;gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
 .midia-li:last-child{border-bottom:0}
 .midia-li audio{height:34px;max-width:240px}
@@ -5622,6 +5628,12 @@ function abrirEnvioDeMidia(){
     fechaModal(); route(); toast(T('Mídia publicada na biblioteca do Brand Center.'),1);
   });
 }
+
+/* cartão de indicador que leva ao módulo de origem */
+document.addEventListener('click',e=>{ const c=e.target.closest('[data-ir]');
+  if(c && !e.target.closest('a,button,input,select')) location.hash='#/'+c.dataset.ir; });
+document.addEventListener('keydown',e=>{ if(e.key!=='Enter') return; const c=e.target.closest&&e.target.closest('[data-ir]');
+  if(c) location.hash='#/'+c.dataset.ir; });
 
 /* ---------- 2 · o associado publica a campanha na conta dele ---------- */
 async function arteDaCampanha(camp){
