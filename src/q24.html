@@ -1,0 +1,151 @@
+<style>
+/* ---------- v3.11 · curtir com o balão e comentar nos vídeos ---------- */
+.tv-interacao{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+.curtir{
+  display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;
+  padding:5px 9px 5px 5px;border-radius:99px;cursor:pointer;color:var(--ink-2);
+  font-size:12.6px;font-weight:600;font-variant-numeric:tabular-nums;transition:background .15s var(--e)
+}
+.curtir:hover{background:var(--fill-2)}
+.curtir img{
+  width:24px;height:24px;object-fit:contain;display:block;
+  filter:grayscale(1);opacity:.42;transition:filter .2s var(--e),opacity .2s var(--e),transform .2s var(--e)
+}
+.curtir:hover img{opacity:.75}
+.curtir.on{color:var(--red)}
+.curtir.on img{filter:none;opacity:1}
+@keyframes balaoSobe{0%{transform:scale(1)}35%{transform:scale(1.34) translateY(-4px)}100%{transform:scale(1)}}
+.curtir.pop img{animation:balaoSobe .5s var(--e)}
+@media (prefers-reduced-motion:reduce){ .curtir.pop img{animation:none} }
+.tv-interacao .fala{
+  display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;padding:5px 9px;
+  border-radius:99px;cursor:pointer;color:var(--muted);font-size:12.4px;font-weight:600;transition:background .15s var(--e)
+}
+.tv-interacao .fala:hover{background:var(--fill-2);color:var(--ink-2)}
+.quem-curtiu{font-size:12px;color:var(--muted);margin-left:2px}
+
+/* dentro do modal do vídeo */
+.player-ov .tv-rodape{padding:14px 20px 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line)}
+.player-ov .tv-rodape .tv-interacao{margin:0}
+.coments{padding:6px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.coments h4{margin:0;font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:-.005em}
+.coments .lista{display:flex;flex-direction:column;gap:12px;max-height:230px;overflow:auto}
+.coments .li{display:flex;gap:10px;align-items:flex-start}
+.coments .bolha{background:var(--fill-2);border-radius:14px;padding:9px 14px;min-width:0;flex:1}
+.coments .bolha .qn{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.coments .bolha b{font-size:12.8px;font-weight:600;letter-spacing:-.01em}
+.coments .bolha .qd{font-size:11.5px;color:var(--muted)}
+.coments .bolha p{margin:3px 0 0;font-size:13.2px;line-height:1.5;color:var(--ink-2);overflow-wrap:anywhere}
+.coments .vazio{font-size:13px;color:var(--muted);padding:6px 0}
+.coments .escrever{display:flex;gap:9px;align-items:center}
+.coments .escrever input{flex:1;min-width:0}
+@media(max-width:560px){ .coments .lista{max-height:180px} }
+</style>
+<script>
+/* =======================================================================
+   v3.11 — CURTIR E COMENTAR NOS VÍDEOS
+
+   Pedido do Bruno: botão de curtir nos vídeos da plataforma, usando o balão
+   da RE/MAX no lugar do coração, e um lugar para comentar.
+
+   O balão fica cinza e apagado enquanto ninguém curtiu; ao curtir ele ganha
+   a cor da marca e sobe um instante. Curtidas e comentários ficam no estado
+   compartilhado, então quem abre o site de outro lugar vê o mesmo número.
+   ======================================================================= */
+
+const tvCurtidas   = id => (S.tvReacoes&&S.tvReacoes[id]) || [];
+const tvEuCurti    = id => tvCurtidas(id).indexOf(euId())>=0;
+const tvComentarios= id => (S.tvComents&&S.tvComents[id]) || [];
+
+function tvCurtir(id){
+  const tit=((S.tv||[]).find(x=>x.id===id)||{}).tit||id;
+  const jaCurti=tvEuCurti(id);
+  commit(jaCurti?'Descurtiu vídeo':'Curtiu vídeo', tit, s=>{
+    s.tvReacoes=s.tvReacoes||{};
+    const l=(s.tvReacoes[id]||[]).filter(x=>x!==euId());
+    s.tvReacoes[id]= jaCurti? l : l.concat([euId()]);
+  });
+  return !jaCurti;
+}
+function tvComentar(id, txt){
+  const t=String(txt||'').trim().slice(0,600); if(!t) return false;
+  const tit=((S.tv||[]).find(x=>x.id===id)||{}).tit||id;
+  commit('Comentou no vídeo', tit, s=>{
+    s.tvComents=s.tvComents||{};
+    s.tvComents[id]=(s.tvComents[id]||[]).concat([{id:uid('c'), uid:euId(), nome:eu().nome, foto:eu().foto||'', txt:t, q:agora()}]);
+  });
+  return true;
+}
+/* rótulo curto: "Você e mais 3" */
+function tvRotuloCurtidas(id){
+  const n=tvCurtidas(id).length; if(!n) return '';
+  if(tvEuCurti(id)) return n===1? T('Você curtiu') : T('Você e mais')+' '+(n-1);
+  return nf(n)+' '+(n===1? T('curtida') : T('curtidas'));
+}
+
+/* ---------- barra de curtir, usada no cartão e no modal ---------- */
+function tvBarraHTML(v, comBotaoComentar){
+  const n=tvCurtidas(v.id).length, nc=tvComentarios(v.id).length;
+  return '<div class="tv-interacao">'+
+    '<button class="curtir'+(tvEuCurti(v.id)?' on':'')+'" data-curtir="'+v.id+'" type="button" '+
+      'aria-pressed="'+(tvEuCurti(v.id)?'true':'false')+'" title="'+esc(T('Curtir'))+'">'+
+      '<img src="'+BALAO+'" alt="">'+(n?nf(n):'')+'</button>'+
+    (comBotaoComentar
+      ? '<button class="fala" data-vercoments="'+v.id+'" type="button">'+esc(T('Comentar'))+(nc?' · '+nf(nc):'')+'</button>'
+      : '<span class="quem-curtiu">'+esc(tvRotuloCurtidas(v.id))+'</span>')+
+  '</div>';
+}
+function tvComentariosHTML(v){
+  const cs=tvComentarios(v.id);
+  return '<div class="coments">'+
+    '<h4>'+esc(T('Comentários'))+(cs.length?' · '+nf(cs.length):'')+'</h4>'+
+    '<div class="lista" id="tvLista">'+
+      (cs.map(c=>'<div class="li">'+avatar({nome:c.nome, foto:c.foto},30)+
+        '<div class="bolha"><div class="qn"><b>'+esc(c.nome)+'</b><span class="qd">'+quando(c.q)+'</span></div>'+
+        '<p>'+esc(c.txt)+'</p></div></div>').join('')
+        || '<div class="vazio">'+esc(T('Ninguém comentou ainda. Comece a conversa.'))+'</div>')+
+    '</div>'+
+    '<div class="escrever">'+avatar(eu(),30)+
+      '<input id="tvComIn" maxlength="600" placeholder="'+esc(T('Escreva um comentário…'))+'">'+
+      '<button class="btn pri" id="tvComOk" type="button">'+esc(T('Enviar'))+'</button>'+
+    '</div></div>';
+}
+
+/* ---------- liga os cliques em qualquer tela que use a barra ---------- */
+function tvLigarInteracao(raiz, aoComentar){
+  $$('[data-curtir]', raiz).forEach(b=>b.addEventListener('click', e=>{
+    e.stopPropagation();                       // não abre o vídeo ao curtir
+    const id=b.dataset.curtir, agoraCurtiu=tvCurtir(id);
+    const n=tvCurtidas(id).length;
+    b.classList.toggle('on', agoraCurtiu);
+    b.setAttribute('aria-pressed', agoraCurtiu?'true':'false');
+    b.lastChild.nodeType===3 ? b.lastChild.textContent=(n?nf(n):'') : b.insertAdjacentText('beforeend', n?nf(n):'');
+    if(agoraCurtiu){ b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+    const rot=b.parentNode.querySelector('.quem-curtiu'); if(rot) rot.textContent=tvRotuloCurtidas(id);
+  }));
+  $$('[data-vercoments]', raiz).forEach(b=>b.addEventListener('click', e=>{
+    e.stopPropagation();
+    const v=(S.tv||[]).find(x=>x.id===b.dataset.vercoments); if(v && typeof abrirVideo==='function') abrirVideo(v, true);
+  }));
+}
+/* dentro do modal: curtir, comentar e a lista que se atualiza sozinha */
+function tvLigarModal(ov, v, focarComentario){
+  tvLigarInteracao(ov);
+  const campo=$('#tvComIn',ov), botao=$('#tvComOk',ov);
+  const repinta=()=>{
+    const cs=tvComentarios(v.id), lista=$('#tvLista',ov);
+    lista.innerHTML = cs.map(c=>'<div class="li">'+avatar({nome:c.nome, foto:c.foto},30)+
+      '<div class="bolha"><div class="qn"><b>'+esc(c.nome)+'</b><span class="qd">'+quando(c.q)+'</span></div>'+
+      '<p>'+esc(c.txt)+'</p></div></div>').join('') || '<div class="vazio">'+esc(T('Ninguém comentou ainda. Comece a conversa.'))+'</div>';
+    const t=ov.querySelector('.coments h4'); if(t) t.textContent=T('Comentários')+(cs.length?' · '+nf(cs.length):'');
+    lista.scrollTop=lista.scrollHeight;
+  };
+  const enviar=()=>{
+    if(!tvComentar(v.id, campo.value)) return;
+    campo.value=''; repinta(); toast('<b>'+esc(T('Comentário publicado.'))+'</b> '+esc(T('A rede inteira vê.')),1);
+  };
+  botao&&botao.addEventListener('click', enviar);
+  campo&&campo.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); enviar(); } });
+  if(focarComentario && campo) setTimeout(()=>{ campo.focus(); $('#tvLista',ov).scrollTop=$('#tvLista',ov).scrollHeight; },120);
+}
+</script>

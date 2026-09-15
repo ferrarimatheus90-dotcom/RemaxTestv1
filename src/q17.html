@@ -57,6 +57,7 @@ function garantirCampos(){
   const def=(k,v)=>{ if(s[k]===undefined){ s[k]=v; mudou=true; } };
   def('tv', GENERICA? [] : TV_PADRAO.map(x=>Object.assign({},x)));
   def('audios', []); def('perfis', {}); def('envios', []); def('jornadas', []); def('prazos', {});
+  def('tvReacoes', {}); def('tvComents', {});      // curtidas e comentários dos vídeos (pedido do Bruno)
   def('solicitacoes', []); def('lojasExtra', []); def('permRegiao', {}); def('arquivosMarca', []); def('tutoriais', {});
   def('pexCriterios', CRITERIOS_EXC.map(c=>Object.assign({cat:'Adequação', ativo:true}, c)));
   def('pesos', Object.assign({}, PONTOS));
@@ -106,10 +107,13 @@ function srcVideo(v){
   return v.yt? 'https://www.youtube-nocookie.com/embed/'+v.yt+'?autoplay=1&rel=0&modestbranding=1&playsinline=1'
              : 'https://www.instagram.com/reel/'+v.ig+'/embed';
 }
-function abrirVideo(v){
+function abrirVideo(v, focarComentario){
   if(EM_QUADRO){ window.open(v.yt?'https://www.youtube.com/watch?v='+v.yt:'https://www.instagram.com/reel/'+v.ig+'/', '_blank', 'noopener'); return; }
-  const ov=modal(esc(v.tit), '<iframe class="player'+(v.ig?' ig':'')+'" src="'+srcVideo(v)+'" title="'+esc(v.tit)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>', '');
+  const player='<iframe class="player'+(v.ig?' ig':'')+'" src="'+srcVideo(v)+'" title="'+esc(v.tit)+'" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+  const temInteracao = typeof tvBarraHTML==='function';
+  const ov=modal(esc(v.tit), player+(temInteracao? '<div class="tv-rodape">'+tvBarraHTML(v,false)+'</div>'+tvComentariosHTML(v) : ''), '');
   ov.classList.add('player-ov');
+  if(temInteracao) tvLigarModal(ov, v, focarComentario);
 }
 function lerImagemReduzida(arq, max, q, pronto){
   if(!arq || !/^image\//.test(arq.type||'')){ toast(T('Escolha uma imagem em JPG ou PNG.')); return; }
@@ -163,10 +167,12 @@ VIEWS.tv=function(v){
     '<div class="chips" id="tvCats" style="margin-bottom:16px">'+cats.map(c=>'<button class="chip '+(c===TV_CAT?'on':'')+'" data-c="'+esc(c)+'">'+esc(T(c))+'</button>').join('')+'</div>'+
     '<div class="tvgrid">'+(lista.map(x=>'<div class="tvcard" data-tv="'+x.id+'">'+capaHTML(x)+
       '<div class="tx"><b>'+esc(x.tit)+'</b><span>'+esc(x.canal||'')+(x.dur?' · '+esc(x.dur):'')+'</span>'+
+      (typeof tvBarraHTML==='function'? tvBarraHTML(x,true) : '')+
       (souMatriz()?'<div class="acoes"><button class="btn sm" data-dest="'+x.id+'">'+(x.dest?'★ '+esc(T('Em destaque')):esc(T('Destacar na home')))+'</button><button class="btn sm" data-tira="'+x.id+'">'+esc(T('Remover'))+'</button></div>':'')+
       '</div></div>').join('')||'<div class="empty">'+esc(T('Nenhum vídeo nesta categoria.'))+'</div>')+'</div>'+
     '<div class="hint" style="margin-top:22px">'+esc(T('As vinhetas, trilhas de vídeo e spots de rádio da marca ficam no Brand Center, na Biblioteca de mídia.'))+
       ' <a href="#/midia">'+esc(T('Abrir a Biblioteca de mídia'))+' →</a></div>';
+  if(typeof tvLigarInteracao==='function') tvLigarInteracao(v);
   $$('#tvCats .chip',v).forEach(b=>b.addEventListener('click',()=>{ TV_CAT=b.dataset.c; route(); }));
   $$('[data-dest]',v).forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation();
     commit('Destacou vídeo na home', (S.tv.find(x=>x.id===b.dataset.dest)||{}).tit, s=>{ s.tv.forEach(x=>x.dest= x.id===b.dataset.dest?1:0); }); route(); toast(T('Vídeo em destaque na tela inicial.'),1); }));
