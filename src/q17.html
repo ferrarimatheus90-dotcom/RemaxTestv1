@@ -58,6 +58,10 @@ function garantirCampos(){
   def('tv', GENERICA? [] : TV_PADRAO.map(x=>Object.assign({},x)));
   def('audios', []); def('perfis', {}); def('envios', []); def('jornadas', []); def('prazos', {});
   def('tvReacoes', {}); def('tvComents', {});      // curtidas e comentários dos vídeos (pedido do Bruno)
+  // mapas que voltaram do servidor como lista vazia (defeito antigo do json_decode) viram mapa de novo
+  ['tvReacoes','tvComents','perfis','prazos','tutoriais','permRegiao','leituras'].forEach(k=>{
+    if(Array.isArray(s[k]) && !s[k].length){ s[k]={}; mudou=true; }
+  });
   def('solicitacoes', []); def('lojasExtra', []); def('permRegiao', {}); def('arquivosMarca', []); def('tutoriais', {});
   def('pexCriterios', CRITERIOS_EXC.map(c=>Object.assign({cat:'Adequação', ativo:true}, c)));
   def('pesos', Object.assign({}, PONTOS));

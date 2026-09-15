@@ -4851,6 +4851,10 @@ function garantirCampos(){
   def('tv', GENERICA? [] : TV_PADRAO.map(x=>Object.assign({},x)));
   def('audios', []); def('perfis', {}); def('envios', []); def('jornadas', []); def('prazos', {});
   def('tvReacoes', {}); def('tvComents', {});      // curtidas e comentários dos vídeos (pedido do Bruno)
+  // mapas que voltaram do servidor como lista vazia (defeito antigo do json_decode) viram mapa de novo
+  ['tvReacoes','tvComents','perfis','prazos','tutoriais','permRegiao','leituras'].forEach(k=>{
+    if(Array.isArray(s[k]) && !s[k].length){ s[k]={}; mudou=true; }
+  });
   def('solicitacoes', []); def('lojasExtra', []); def('permRegiao', {}); def('arquivosMarca', []); def('tutoriais', {});
   def('pexCriterios', CRITERIOS_EXC.map(c=>Object.assign({cat:'Adequação', ativo:true}, c)));
   def('pesos', Object.assign({}, PONTOS));
@@ -5550,18 +5554,18 @@ VIEWS.param=function(v){
 /* botão principal: o balão da marca */
 .curtir{
   display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--fill-2);
-  padding:8px 16px 8px 10px;border-radius:99px;cursor:pointer;color:var(--ink-2);
-  font-size:13.6px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  padding:6px 14px 6px 8px;border-radius:99px;cursor:pointer;color:var(--ink-2);
+  font-size:13.2px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
   transition:background .15s var(--e),border-color .15s var(--e),color .15s var(--e)
 }
 .curtir:hover{background:var(--fill);border-color:var(--line-2,var(--line))}
 .curtir img{
-  width:28px;height:28px;object-fit:contain;display:block;
-  filter:grayscale(1);opacity:.4;transition:filter .2s var(--e),opacity .2s var(--e),transform .25s var(--e)
+  width:23px;height:23px;object-fit:contain;display:block;
+  opacity:.55;transition:opacity .2s var(--e),transform .25s var(--e)
 }
-.curtir:hover img{opacity:.75}
+.curtir:hover img{opacity:.85}
 .curtir.on{color:var(--red);border-color:var(--red);background:var(--red-soft)}
-.curtir.on img{filter:none;opacity:1}
+.curtir.on img{opacity:1}
 @keyframes balaoSobe{0%{transform:scale(1)}35%{transform:scale(1.38) translateY(-5px)}100%{transform:scale(1)}}
 .curtir.pop img{animation:balaoSobe .5s var(--e)}
 @media (prefers-reduced-motion:reduce){ .curtir.pop img{animation:none} }
@@ -5569,11 +5573,11 @@ VIEWS.param=function(v){
 /* botão de comentar, do mesmo tamanho */
 .tv-interacao .fala{
   display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--fill-2);
-  padding:8px 16px;border-radius:99px;cursor:pointer;color:var(--ink-2);
-  font-size:13.6px;font-weight:600;letter-spacing:-.01em;min-height:46px;
+  padding:6px 14px;border-radius:99px;cursor:pointer;color:var(--ink-2);
+  font-size:13.2px;font-weight:600;letter-spacing:-.01em;min-height:37px;
   transition:background .15s var(--e),color .15s var(--e)
 }
-.tv-interacao .fala .em{font-size:19px;line-height:1}
+.tv-interacao .fala .em{font-size:16px;line-height:1}
 .tv-interacao .fala:hover{background:var(--fill);color:var(--ink)}
 
 /* resumo de quem reagiu */
@@ -5596,14 +5600,16 @@ VIEWS.param=function(v){
 }
 .reac:hover{transform:translateY(-2px);border-color:var(--line-3,var(--line-2,var(--line)))}
 .reac .em{font-size:20px;line-height:1}
-.reac img{width:24px;height:24px;object-fit:contain;display:block;filter:grayscale(1);opacity:.45}
+.reac img{width:24px;height:24px;object-fit:contain;display:block;opacity:.6}
 .reac.on{border-color:var(--red);background:var(--red-soft);color:var(--red)}
-.reac.on img{filter:none;opacity:1}
+.reac.on img{opacity:1}
 @media (prefers-reduced-motion:reduce){ .reac:hover{transform:none} }
 
 /* dentro do modal do vídeo */
 .player-ov .tv-rodape{padding:16px 20px 6px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line)}
 .player-ov .tv-rodape .tv-interacao{margin:0}
+.player-ov .curtir{padding:8px 16px 8px 10px;font-size:13.8px}
+.player-ov .curtir img{width:27px;height:27px}
 .coments{padding:8px 20px 20px;display:flex;flex-direction:column;gap:14px}
 .coments h4{margin:0;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:-.005em}
 .coments .lista{display:flex;flex-direction:column;gap:12px;max-height:230px;overflow:auto}
