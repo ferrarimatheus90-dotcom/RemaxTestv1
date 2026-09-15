@@ -1,71 +1,127 @@
 <style>
-/* ---------- v3.11 · curtir com o balão e comentar nos vídeos ---------- */
-.tv-interacao{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px}
+/* ---------- v3.11 · reagir com o balão da RE/MAX e comentar nos vídeos ---------- */
+.tv-interacao{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* botão principal: o balão da marca */
 .curtir{
-  display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;
-  padding:5px 9px 5px 5px;border-radius:99px;cursor:pointer;color:var(--ink-2);
-  font-size:12.6px;font-weight:600;font-variant-numeric:tabular-nums;transition:background .15s var(--e)
+  display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--fill-2);
+  padding:8px 16px 8px 10px;border-radius:99px;cursor:pointer;color:var(--ink-2);
+  font-size:13.6px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  transition:background .15s var(--e),border-color .15s var(--e),color .15s var(--e)
 }
-.curtir:hover{background:var(--fill-2)}
+.curtir:hover{background:var(--fill);border-color:var(--line-2,var(--line))}
 .curtir img{
-  width:24px;height:24px;object-fit:contain;display:block;
-  filter:grayscale(1);opacity:.42;transition:filter .2s var(--e),opacity .2s var(--e),transform .2s var(--e)
+  width:28px;height:28px;object-fit:contain;display:block;
+  filter:grayscale(1);opacity:.4;transition:filter .2s var(--e),opacity .2s var(--e),transform .25s var(--e)
 }
 .curtir:hover img{opacity:.75}
-.curtir.on{color:var(--red)}
+.curtir.on{color:var(--red);border-color:var(--red);background:var(--red-soft)}
 .curtir.on img{filter:none;opacity:1}
-@keyframes balaoSobe{0%{transform:scale(1)}35%{transform:scale(1.34) translateY(-4px)}100%{transform:scale(1)}}
+@keyframes balaoSobe{0%{transform:scale(1)}35%{transform:scale(1.38) translateY(-5px)}100%{transform:scale(1)}}
 .curtir.pop img{animation:balaoSobe .5s var(--e)}
 @media (prefers-reduced-motion:reduce){ .curtir.pop img{animation:none} }
+
+/* botão de comentar, do mesmo tamanho */
 .tv-interacao .fala{
-  display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;padding:5px 9px;
-  border-radius:99px;cursor:pointer;color:var(--muted);font-size:12.4px;font-weight:600;transition:background .15s var(--e)
+  display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--fill-2);
+  padding:8px 16px;border-radius:99px;cursor:pointer;color:var(--ink-2);
+  font-size:13.6px;font-weight:600;letter-spacing:-.01em;min-height:46px;
+  transition:background .15s var(--e),color .15s var(--e)
 }
-.tv-interacao .fala:hover{background:var(--fill-2);color:var(--ink-2)}
-.quem-curtiu{font-size:12px;color:var(--muted);margin-left:2px}
+.tv-interacao .fala .em{font-size:19px;line-height:1}
+.tv-interacao .fala:hover{background:var(--fill);color:var(--ink)}
+
+/* resumo de quem reagiu */
+.quem-curtiu{display:inline-flex;align-items:center;gap:7px;font-size:12.6px;color:var(--muted);margin-left:2px}
+.quem-curtiu .pilha{display:inline-flex;align-items:center}
+.quem-curtiu .pilha .b{
+  width:24px;height:24px;border-radius:50%;background:var(--surface);border:1.5px solid var(--surface);
+  display:grid;place-items:center;font-size:13px;margin-left:-7px;box-shadow:0 1px 3px rgba(0,0,0,.14)
+}
+.quem-curtiu .pilha .b:first-child{margin-left:0}
+.quem-curtiu .pilha .b img{width:17px;height:17px;object-fit:contain;display:block}
+
+/* fileira de reações, dentro do vídeo */
+.reacoes{display:flex;gap:8px;flex-wrap:wrap}
+.reac{
+  display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);
+  border-radius:99px;padding:7px 14px 7px 11px;cursor:pointer;color:var(--ink-2);
+  font-size:13px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  transition:transform .14s var(--e),border-color .15s var(--e),background .15s var(--e)
+}
+.reac:hover{transform:translateY(-2px);border-color:var(--line-3,var(--line-2,var(--line)))}
+.reac .em{font-size:20px;line-height:1}
+.reac img{width:24px;height:24px;object-fit:contain;display:block;filter:grayscale(1);opacity:.45}
+.reac.on{border-color:var(--red);background:var(--red-soft);color:var(--red)}
+.reac.on img{filter:none;opacity:1}
+@media (prefers-reduced-motion:reduce){ .reac:hover{transform:none} }
 
 /* dentro do modal do vídeo */
-.player-ov .tv-rodape{padding:14px 20px 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line)}
+.player-ov .tv-rodape{padding:16px 20px 6px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line)}
 .player-ov .tv-rodape .tv-interacao{margin:0}
-.coments{padding:6px 20px 20px;display:flex;flex-direction:column;gap:14px}
-.coments h4{margin:0;font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:-.005em}
+.coments{padding:8px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.coments h4{margin:0;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:-.005em}
 .coments .lista{display:flex;flex-direction:column;gap:12px;max-height:230px;overflow:auto}
 .coments .li{display:flex;gap:10px;align-items:flex-start}
 .coments .bolha{background:var(--fill-2);border-radius:14px;padding:9px 14px;min-width:0;flex:1}
 .coments .bolha .qn{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .coments .bolha b{font-size:12.8px;font-weight:600;letter-spacing:-.01em}
 .coments .bolha .qd{font-size:11.5px;color:var(--muted)}
-.coments .bolha p{margin:3px 0 0;font-size:13.2px;line-height:1.5;color:var(--ink-2);overflow-wrap:anywhere}
+.coments .bolha p{margin:3px 0 0;font-size:13.4px;line-height:1.5;color:var(--ink-2);overflow-wrap:anywhere}
 .coments .vazio{font-size:13px;color:var(--muted);padding:6px 0}
 .coments .escrever{display:flex;gap:9px;align-items:center}
 .coments .escrever input{flex:1;min-width:0}
-@media(max-width:560px){ .coments .lista{max-height:180px} }
+.emoji-bar{display:flex;gap:4px;flex-wrap:wrap;margin-left:40px}
+.emoji-bar button{
+  border:0;background:transparent;font-size:19px;line-height:1;padding:4px 6px;border-radius:9px;cursor:pointer;
+  transition:background .12s var(--e),transform .12s var(--e)
+}
+.emoji-bar button:hover{background:var(--fill-2);transform:scale(1.15)}
+@media(max-width:560px){ .coments .lista{max-height:180px} .emoji-bar{margin-left:0} .reac{padding:6px 12px 6px 9px} }
 </style>
 <script>
 /* =======================================================================
-   v3.11 — CURTIR E COMENTAR NOS VÍDEOS
+   v3.11 — REAGIR E COMENTAR NOS VÍDEOS
 
-   Pedido do Bruno: botão de curtir nos vídeos da plataforma, usando o balão
-   da RE/MAX no lugar do coração, e um lugar para comentar.
+   Pedido do Bruno: botão de curtir usando o balão da RE/MAX no lugar do
+   coração, um lugar para comentar, e alguns emojis da marca.
 
-   O balão fica cinza e apagado enquanto ninguém curtiu; ao curtir ele ganha
-   a cor da marca e sobe um instante. Curtidas e comentários ficam no estado
-   compartilhado, então quem abre o site de outro lugar vê o mesmo número.
+   O balão é a reação principal. Dentro do vídeo abre a fileira inteira, com
+   as reações do ramo: casa nova, vendeu, parabéns, bombou e amei. Cada pessoa
+   escolhe uma; clicar de novo na mesma tira a reação. Tudo vive no estado
+   compartilhado, então quem abre o site de outro lugar vê os mesmos números.
    ======================================================================= */
 
-const tvCurtidas   = id => (S.tvReacoes&&S.tvReacoes[id]) || [];
-const tvEuCurti    = id => tvCurtidas(id).indexOf(euId())>=0;
-const tvComentarios= id => (S.tvComents&&S.tvComents[id]) || [];
+const TV_REACOES = [
+  {k:'balao',  rot:'Curtir',    balao:true},
+  {k:'casa',   rot:'Casa nova', em:'🏠'},
+  {k:'chave',  rot:'Vendeu',    em:'🔑'},
+  {k:'palmas', rot:'Parabéns',  em:'👏'},
+  {k:'fogo',   rot:'Bombou',    em:'🔥'},
+  {k:'amei',   rot:'Amei',      em:'💙'}
+];
+const TV_EMOJIS = ['🎈','🏠','🔑','👏','🔥','💙','🙌','📈'];
+const reacaoDef = k => TV_REACOES.find(r=>r.k===k) || TV_REACOES[0];
+/* o formato antigo era uma lista de quem curtiu; vira mapa de pessoa para reação */
+function tvReacoesDe(id){
+  const bruto=(S.tvReacoes&&S.tvReacoes[id]);
+  if(Array.isArray(bruto)){ const m={}; bruto.forEach(u=>m[u]='balao'); return m; }
+  return bruto||{};
+}
+const tvTotalReacoes = id => Object.keys(tvReacoesDe(id)).length;
+const tvMinhaReacao  = id => tvReacoesDe(id)[euId()] || null;
+const tvComentarios  = id => (S.tvComents&&S.tvComents[id]) || [];
 
-function tvCurtir(id){
+function tvReagir(id, chave){
   const tit=((S.tv||[]).find(x=>x.id===id)||{}).tit||id;
-  const jaCurti=tvEuCurti(id);
-  commit(jaCurti?'Descurtiu vídeo':'Curtiu vídeo', tit, s=>{
+  const atual=tvMinhaReacao(id), tira=(atual===chave);
+  commit(tira?'Tirou a reação do vídeo':'Reagiu ao vídeo', tit+(tira?'':' · '+reacaoDef(chave).rot), s=>{
     s.tvReacoes=s.tvReacoes||{};
-    const l=(s.tvReacoes[id]||[]).filter(x=>x!==euId());
-    s.tvReacoes[id]= jaCurti? l : l.concat([euId()]);
+    const m=Object.assign({}, tvReacoesDe(id));
+    if(tira) delete m[euId()]; else m[euId()]=chave;
+    s.tvReacoes[id]=m;
   });
-  return !jaCurti;
+  return tira? null : chave;
 }
 function tvComentar(id, txt){
   const t=String(txt||'').trim().slice(0,600); if(!t) return false;
@@ -76,76 +132,114 @@ function tvComentar(id, txt){
   });
   return true;
 }
-/* rótulo curto: "Você e mais 3" */
-function tvRotuloCurtidas(id){
-  const n=tvCurtidas(id).length; if(!n) return '';
-  if(tvEuCurti(id)) return n===1? T('Você curtiu') : T('Você e mais')+' '+(n-1);
-  return nf(n)+' '+(n===1? T('curtida') : T('curtidas'));
+/* pilha com as reações distintas + rótulo curto */
+function tvResumoHTML(id){
+  const m=tvReacoesDe(id), n=Object.keys(m).length;
+  if(!n) return '<span class="quem-curtiu"></span>';
+  const usadas=[]; Object.keys(m).forEach(u=>{ if(usadas.indexOf(m[u])<0) usadas.push(m[u]); });
+  const pilha=usadas.slice(0,4).map(k=>{ const r=reacaoDef(k);
+    return '<span class="b">'+(r.balao? '<img src="'+BALAO+'" alt="">' : r.em)+'</span>'; }).join('');
+  const minha=tvMinhaReacao(id);
+  const rot = minha? (n===1? T('Você reagiu') : T('Você e mais')+' '+nf(n-1))
+                   : nf(n)+' '+(n===1? T('reação') : T('reações'));
+  return '<span class="quem-curtiu"><span class="pilha">'+pilha+'</span>'+esc(rot)+'</span>';
+}
+/* fileira completa, com a contagem de cada reação */
+function tvReacoesHTML(v){
+  const m=tvReacoesDe(v.id), minha=tvMinhaReacao(v.id);
+  const conta=k=>Object.keys(m).filter(u=>m[u]===k).length;
+  return '<div class="reacoes">'+TV_REACOES.map(r=>{ const c=conta(r.k);
+    return '<button class="reac'+(minha===r.k?' on':'')+'" type="button" data-reagir="'+v.id+'" data-r="'+r.k+'" '+
+      'aria-pressed="'+(minha===r.k?'true':'false')+'" title="'+esc(T(r.rot))+'">'+
+      (r.balao? '<img src="'+BALAO+'" alt="">' : '<span class="em">'+r.em+'</span>')+
+      esc(T(r.rot))+(c?' · '+nf(c):'')+'</button>'; }).join('')+'</div>';
 }
 
-/* ---------- barra de curtir, usada no cartão e no modal ---------- */
-function tvBarraHTML(v, comBotaoComentar){
-  const n=tvCurtidas(v.id).length, nc=tvComentarios(v.id).length;
-  return '<div class="tv-interacao">'+
-    '<button class="curtir'+(tvEuCurti(v.id)?' on':'')+'" data-curtir="'+v.id+'" type="button" '+
-      'aria-pressed="'+(tvEuCurti(v.id)?'true':'false')+'" title="'+esc(T('Curtir'))+'">'+
-      '<img src="'+BALAO+'" alt="">'+(n?nf(n):'')+'</button>'+
-    (comBotaoComentar
-      ? '<button class="fala" data-vercoments="'+v.id+'" type="button">'+esc(T('Comentar'))+(nc?' · '+nf(nc):'')+'</button>'
-      : '<span class="quem-curtiu">'+esc(tvRotuloCurtidas(v.id))+'</span>')+
-  '</div>';
+/* ---------- barra usada no cartão (resumida) e no vídeo (completa) ---------- */
+function tvBarraHTML(v, noCartao){
+  if(noCartao){
+    const n=tvTotalReacoes(v.id), nc=tvComentarios(v.id).length, minha=tvMinhaReacao(v.id);
+    return '<div class="tv-interacao">'+
+      '<button class="curtir'+(minha?' on':'')+'" data-curtir="'+v.id+'" type="button" '+
+        'aria-pressed="'+(minha?'true':'false')+'" title="'+esc(T('Curtir'))+'">'+
+        '<img src="'+BALAO+'" alt="">'+esc(T('Curtir'))+(n?' · '+nf(n):'')+'</button>'+
+      '<button class="fala" data-vercoments="'+v.id+'" type="button">'+
+        '<span class="em">💬</span>'+esc(T('Comentar'))+(nc?' · '+nf(nc):'')+'</button>'+
+    '</div>';
+  }
+  return tvReacoesHTML(v)+'<div class="tv-interacao" id="tvResumo">'+tvResumoHTML(v.id)+'</div>';
+}
+function tvListaComentsHTML(v){
+  const cs=tvComentarios(v.id);
+  return cs.map(c=>'<div class="li">'+avatar({nome:c.nome, foto:c.foto},30)+
+      '<div class="bolha"><div class="qn"><b>'+esc(c.nome)+'</b><span class="qd">'+quando(c.q)+'</span></div>'+
+      '<p>'+esc(c.txt)+'</p></div></div>').join('')
+    || '<div class="vazio">'+esc(T('Ninguém comentou ainda. Comece a conversa.'))+'</div>';
 }
 function tvComentariosHTML(v){
   const cs=tvComentarios(v.id);
   return '<div class="coments">'+
     '<h4>'+esc(T('Comentários'))+(cs.length?' · '+nf(cs.length):'')+'</h4>'+
-    '<div class="lista" id="tvLista">'+
-      (cs.map(c=>'<div class="li">'+avatar({nome:c.nome, foto:c.foto},30)+
-        '<div class="bolha"><div class="qn"><b>'+esc(c.nome)+'</b><span class="qd">'+quando(c.q)+'</span></div>'+
-        '<p>'+esc(c.txt)+'</p></div></div>').join('')
-        || '<div class="vazio">'+esc(T('Ninguém comentou ainda. Comece a conversa.'))+'</div>')+
-    '</div>'+
+    '<div class="lista" id="tvLista">'+tvListaComentsHTML(v)+'</div>'+
     '<div class="escrever">'+avatar(eu(),30)+
       '<input id="tvComIn" maxlength="600" placeholder="'+esc(T('Escreva um comentário…'))+'">'+
       '<button class="btn pri" id="tvComOk" type="button">'+esc(T('Enviar'))+'</button>'+
-    '</div></div>';
+    '</div>'+
+    '<div class="emoji-bar" id="tvEmojis">'+TV_EMOJIS.map(e=>'<button type="button" data-emoji="'+e+'" title="'+e+'">'+e+'</button>').join('')+'</div>'+
+  '</div>';
 }
 
-/* ---------- liga os cliques em qualquer tela que use a barra ---------- */
-function tvLigarInteracao(raiz, aoComentar){
+/* ---------- cliques ---------- */
+function tvLigarInteracao(raiz){
+  /* cartão: o balão curte direto */
   $$('[data-curtir]', raiz).forEach(b=>b.addEventListener('click', e=>{
-    e.stopPropagation();                       // não abre o vídeo ao curtir
-    const id=b.dataset.curtir, agoraCurtiu=tvCurtir(id);
-    const n=tvCurtidas(id).length;
-    b.classList.toggle('on', agoraCurtiu);
-    b.setAttribute('aria-pressed', agoraCurtiu?'true':'false');
-    b.lastChild.nodeType===3 ? b.lastChild.textContent=(n?nf(n):'') : b.insertAdjacentText('beforeend', n?nf(n):'');
-    if(agoraCurtiu){ b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
-    const rot=b.parentNode.querySelector('.quem-curtiu'); if(rot) rot.textContent=tvRotuloCurtidas(id);
+    e.stopPropagation();
+    const id=b.dataset.curtir, agora_=tvReagir(id, tvMinhaReacao(id)||'balao');
+    const n=tvTotalReacoes(id);
+    b.classList.toggle('on', !!agora_);
+    b.setAttribute('aria-pressed', agora_?'true':'false');
+    b.lastChild.textContent = T('Curtir')+(n?' · '+nf(n):'');
+    if(agora_){ b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
   }));
   $$('[data-vercoments]', raiz).forEach(b=>b.addEventListener('click', e=>{
     e.stopPropagation();
     const v=(S.tv||[]).find(x=>x.id===b.dataset.vercoments); if(v && typeof abrirVideo==='function') abrirVideo(v, true);
   }));
 }
-/* dentro do modal: curtir, comentar e a lista que se atualiza sozinha */
 function tvLigarModal(ov, v, focarComentario){
-  tvLigarInteracao(ov);
+  const rodape=ov.querySelector('.tv-rodape');
+  const repintaReacoes=()=>{
+    if(!rodape) return;
+    rodape.innerHTML = tvReacoesHTML(v)+'<div class="tv-interacao" id="tvResumo">'+tvResumoHTML(v.id)+'</div>';
+    ligaReacoes();
+  };
+  const ligaReacoes=()=>{
+    $$('[data-reagir]', ov).forEach(b=>b.addEventListener('click', e=>{
+      e.stopPropagation();
+      const virou=tvReagir(b.dataset.reagir, b.dataset.r);
+      repintaReacoes();
+      if(virou){ const novo=ov.querySelector('[data-r="'+b.dataset.r+'"] img');
+        if(novo){ novo.parentNode.classList.remove('pop'); void novo.parentNode.offsetWidth; novo.parentNode.classList.add('pop'); } }
+    }));
+  };
+  ligaReacoes();
+
   const campo=$('#tvComIn',ov), botao=$('#tvComOk',ov);
-  const repinta=()=>{
+  const repintaComents=()=>{
     const cs=tvComentarios(v.id), lista=$('#tvLista',ov);
-    lista.innerHTML = cs.map(c=>'<div class="li">'+avatar({nome:c.nome, foto:c.foto},30)+
-      '<div class="bolha"><div class="qn"><b>'+esc(c.nome)+'</b><span class="qd">'+quando(c.q)+'</span></div>'+
-      '<p>'+esc(c.txt)+'</p></div></div>').join('') || '<div class="vazio">'+esc(T('Ninguém comentou ainda. Comece a conversa.'))+'</div>';
+    lista.innerHTML=tvListaComentsHTML(v);
     const t=ov.querySelector('.coments h4'); if(t) t.textContent=T('Comentários')+(cs.length?' · '+nf(cs.length):'');
     lista.scrollTop=lista.scrollHeight;
   };
   const enviar=()=>{
     if(!tvComentar(v.id, campo.value)) return;
-    campo.value=''; repinta(); toast('<b>'+esc(T('Comentário publicado.'))+'</b> '+esc(T('A rede inteira vê.')),1);
+    campo.value=''; repintaComents(); toast('<b>'+esc(T('Comentário publicado.'))+'</b> '+esc(T('A rede inteira vê.')),1);
   };
   botao&&botao.addEventListener('click', enviar);
   campo&&campo.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); enviar(); } });
-  if(focarComentario && campo) setTimeout(()=>{ campo.focus(); $('#tvLista',ov).scrollTop=$('#tvLista',ov).scrollHeight; },120);
+  $$('#tvEmojis button', ov).forEach(b=>b.addEventListener('click',()=>{
+    if(!campo) return; campo.value=(campo.value+b.dataset.emoji).slice(0,600); campo.focus();
+  }));
+  if(focarComentario && campo) setTimeout(()=>{ campo.focus(); const l=$('#tvLista',ov); if(l) l.scrollTop=l.scrollHeight; },120);
 }
 </script>
