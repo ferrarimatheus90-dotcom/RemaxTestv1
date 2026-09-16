@@ -1390,6 +1390,14 @@ function personas(){
     corretor:{id:c.id, nome:c.nome, papel:'Associado · '+lojaDe(c.loja).nome, escopo:c.loja, foto:c.foto}
   };
   Object.keys(pp).forEach(k=>{ const o=(S.perfis||{})[k]; if(o){ if(o.nome) pp[k].nome=o.nome; if(o.foto) pp[k].foto=o.foto; } });   // o que a pessoa editou no perfil
+  /* acesso nominal (ex.: um convidado com prazo): entra no escopo do papel, mas com identidade
+     própria — o que ele editar fica em S.perfis['conta:<e-mail>'], sem encostar no perfil do papel */
+  try{ const cs=(typeof contaSessao==='function') && contaSessao();
+       if(cs && cs.pessoal && pp[cs.papel]){
+         const meu=(S.perfis||{})['conta:'+cs.email]||{};
+         pp[cs.papel]=Object.assign({}, pp[cs.papel],
+           {nome:meu.nome||cs.nome, papel:cs.cargo||pp[cs.papel].papel, foto:meu.foto||''});
+       } }catch(e){}
   return pp;
 }
 let P = null;
@@ -1635,12 +1643,33 @@ const telasDe = m => m.telas.filter(podeVer);
    ACESSO — contas de teste, uma por nível
    ======================================================================= */
 const CONTAS=[
-  {papel:'brasil',   email:'matriz@prontosemrede.test',   alias:['brasil@prontosemrede.test'], senha:'Rede@2026', nome:'Matriz RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
-  {papel:'master',   email:'master@prontosemrede.test',   senha:'Rede@2026', nome:'Master São Paulo',   desc:'Vê o desempenho de todas as unidades · aprova projetos e evidências'},
-  {papel:'franquia', email:'loja@prontosemrede.test',     senha:'Rede@2026', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
-  {papel:'corretor', email:'corretor@prontosemrede.test', senha:'Rede@2026', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'},
-  {papel:'construtor', email:'construtor@prontosemrede.test', senha:'Rede@2026', nome:'Construtor · BMAG',  desc:'Uso interno · parametriza a plataforma · auditoria e implantação'}
+  {papel:'brasil',   email:'matriz@prontosemrede.test',   alias:['brasil@prontosemrede.test'], senha:'ZkdX-zhjQ-dbjm', nome:'Matriz RE/MAX Brasil', desc:'Visão nacional · publica comunicados e campanhas · aprova'},
+  {papel:'master',   email:'master@prontosemrede.test',   senha:'YuET-tCpj-mqyN', nome:'Master São Paulo',   desc:'Vê o desempenho de todas as unidades · aprova projetos e evidências'},
+  {papel:'franquia', email:'loja@prontosemrede.test',     senha:'yA3a-VYC9-X3pU', nome:'Gestor da unidade',       desc:'Executa o checklist · envia evidências · gerencia a equipe'},
+  {papel:'corretor', email:'corretor@prontosemrede.test', senha:'K3GJ-Y2C5-zmF9', nome:'Associado',               desc:'Personaliza peças · publica · acompanha os próprios indicadores'},
+  {papel:'construtor', email:'construtor@prontosemrede.test', senha:'RiBi-UEzA-jAHg', nome:'Construtor · BMAG',  desc:'Uso interno · parametriza a plataforma · auditoria e implantação'},
+  /* acesso temporário: entra no escopo da Matriz e para de valer sozinho na data de 'expira' */
+  {papel:'brasil', email:'gabriel.colla@prontosemrede.test', senha:'Kf6A-AZun-4SSC', nome:'Gabriel Colla',
+   desc:'Acesso temporário · visão nacional', pessoal:true, cargo:'Convidado · visão nacional', expira:'2026-09-21'}
 ];
+/* a conta com que a pessoa entrou nesta sessão — não é o mesmo que o papel.
+   Fica em memória: o localStorage é só o espelho, para sobreviver ao F5. */
+let CONTA_ATUAL = null;
+const contaDe = email => CONTAS.find(c=>c.email===email) || null;
+/* data local: toISOString devolveria UTC e venceria o acesso 3 h antes no Brasil */
+const hojeISO = ()=>{ const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const contaExpirada = c => !!(c && c.expira && hojeISO() > c.expira);
+/* acesso nominal fica preso à própria conta; acesso interno acompanha o papel ativo */
+function contaSessao(){
+  const c = CONTA_ATUAL || contaDe(LS.get('pr_conta'));
+  if(c && c.pessoal) return c;
+  return CONTAS.find(x=>!x.pessoal && x.papel===ROLE) || c || {};
+}
+/* onde o perfil desta sessão é guardado: o acesso nominal tem o seu, não mexe no do papel */
+function chavePerfil(){ const c = CONTA_ATUAL || contaDe(LS.get('pr_conta'));
+  return (c && c.pessoal)? 'conta:'+c.email : ROLE; }
+const diaBR = iso => iso? iso.split('-').reverse().join('/') : '';
 function telaLogin(){
   document.body.style.overflow='hidden';
   const el=document.createElement('div'); el.className='login'; el.id='login';
@@ -1654,30 +1683,24 @@ function telaLogin(){
       '<div class="mods">'+MODULOS.map(m=>'<span>'+esc(m.nome)+'</span>').join('')+'</div>'+
     '</div>'+
     '<div class="form"><h1>'+esc(T('Entrar na plataforma'))+'</h1>'+
-      '<div class="sb">'+esc(T('Selecione um acesso de teste — cada um abre a plataforma com o seu próprio escopo de dados e permissões.'))+'</div>'+
-      '<div class="contas" id="contas">'+CONTAS.map(c=>
-        '<button class="conta" data-p="'+c.papel+'"><span class="av">'+iniciais(c.nome)+'</span>'+
-        '<span style="min-width:0"><span class="t">'+esc(T(c.nome))+'</span><span class="s">'+esc(c.email)+' · '+esc(T(c.desc))+'</span></span></button>').join('')+'</div>'+
+      '<div class="sb">'+esc(T('Informe o e-mail de acesso e a senha que você recebeu.'))+'</div>'+
       '<div class="grid g2" style="gap:14px;margin-top:20px">'+
         '<div class="field" style="margin:0"><label>'+esc(T('E-mail'))+'</label><input id="lgEmail" type="email" autocomplete="username"></div>'+
         '<div class="field" style="margin:0"><label>'+esc(T('Senha'))+'</label><input id="lgSenha" type="password" autocomplete="current-password"></div>'+
       '</div>'+
       '<div id="lgErro"></div>'+
       '<button class="entrar" id="lgOk">'+esc(T('Entrar'))+'<span style="width:17px;height:17px;display:grid">'+ICO.seta+'</span></button>'+
-      '<div class="rod">'+(LANG==='en'?'Password for every test account':LANG==='es'?'Contraseña de todas las cuentas de prueba':'Senha de todas as contas de teste')+': <b>'+esc(CONTAS[0].senha)+'</b><br>'+
-      (LANG==='en'?'Platform developed by':LANG==='es'?'Plataforma desarrollada por':'Plataforma desenvolvida por')+' <b>BMAG SERVIÇOS DIGITAIS</b><br>© 2026 BMAG Serviços Digitais · '+(LANG==='en'?'All rights reserved.':LANG==='es'?'Todos los derechos reservados.':'Todos os direitos reservados.')+'</div>'+
+      '<div class="rod">'+(LANG==='en'?'Platform developed by':LANG==='es'?'Plataforma desarrollada por':'Plataforma desenvolvida por')+' <b>BMAG SERVIÇOS DIGITAIS</b><br>© 2026 BMAG Serviços Digitais · '+(LANG==='en'?'All rights reserved.':LANG==='es'?'Todos los derechos reservados.':'Todos os direitos reservados.')+'</div>'+
     '</div></div>';
   document.body.appendChild(el);
   if(typeof aplicarTermos==='function') aplicarTermos(el);
   const m={parar(){}};
-  const preencher=c=>{ $('#lgEmail').value=c.email; $('#lgSenha').value=c.senha;
-    $$('#contas .conta').forEach(b=>b.classList.toggle('on', b.dataset.p===c.papel)); };
-  $$('#contas .conta',el).forEach(b=>b.addEventListener('click',()=>preencher(CONTAS.find(c=>c.papel===b.dataset.p))));
   const entrar=()=>{
     const e=($('#lgEmail').value||'').trim().toLowerCase(), sn=($('#lgSenha').value||'').trim();
     const c=CONTAS.find(x=>(x.email===e||(x.alias||[]).indexOf(e)>=0) && x.senha===sn);
-    if(!c){ $('#lgErro').innerHTML='<div class="erro">'+esc(T('E-mail ou senha inválidos. Clique em um dos acessos acima para preencher.'))+'</div>'; return; }
-    LS.set('pr_sessao', c.papel); LS.set('pr_role', c.papel); ROLE=c.papel;
+    if(!c){ $('#lgErro').innerHTML='<div class="erro">'+esc(T('E-mail ou senha inválidos.'))+'</div>'; return; }
+    if(contaExpirada(c)){ $('#lgErro').innerHTML='<div class="erro">'+esc(T('Este acesso era temporário e venceu em')+' '+diaBR(c.expira)+'. '+T('Fale com a BMAG para renovar.'))+'</div>'; return; }
+    CONTA_ATUAL=c; LS.set('pr_conta', c.email); LS.set('pr_sessao', c.papel); LS.set('pr_role', c.papel); ROLE=c.papel;
     el.style.transition='opacity .5s var(--ease)'; el.style.opacity='0';
     setTimeout(()=>{ m.parar(); el.remove(); document.body.style.overflow=''; iniciarApp(); },480);
   };
@@ -1685,11 +1708,10 @@ function telaLogin(){
   el.addEventListener('keydown',ev=>{ if(ev.key==='Enter') entrar(); });
   $('#lgIdi',el).addEventListener('click',()=>{ const k=Object.keys(IDIOMAS); trocaIdioma(k[(k.indexOf(LANG)+1)%k.length]); });
   $('#lgTema',el).addEventListener('click',()=>{ trocaTema(temaEfetivo()==='escuro'?'claro':'escuro'); $('#lgTema').textContent=temaEfetivo()==='escuro'?'\u263e':'\u2600'; });
-  preencher(CONTAS[0]);
   if(!SEM_HOVER && window.innerWidth>920) setTimeout(()=>{ const i=$('#lgEmail'); i&&i.focus({preventScroll:true}); },140);
 }
 function sair(){
-  LS.del('pr_sessao'); fechaModal(); esconderFly(); const pp=$('#pop'); if(pp) pp.remove();
+  CONTA_ATUAL=null; LS.del('pr_sessao'); LS.del('pr_conta'); fechaModal(); esconderFly(); const pp=$('#pop'); if(pp) pp.remove();
   $('#view').innerHTML=''; telaLogin();
 }
 
@@ -1842,7 +1864,9 @@ function renderWho(){
   if(typeof aplicarTermos==='function') aplicarTermos($('#whoBtn'));
 }
 $('#whoBtn').addEventListener('click',()=>{
-  const linhas=CONTAS.map(c=>{
+  const cs=contaSessao();
+  /* quem entrou por um acesso nominal fica no escopo com que entrou */
+  const linhas=(cs.pessoal? [] : CONTAS.filter(c=>!c.pessoal)).map(c=>{
     const p=P[c.papel];
     const n = c.papel==='brasil'? BASE.lojas.length+' · '+TOTAL_USUARIOS()
             : c.papel==='master'? String(BASE.lojas.filter(lojaDoMaster).length)
@@ -1851,7 +1875,7 @@ $('#whoBtn').addEventListener('click',()=>{
       '<span class="avph">'+iniciais(p.nome)+'</span><div><div style="font-weight:600;font-size:13.5px;font-family:var(--font-d)">'+esc(T(p.nome))+'</div>'+
       '<div class="mini">'+esc(T(p.papel))+' '+esc(n)+'</div></div>'+(c.papel===ROLE?'<span class="tag" style="margin-left:auto">'+esc(T('Ativo'))+'</span>':'')+'</div>';
   }).join('');
-  const ov=modal(T('Trocar de acesso'),linhas,
+  const ov=modal(T('Trocar de acesso'), linhas || '<div class="hint">'+esc(T('Este acesso entra sempre no mesmo escopo.'))+'</div>',
     '<a class="btn" href="#/perfil" onclick="fechaModal()">'+esc(T('Meu perfil'))+'</a><button class="btn" id="btSair">'+esc(T('Sair da conta'))+'</button><button class="btn pri" onclick="fechaModal()">'+esc(T('Fechar'))+'</button>');
   $$('.li',ov).forEach(el=>el.addEventListener('click',()=>{
     ROLE=el.dataset.r; LS.set('pr_role',ROLE); LS.set('pr_sessao',ROLE);
@@ -2261,6 +2285,62 @@ async function pecaPDF(cv, nome, mm){
   for(let i=1;i<=5;i++) x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
   push(enc(x+'trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n'+xref+'\n%%EOF'));
   baixarBlob(new Blob(partes,{type:'application/pdf'}), nome);
+}
+
+/* ---------- PDF em CMYK: a arte sai com quatro canais (DeviceCMYK), para gráfica ----------
+   Conversão direta, sem perfil ICC: serve para a gráfica receber um arquivo já separado.
+   Quando a gráfica exigir um perfil específico (Coated FOGRA, SWOP), ela reconverte a partir daqui. */
+function rgbParaCmyk(px){
+  const n=px.length/4, out=new Uint8Array(n*4);
+  for(let i=0,o=0;i<n;i++,o+=4){
+    const r=px[i*4]/255, g=px[i*4+1]/255, b=px[i*4+2]/255;
+    const k=1-Math.max(r,g,b), d=1-k;
+    out[o]   = d<=0? 0 : Math.round((1-r-k)/d*255);
+    out[o+1] = d<=0? 0 : Math.round((1-g-k)/d*255);
+    out[o+2] = d<=0? 0 : Math.round((1-b-k)/d*255);
+    out[o+3] = Math.round(k*255);
+  }
+  return out;
+}
+async function comprimeZlib(u8){
+  if(typeof CompressionStream!=='function') return null;          // navegador antigo: vai sem compressão
+  try{
+    const cs=new CompressionStream('deflate');                    // 'deflate' = zlib, que é o /FlateDecode do PDF
+    const w=cs.writable.getWriter(); w.write(u8); w.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }catch(e){ return null; }
+}
+async function pecaCMYK(cv, nome, mm){
+  let px;
+  try{ px=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data; }
+  catch(e){ toast('<b>Não consegui ler a arte para converter.</b> Reenvie a foto pelo botão do Estúdio e tente de novo.'); return; }
+  const cmyk=rgbParaCmyk(px);
+  const z=await comprimeZlib(cmyk);
+  const dados = z || cmyk, filtro = z? '/Filter/FlateDecode' : '';
+  const larg = mm? mm[0]/25.4*72 : cv.width*72/150, alt = mm? mm[1]/25.4*72 : cv.height*72/150;
+  const enc=s=>new TextEncoder().encode(s);
+  const partes=[], offs=[]; let pos=0;
+  const push=u=>{ partes.push(u); pos+=u.length; };
+  push(enc('%PDF-1.4\n'));
+  const obj=(n,corpo,stream)=>{
+    offs[n]=pos;
+    push(enc(n+' 0 obj\n'+corpo+'\n'));
+    if(stream){ push(enc('stream\n')); push(stream); push(enc('\nendstream\n')); }
+    push(enc('endobj\n'));
+  };
+  obj(1,'<</Type/Catalog/Pages 2 0 R>>');
+  obj(2,'<</Type/Pages/Kids[3 0 R]/Count 1>>');
+  obj(3,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 '+larg.toFixed(2)+' '+alt.toFixed(2)+']/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>');
+  obj(4,'<</Type/XObject/Subtype/Image/Width '+cv.width+'/Height '+cv.height+'/ColorSpace/DeviceCMYK/BitsPerComponent 8'+filtro+'/Length '+dados.length+'>>', dados);
+  const cont=enc('q '+larg.toFixed(2)+' 0 0 '+alt.toFixed(2)+' 0 0 cm /Im0 Do Q');
+  obj(5,'<</Length '+cont.length+'>>', cont);
+  const xref=pos;
+  let x='xref\n0 6\n0000000000 65535 f \n';
+  for(let i=1;i<=5;i++) x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+  push(enc(x+'trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n'+xref+'\n%%EOF'));
+  const bl=new Blob(partes,{type:'application/pdf'});
+  baixarBlob(bl, nome);
+  return bl.size;
 }
 
 /* =======================================================================
@@ -2912,7 +2992,7 @@ VIEWS.estudio=function(v,arg){
   const aceitaImovel = t.fmt!=='cartao' && t.fmt!=='email';
 
   v.innerHTML =
-    ph('Estúdio de Arte', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
+    ph('Estúdio de Arte', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF em RGB ou CMYK para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
       '<a class="btn" href="#/biblioteca">Ver biblioteca</a>','estudio')+
     '<div class="studio">'+
       '<div class="card pad st-form">'+
@@ -2957,10 +3037,12 @@ VIEWS.estudio=function(v,arg){
         '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
           '<button class="btn pri" id="dPng">↓ Baixar PNG</button>'+
           '<button class="btn" id="dPdf">↓ PDF para impressão</button>'+
+          '<button class="btn" id="dCmyk">↓ PDF em CMYK</button>'+
           '<button class="btn" id="dSave">Salvar nas minhas peças</button>'+
           '<button class="btn" id="dPostar">Postar agora</button>'+
           (souCorretor()?'<button class="btn" id="dPub">Agendar</button>':'')+
         '</div>'+
+        '<div class="hint" style="margin-top:8px">PNG e PDF saem em RGB, para tela. O PDF em CMYK sai com os quatro canais separados, para gráfica — a conversão é direta, sem perfil ICC; se a gráfica pedir um perfil (Coated FOGRA, SWOP), ela reconverte a partir desse arquivo.</div>'+
         '<div id="dPostRes" class="mini" style="margin-top:10px"></div>'+
         (minhas.length?'<div class="card" style="margin-top:16px"><div class="ch"><h3>Minhas peças</h3><div class="r"><span class="mini">'+minhas.length+' salvas</span></div></div>'+
           '<div class="cb"><div class="pecas" id="mp">'+minhas.map(p=>'<div class="pc"><img src="'+p.thumb+'" alt=""><div class="l"><b>'+esc(p.tplNome)+'</b>'+quando(p.criado)+
@@ -3017,6 +3099,17 @@ VIEWS.estudio=function(v,arg){
     if(!cvAtual) return;
     const mm = t.fmt==='cartao'? [90,50] : t.fmt==='a4'? [210,297] : null;
     pecaPDF(cvAtual,'remax-'+t.id+'.pdf', mm).then(()=>{ commit('Gerou peça (PDF)', t.nome); toast('PDF gerado'+(mm?' em '+mm[0]+'×'+mm[1]+' mm':'')+'.',1); });
+  });
+  $('#dCmyk').addEventListener('click',()=>{
+    if(!cvAtual) return;
+    const mm = t.fmt==='cartao'? [90,50] : t.fmt==='a4'? [210,297] : null;
+    const b=$('#dCmyk'), rot=b.textContent; b.textContent='Convertendo…'; b.disabled=true;
+    pecaCMYK(cvAtual,'remax-'+t.id+'-cmyk.pdf', mm).then(tam=>{
+      b.textContent=rot; b.disabled=false;
+      if(!tam) return;
+      commit('Gerou peça (PDF CMYK)', t.nome);
+      toast('<b>PDF em CMYK gerado.</b> '+cvAtual.width+'×'+cvAtual.height+' px'+(mm?' · '+mm[0]+'×'+mm[1]+' mm':'')+' · '+kb(tam)+'.',1);
+    }).catch(()=>{ b.textContent=rot; b.disabled=false; toast('Não consegui gerar o arquivo em CMYK.'); });
   });
   $('#dSave').addEventListener('click',()=>{
     if(!cvAtual) return;
@@ -5040,7 +5133,8 @@ a.hd-at:hover b{color:var(--azul)}
    ======================================================================= */
 function marcarAcesso(){
   if(souCorretor()){ if(S.usuarios[euId()]) S.usuarios[euId()].ultimo=agora(); }
-  else S.perfis[ROLE]=Object.assign(S.perfis[ROLE]||{}, {ultimo:agora()});
+  else { const k=(typeof chavePerfil==='function'? chavePerfil() : ROLE);
+         S.perfis[k]=Object.assign(S.perfis[k]||{}, {ultimo:agora()}); }
   saveState();
 }
 function popupComunicado(){
@@ -5145,8 +5239,9 @@ VIEWS.pessoas=function(v){
 /* ---------- perfil: o próprio (editável) ou o de outra pessoa (consulta) ---------- */
 VIEWS.perfil=function(v,arg){
   if(arg && arg!==euId() && S.usuarios[arg]) return perfilDe(v, S.usuarios[arg]);
-  const conta=CONTAS.find(c=>c.papel===ROLE)||{};
-  const r = souCorretor()? Object.assign({}, S.usuarios[euId()]) : Object.assign({nome:eu().nome, email:conta.email}, S.perfis[ROLE]||{});
+  const conta=(typeof contaSessao==='function'? contaSessao() : CONTAS.find(c=>c.papel===ROLE))||{};
+  const kPerfil=(typeof chavePerfil==='function'? chavePerfil() : ROLE);
+  const r = souCorretor()? Object.assign({}, S.usuarios[euId()]) : Object.assign({nome:eu().nome, email:conta.email}, S.perfis[kPerfil]||{});
   let foto=r.foto||eu().foto||'';
   const temCreci = ROLE==='corretor'||ROLE==='franquia';
   v.innerHTML=
@@ -5172,7 +5267,7 @@ VIEWS.perfil=function(v,arg){
              bio:$('#pfB').value.trim(), foto};
     if(temCreci && $('#pfC')) d.creci=$('#pfC').value.trim();
     if(d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) return toast(T('E-mail inválido.'));
-    commit('Atualizou o próprio perfil', d.nome, s=>{ if(souCorretor()) Object.assign(s.usuarios[euId()], d); else s.perfis[ROLE]=Object.assign(s.perfis[ROLE]||{}, d); });
+    commit('Atualizou o próprio perfil', d.nome, s=>{ if(souCorretor()) Object.assign(s.usuarios[euId()], d); else s.perfis[kPerfil]=Object.assign(s.perfis[kPerfil]||{}, d); });
     P=personas(); renderWho(); toast(T('Perfil salvo.'),1); route();
   });
   $('#pfSOk').addEventListener('click',()=>{
@@ -6693,7 +6788,10 @@ const DIC={
 en:{
 /* acesso */
 'Entrar na plataforma':'Sign in to the platform',
-'Selecione um acesso de teste — cada um abre a plataforma com o seu próprio escopo de dados e permissões.':'Pick a test account — each one opens the platform with its own data scope and permissions.',
+'Informe o e-mail de acesso e a senha que você recebeu.':'Enter the access e-mail and the password you were given.',
+'Este acesso era temporário e venceu em':'This access was temporary and expired on',
+'Fale com a BMAG para renovar.':'Contact BMAG to renew it.',
+'Este acesso entra sempre no mesmo escopo.':'This account always signs in with the same scope.',
 'E-mail':'Email','Senha':'Password','Entrar':'Sign in','Sair da conta':'Sign out','Trocar de acesso':'Switch account',
 'A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.':'The brand, content, governance and support platform for the RE/MAX network — in one place, with the right access for every level.',
 'Marketing RE/MAX Brasil':'RE/MAX Brazil Marketing','Master São Paulo':'Master São Paulo','Gestor da unidade':'Office manager','Associado':'Agent',
@@ -6701,7 +6799,7 @@ en:{
 'Acompanha a regional · aprova projetos e evidências':'Tracks the region · approves projects and evidence',
 'Executa o checklist · envia evidências · gerencia a equipe':'Runs the checklist · submits evidence · manages the team',
 'Personaliza peças · publica · acompanha os próprios indicadores':'Customizes assets · publishes · tracks their own metrics',
-'E-mail ou senha inválidos. Clique em um dos acessos acima para preencher.':'Invalid email or password. Click one of the accounts above to fill it in.',
+'E-mail ou senha inválidos.':'Invalid e-mail or password.',
 /* topo e menu */
 'Início':'Home','Mapa do escopo':'Scope map','Módulo':'Module','Idioma':'Language','Tema':'Theme',
 'Claro':'Light','Escuro':'Dark','Automático':'System','Ver a abertura':'Replay intro','Alertas':'Alerts',
@@ -6782,7 +6880,7 @@ en:{
 'Recomendado':'Recommended','2ª onda':'Wave 2','Aguardando':'Awaiting','Validado':'Validated','sua faixa':'your tier',
 'Nunca acessou':'Never signed in','Saudável':'Healthy','Atenção do CS':'Needs CS attention','sem faixa ainda':'no tier yet',
 'Foto do imóvel':'Property photo','Adicionar a foto do imóvel':'Add the property photo','Arraste aqui ou clique para escolher. Ela entra no lugar do fundo.':'Drag it here or click to choose. It replaces the background.','Trocar a foto':'Change photo','Remover foto':'Remove photo','Peça':'Piece','Seus dados':'Your details','Sua foto':'Your photo',
-'Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.':'Upload the property photo, pick the template and download it ready — PNG to post, PDF for print. Logo, colors and proportions stay locked to the brand standard.',
+'Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF em RGB ou CMYK para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.':'Upload the property photo, pick the template and download it ready — PNG to post, RGB or CMYK PDF for print. Logo, colors and proportions stay locked to the brand standard.',
 'Vídeo oficial':'Official video','Assistir ao vídeo':'Watch the video','Assistir no YouTube':'Watch on YouTube',
 'Direto do canal da REMAX Brasil. Bom para abrir reuniões, treinamentos e o onboarding das unidades.':'Straight from the REMAX Brasil channel. Great for opening meetings, trainings and office onboarding.',
 'Estúdio de Arte':'Art Studio',
@@ -6974,7 +7072,10 @@ en:{
 },
 es:{
 'Entrar na plataforma':'Entrar en la plataforma',
-'Selecione um acesso de teste — cada um abre a plataforma com o seu próprio escopo de dados e permissões.':'Elija un acceso de prueba: cada uno abre la plataforma con su propio alcance de datos y permisos.',
+'Informe o e-mail de acesso e a senha que você recebeu.':'Ingrese el correo de acceso y la contraseña que recibió.',
+'Este acesso era temporário e venceu em':'Este acceso era temporal y venció el',
+'Fale com a BMAG para renovar.':'Hable con BMAG para renovarlo.',
+'Este acesso entra sempre no mesmo escopo.':'Esta cuenta entra siempre con el mismo alcance.',
 'E-mail':'Correo','Senha':'Contraseña','Entrar':'Entrar','Sair da conta':'Cerrar sesión','Trocar de acesso':'Cambiar de acceso',
 'A plataforma de marca, conteúdo, governança e suporte da rede RE/MAX — em um só lugar, com o acesso de cada nível.':'La plataforma de marca, contenido, gobernanza y soporte de la red RE/MAX, en un solo lugar y con el acceso de cada nivel.',
 'Marketing RE/MAX Brasil':'Marketing RE/MAX Brasil','Gestor da unidade':'Gerente de la oficina','Associado':'Asesor',
@@ -6982,7 +7083,7 @@ es:{
 'Acompanha a regional · aprova projetos e evidências':'Sigue la regional · aprueba proyectos y evidencias',
 'Executa o checklist · envia evidências · gerencia a equipe':'Ejecuta el checklist · envía evidencias · gestiona el equipo',
 'Personaliza peças · publica · acompanha os próprios indicadores':'Personaliza piezas · publica · sigue sus propios indicadores',
-'E-mail ou senha inválidos. Clique em um dos acessos acima para preencher.':'Correo o contraseña inválidos. Haga clic en uno de los accesos de arriba para completarlos.',
+'E-mail ou senha inválidos.':'Correo o contraseña inválidos.',
 'Início':'Inicio','Mapa do escopo':'Mapa del alcance','Módulo':'Módulo','Idioma':'Idioma','Tema':'Tema',
 'Claro':'Claro','Escuro':'Oscuro','Automático':'Automático','Ver a abertura':'Ver la apertura','Alertas':'Alertas',
 'Identidade da RE/MAX: guia, logos, fontes, cores, templates e regras.':'Identidad de RE/MAX: guía, logos, fuentes, colores, plantillas y reglas.',
@@ -7056,7 +7157,7 @@ es:{
 'Recomendado':'Recomendado','2ª onda':'2ª ola','Aguardando':'Esperando','Validado':'Validado','sua faixa':'su nivel',
 'Nunca acessou':'Nunca ingresó','Saudável':'Saludable','Atenção do CS':'Atención de CS','sem faixa ainda':'sin nivel aún',
 'Foto do imóvel':'Foto del inmueble','Adicionar a foto do imóvel':'Agregar la foto del inmueble','Arraste aqui ou clique para escolher. Ela entra no lugar do fundo.':'Arrástrela aquí o haga clic para elegir. Reemplaza el fondo.','Trocar a foto':'Cambiar foto','Remover foto':'Quitar foto','Peça':'Pieza','Seus dados':'Sus datos','Sua foto':'Su foto',
-'Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.':'Suba la foto del inmueble, elija el modelo y descárguelo listo — PNG para publicar, PDF para la imprenta. Logotipo, colores y proporciones quedan fijados al estándar de la marca.',
+'Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF em RGB ou CMYK para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.':'Suba la foto del inmueble, elija el modelo y descárguelo listo — PNG para publicar, PDF en RGB o CMYK para la imprenta. Logotipo, colores y proporciones quedan fijados al estándar de la marca.',
 'Vídeo oficial':'Video oficial','Assistir ao vídeo':'Ver el video','Assistir no YouTube':'Ver en YouTube',
 'Direto do canal da REMAX Brasil. Bom para abrir reuniões, treinamentos e o onboarding das unidades.':'Directo del canal de REMAX Brasil. Ideal para abrir reuniones, capacitaciones y la incorporación de las oficinas.',
 'Estúdio de Arte':'Estudio de Arte',
@@ -7585,12 +7686,15 @@ function iniciarApp(){
   if(!primeiraVez) popupComunicado();          // comunicado marcado como aviso aparece ao entrar
 }
 function entrarNaPlataforma(){
-  if(LS.get('pr_sessao') && CONTAS.some(c=>c.papel===LS.get('pr_sessao'))){
-    ROLE = LS.get('pr_sessao');
-    iniciarApp();
-  } else {
-    telaLogin();
-  }
+  /* a sessão guardada só vale se apontar para uma conta existente e dentro do prazo:
+     o papel sozinho não entra, senão quem logou no build anterior atravessaria a troca de senha */
+  const cs = contaDe(LS.get('pr_conta'));
+  if(!cs || contaExpirada(cs)){ LS.del('pr_sessao'); LS.del('pr_conta'); telaLogin(); return; }
+  CONTA_ATUAL = cs;
+  const papel = LS.get('pr_sessao');
+  ROLE = (!cs.pessoal && papel && CONTAS.some(c=>!c.pessoal && c.papel===papel)) ? papel : cs.papel;
+  LS.set('pr_role', ROLE);
+  iniciarApp();
 }
 loadState();
 garantirCampos();

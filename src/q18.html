@@ -25,7 +25,8 @@ a.hd-at:hover b{color:var(--azul)}
    ======================================================================= */
 function marcarAcesso(){
   if(souCorretor()){ if(S.usuarios[euId()]) S.usuarios[euId()].ultimo=agora(); }
-  else S.perfis[ROLE]=Object.assign(S.perfis[ROLE]||{}, {ultimo:agora()});
+  else { const k=(typeof chavePerfil==='function'? chavePerfil() : ROLE);
+         S.perfis[k]=Object.assign(S.perfis[k]||{}, {ultimo:agora()}); }
   saveState();
 }
 function popupComunicado(){
@@ -130,8 +131,9 @@ VIEWS.pessoas=function(v){
 /* ---------- perfil: o próprio (editável) ou o de outra pessoa (consulta) ---------- */
 VIEWS.perfil=function(v,arg){
   if(arg && arg!==euId() && S.usuarios[arg]) return perfilDe(v, S.usuarios[arg]);
-  const conta=CONTAS.find(c=>c.papel===ROLE)||{};
-  const r = souCorretor()? Object.assign({}, S.usuarios[euId()]) : Object.assign({nome:eu().nome, email:conta.email}, S.perfis[ROLE]||{});
+  const conta=(typeof contaSessao==='function'? contaSessao() : CONTAS.find(c=>c.papel===ROLE))||{};
+  const kPerfil=(typeof chavePerfil==='function'? chavePerfil() : ROLE);
+  const r = souCorretor()? Object.assign({}, S.usuarios[euId()]) : Object.assign({nome:eu().nome, email:conta.email}, S.perfis[kPerfil]||{});
   let foto=r.foto||eu().foto||'';
   const temCreci = ROLE==='corretor'||ROLE==='franquia';
   v.innerHTML=
@@ -157,7 +159,7 @@ VIEWS.perfil=function(v,arg){
              bio:$('#pfB').value.trim(), foto};
     if(temCreci && $('#pfC')) d.creci=$('#pfC').value.trim();
     if(d.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) return toast(T('E-mail inválido.'));
-    commit('Atualizou o próprio perfil', d.nome, s=>{ if(souCorretor()) Object.assign(s.usuarios[euId()], d); else s.perfis[ROLE]=Object.assign(s.perfis[ROLE]||{}, d); });
+    commit('Atualizou o próprio perfil', d.nome, s=>{ if(souCorretor()) Object.assign(s.usuarios[euId()], d); else s.perfis[kPerfil]=Object.assign(s.perfis[kPerfil]||{}, d); });
     P=personas(); renderWho(); toast(T('Perfil salvo.'),1); route();
   });
   $('#pfSOk').addEventListener('click',()=>{

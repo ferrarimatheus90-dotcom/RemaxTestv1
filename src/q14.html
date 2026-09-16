@@ -159,12 +159,15 @@ function iniciarApp(){
   if(!primeiraVez) popupComunicado();          // comunicado marcado como aviso aparece ao entrar
 }
 function entrarNaPlataforma(){
-  if(LS.get('pr_sessao') && CONTAS.some(c=>c.papel===LS.get('pr_sessao'))){
-    ROLE = LS.get('pr_sessao');
-    iniciarApp();
-  } else {
-    telaLogin();
-  }
+  /* a sessão guardada só vale se apontar para uma conta existente e dentro do prazo:
+     o papel sozinho não entra, senão quem logou no build anterior atravessaria a troca de senha */
+  const cs = contaDe(LS.get('pr_conta'));
+  if(!cs || contaExpirada(cs)){ LS.del('pr_sessao'); LS.del('pr_conta'); telaLogin(); return; }
+  CONTA_ATUAL = cs;
+  const papel = LS.get('pr_sessao');
+  ROLE = (!cs.pessoal && papel && CONTAS.some(c=>!c.pessoal && c.papel===papel)) ? papel : cs.papel;
+  LS.set('pr_role', ROLE);
+  iniciarApp();
 }
 loadState();
 garantirCampos();

@@ -409,6 +409,14 @@ function personas(){
     corretor:{id:c.id, nome:c.nome, papel:'Associado · '+lojaDe(c.loja).nome, escopo:c.loja, foto:c.foto}
   };
   Object.keys(pp).forEach(k=>{ const o=(S.perfis||{})[k]; if(o){ if(o.nome) pp[k].nome=o.nome; if(o.foto) pp[k].foto=o.foto; } });   // o que a pessoa editou no perfil
+  /* acesso nominal (ex.: um convidado com prazo): entra no escopo do papel, mas com identidade
+     própria — o que ele editar fica em S.perfis['conta:<e-mail>'], sem encostar no perfil do papel */
+  try{ const cs=(typeof contaSessao==='function') && contaSessao();
+       if(cs && cs.pessoal && pp[cs.papel]){
+         const meu=(S.perfis||{})['conta:'+cs.email]||{};
+         pp[cs.papel]=Object.assign({}, pp[cs.papel],
+           {nome:meu.nome||cs.nome, papel:cs.cargo||pp[cs.papel].papel, foto:meu.foto||''});
+       } }catch(e){}
   return pp;
 }
 let P = null;

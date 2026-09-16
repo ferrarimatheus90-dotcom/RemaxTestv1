@@ -262,6 +262,62 @@ async function pecaPDF(cv, nome, mm){
   baixarBlob(new Blob(partes,{type:'application/pdf'}), nome);
 }
 
+/* ---------- PDF em CMYK: a arte sai com quatro canais (DeviceCMYK), para gráfica ----------
+   Conversão direta, sem perfil ICC: serve para a gráfica receber um arquivo já separado.
+   Quando a gráfica exigir um perfil específico (Coated FOGRA, SWOP), ela reconverte a partir daqui. */
+function rgbParaCmyk(px){
+  const n=px.length/4, out=new Uint8Array(n*4);
+  for(let i=0,o=0;i<n;i++,o+=4){
+    const r=px[i*4]/255, g=px[i*4+1]/255, b=px[i*4+2]/255;
+    const k=1-Math.max(r,g,b), d=1-k;
+    out[o]   = d<=0? 0 : Math.round((1-r-k)/d*255);
+    out[o+1] = d<=0? 0 : Math.round((1-g-k)/d*255);
+    out[o+2] = d<=0? 0 : Math.round((1-b-k)/d*255);
+    out[o+3] = Math.round(k*255);
+  }
+  return out;
+}
+async function comprimeZlib(u8){
+  if(typeof CompressionStream!=='function') return null;          // navegador antigo: vai sem compressão
+  try{
+    const cs=new CompressionStream('deflate');                    // 'deflate' = zlib, que é o /FlateDecode do PDF
+    const w=cs.writable.getWriter(); w.write(u8); w.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }catch(e){ return null; }
+}
+async function pecaCMYK(cv, nome, mm){
+  let px;
+  try{ px=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data; }
+  catch(e){ toast('<b>Não consegui ler a arte para converter.</b> Reenvie a foto pelo botão do Estúdio e tente de novo.'); return; }
+  const cmyk=rgbParaCmyk(px);
+  const z=await comprimeZlib(cmyk);
+  const dados = z || cmyk, filtro = z? '/Filter/FlateDecode' : '';
+  const larg = mm? mm[0]/25.4*72 : cv.width*72/150, alt = mm? mm[1]/25.4*72 : cv.height*72/150;
+  const enc=s=>new TextEncoder().encode(s);
+  const partes=[], offs=[]; let pos=0;
+  const push=u=>{ partes.push(u); pos+=u.length; };
+  push(enc('%PDF-1.4\n'));
+  const obj=(n,corpo,stream)=>{
+    offs[n]=pos;
+    push(enc(n+' 0 obj\n'+corpo+'\n'));
+    if(stream){ push(enc('stream\n')); push(stream); push(enc('\nendstream\n')); }
+    push(enc('endobj\n'));
+  };
+  obj(1,'<</Type/Catalog/Pages 2 0 R>>');
+  obj(2,'<</Type/Pages/Kids[3 0 R]/Count 1>>');
+  obj(3,'<</Type/Page/Parent 2 0 R/MediaBox[0 0 '+larg.toFixed(2)+' '+alt.toFixed(2)+']/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>');
+  obj(4,'<</Type/XObject/Subtype/Image/Width '+cv.width+'/Height '+cv.height+'/ColorSpace/DeviceCMYK/BitsPerComponent 8'+filtro+'/Length '+dados.length+'>>', dados);
+  const cont=enc('q '+larg.toFixed(2)+' 0 0 '+alt.toFixed(2)+' 0 0 cm /Im0 Do Q');
+  obj(5,'<</Length '+cont.length+'>>', cont);
+  const xref=pos;
+  let x='xref\n0 6\n0000000000 65535 f \n';
+  for(let i=1;i<=5;i++) x+=String(offs[i]).padStart(10,'0')+' 00000 n \n';
+  push(enc(x+'trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n'+xref+'\n%%EOF'));
+  const bl=new Blob(partes,{type:'application/pdf'});
+  baixarBlob(bl, nome);
+  return bl.size;
+}
+
 /* =======================================================================
    GRÁFICOS — canvas, sem biblioteca
    ======================================================================= */

@@ -36,7 +36,7 @@ VIEWS.estudio=function(v,arg){
   const aceitaImovel = t.fmt!=='cartao' && t.fmt!=='email';
 
   v.innerHTML =
-    ph('Estúdio de Arte', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
+    ph('Estúdio de Arte', T('Suba a foto do imóvel, escolha o modelo e baixe pronto — PNG para publicar, PDF em RGB ou CMYK para a gráfica. Logotipo, cores e proporções ficam travados no padrão da marca.'),
       '<a class="btn" href="#/biblioteca">Ver biblioteca</a>','estudio')+
     '<div class="studio">'+
       '<div class="card pad st-form">'+
@@ -81,10 +81,12 @@ VIEWS.estudio=function(v,arg){
         '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
           '<button class="btn pri" id="dPng">↓ Baixar PNG</button>'+
           '<button class="btn" id="dPdf">↓ PDF para impressão</button>'+
+          '<button class="btn" id="dCmyk">↓ PDF em CMYK</button>'+
           '<button class="btn" id="dSave">Salvar nas minhas peças</button>'+
           '<button class="btn" id="dPostar">Postar agora</button>'+
           (souCorretor()?'<button class="btn" id="dPub">Agendar</button>':'')+
         '</div>'+
+        '<div class="hint" style="margin-top:8px">PNG e PDF saem em RGB, para tela. O PDF em CMYK sai com os quatro canais separados, para gráfica — a conversão é direta, sem perfil ICC; se a gráfica pedir um perfil (Coated FOGRA, SWOP), ela reconverte a partir desse arquivo.</div>'+
         '<div id="dPostRes" class="mini" style="margin-top:10px"></div>'+
         (minhas.length?'<div class="card" style="margin-top:16px"><div class="ch"><h3>Minhas peças</h3><div class="r"><span class="mini">'+minhas.length+' salvas</span></div></div>'+
           '<div class="cb"><div class="pecas" id="mp">'+minhas.map(p=>'<div class="pc"><img src="'+p.thumb+'" alt=""><div class="l"><b>'+esc(p.tplNome)+'</b>'+quando(p.criado)+
@@ -141,6 +143,17 @@ VIEWS.estudio=function(v,arg){
     if(!cvAtual) return;
     const mm = t.fmt==='cartao'? [90,50] : t.fmt==='a4'? [210,297] : null;
     pecaPDF(cvAtual,'remax-'+t.id+'.pdf', mm).then(()=>{ commit('Gerou peça (PDF)', t.nome); toast('PDF gerado'+(mm?' em '+mm[0]+'×'+mm[1]+' mm':'')+'.',1); });
+  });
+  $('#dCmyk').addEventListener('click',()=>{
+    if(!cvAtual) return;
+    const mm = t.fmt==='cartao'? [90,50] : t.fmt==='a4'? [210,297] : null;
+    const b=$('#dCmyk'), rot=b.textContent; b.textContent='Convertendo…'; b.disabled=true;
+    pecaCMYK(cvAtual,'remax-'+t.id+'-cmyk.pdf', mm).then(tam=>{
+      b.textContent=rot; b.disabled=false;
+      if(!tam) return;
+      commit('Gerou peça (PDF CMYK)', t.nome);
+      toast('<b>PDF em CMYK gerado.</b> '+cvAtual.width+'×'+cvAtual.height+' px'+(mm?' · '+mm[0]+'×'+mm[1]+' mm':'')+' · '+kb(tam)+'.',1);
+    }).catch(()=>{ b.textContent=rot; b.disabled=false; toast('Não consegui gerar o arquivo em CMYK.'); });
   });
   $('#dSave').addEventListener('click',()=>{
     if(!cvAtual) return;

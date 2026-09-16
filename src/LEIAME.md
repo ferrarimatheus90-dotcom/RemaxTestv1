@@ -109,10 +109,15 @@ isso ao usuário e permite recarregar a demonstração ou exportar os dados.
 
 ## Acesso
 
-A plataforma abre em uma tela de login. Quatro contas de teste, com e-mails fictícios e senha `Rede@2026`:
-`brasil@prontosemrede.test`, `master@prontosemrede.test`, `loja@prontosemrede.test`, `corretor@prontosemrede.test`.
-Clicar no cartão da conta preenche os campos. O botão de perfil no topo troca de acesso
-sem sair, e "Sair da conta" volta ao login.
+A plataforma abre em uma tela de login que pede **e-mail e senha** — não lista mais as contas
+nem imprime a senha no rodapé. As contas estão em `const CONTAS` (q4.html), cada uma com a sua
+senha; a folha com elas fica fora do repositório.
+
+Uma conta pode ter `expira` (data ISO) e `pessoal:true`. `contaExpirada()` recusa a entrada depois
+da data, e `entrarNaPlataforma()` (q14.html) derruba a sessão já aberta quando a data passa.
+Conta `pessoal` mostra o próprio nome no topo (via `personas()`, q2.html) e não aparece nem pode
+usar o "Trocar de acesso". A conta com que a pessoa entrou fica em `pr_conta`, lida por `contaSessao()`.
+O botão de perfil no topo troca entre os acessos permanentes sem sair, e "Sair da conta" volta ao login.
 
 ## Tema, idioma, fonte e abertura
 

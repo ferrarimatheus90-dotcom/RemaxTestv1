@@ -13,7 +13,8 @@ ficam na pasta `api/`, em PHP, e só funcionam no servidor, com as chaves config
 
 ## Contas de teste
 
-Senha de todas: `Rede@2026`
+O acesso é por e-mail e senha. Cada conta tem a sua senha, e a tela de login não a mostra mais.
+As senhas ficam na folha **Acessos-Prontos-em-Rede-CONFIDENCIAL.pdf**, guardada fora do repositório.
 
 | Acesso | E-mail |
 |---|---|
