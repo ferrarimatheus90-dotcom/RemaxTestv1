@@ -2,7 +2,8 @@
 /* Intelligence (BI) · submenu por módulo e detalhamento ao clicar (pedido do Bruno em 14/09) */
 .kpi[data-drill]{cursor:pointer;transition:transform .16s var(--e), box-shadow .16s var(--e)}
 .kpi[data-drill]:hover{transform:translateY(-2px);box-shadow:var(--sh-2)}
-.kpi[data-drill] .lupa{display:block;margin-top:9px;font-size:11.5px;font-weight:600;color:var(--link)}
+/* nome próprio: 'lupa' já é a camada de zoom de imagem (q1.html), que é position:fixed e cobriria a tela */
+.kpi[data-drill] .verdet{display:block;margin-top:9px;font-size:11.5px;font-weight:600;color:var(--link)}
 .bi-nav{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
 .bi-nav a{
   display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:99px;text-decoration:none;
@@ -104,7 +105,7 @@ function biDetalhe(titulo, sub, cols, linhas, arq){
 }
 function kpiD(l,v,d,cls,chave){
   return '<div class="kpi '+(cls||'')+'" data-drill="'+chave+'" role="button" tabindex="0"><div class="l">'+l+'</div><div class="v">'+v+'</div>'+
-    (d?'<div class="d">'+d+'</div>':'')+'<span class="lupa">'+esc(T('ver o detalhe'))+' →</span></div>';
+    (d?'<div class="d">'+d+'</div>':'')+'<span class="verdet">'+esc(T('ver o detalhe'))+' →</span></div>';
 }
 function ligaDrill(v, mapa){
   $$('[data-drill]',v).forEach(el=>{
